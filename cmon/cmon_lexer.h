@@ -88,17 +88,6 @@ typedef enum
     cmon_tk_eof
 } cmon_token_kind;
 
-// typedef struct
-// {
-//     // cmon_src_file * src_file;
-//     size_t line;
-//     size_t line_end;
-//     size_t line_off;
-//     cmon_str_view str_view;
-//     //true if the token is preceeded by a new line
-//     cmon_bool follows_nl;
-// } cmon_token;
-
 typedef struct cmon_lexer cmon_lexer;
 
 CMON_API cmon_lexer * cmon_lexer_create(cmon_allocator * _alloc);
@@ -111,10 +100,10 @@ CMON_API void cmon_lexer_set_input(cmon_lexer * _l,
 CMON_API cmon_bool cmon_lexer_tokenize(cmon_lexer * _l);
 
 // functions to retrieve the index of a token
-CMON_API cmon_idx cmon_lexer_prev(cmon_lexer * _l);
+CMON_API cmon_idx cmon_lexer_prev(cmon_lexer * _l, cmon_bool _skip_comments);
 CMON_API cmon_idx cmon_lexer_current(cmon_lexer * _l);
-CMON_API cmon_idx cmon_lexer_next(cmon_lexer * _l);
-CMON_API cmon_idx cmon_lexer_advance(cmon_lexer * _l);
+CMON_API cmon_idx cmon_lexer_next(cmon_lexer * _l, cmon_bool _skip_comments);
+CMON_API cmon_idx cmon_lexer_advance(cmon_lexer * _l, cmon_bool _skip_comments);
 
 // functions to get information about a token
 CMON_API cmon_token_kind cmon_lexer_token_kind(cmon_lexer * _l, cmon_idx _idx);

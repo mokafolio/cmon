@@ -49,4 +49,44 @@ UTEST(cmon, dyn_arr_tests)
     cmon_allocator_dealloc(&a);
 }
 
+static inline cmon_bool _lexer_test(const char * _name, const char * _code)
+{
+    cmon_allocator alloc;
+    cmon_src * src;
+    cmon_idx src_idx;
+    cmon_lexer * l;
+    cmon_bool err;
+
+    alloc = cmon_mallocator_make();
+
+    src = cmon_src_create(&alloc);
+    src_idx = cmon_src_add(src, _name, _name);
+    cmon_src_set_code(src, src_idx, _code);
+
+    l = cmon_lexer_create(&alloc);
+    cmon_lexer_set_input(l, src, src_idx);
+
+    err = cmon_lexer_tokenize(l);
+
+    cmon_lexer_destroy(l);
+    cmon_src_destroy(src);
+    cmon_allocator_dealloc(&alloc);
+
+    return err;
+}
+
+//@TODO: Make some more in depth tests with expected token counts, checking token types etc.
+#define LEXER_TEST(_name, _code, _should_pass)                                             \
+    UTEST(cmon, _name)                                                                             \
+    {                                                                                              \
+        EXPECT_EQ(_lexer_test(#_name ".cmon", _code), !_should_pass);                       \
+    }
+
+LEXER_TEST(lexer_success,
+               "module foo;import bar, joink as j\npub fn whop() -> s32 { return 3 }",
+               cmon_true);
+LEXER_TEST(lexer_missing_expo_digits, "foo := 3.12214e", cmon_false);
+LEXER_TEST(lexer_invalid_character, "hello#", cmon_false);
+
+
 UTEST_MAIN();

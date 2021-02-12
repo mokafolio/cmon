@@ -536,13 +536,21 @@ void cmon_lexer_set_input(cmon_lexer * _l, cmon_src * _src, cmon_idx _src_file_i
 
 cmon_bool cmon_lexer_tokenize(cmon_lexer * _l)
 {
+    while (_next_token(_l) && cmon_err_report_is_empty(&_l->err));
+    return !cmon_err_report_is_empty(&_l->err);
 }
 
-cmon_idx cmon_lexer_prev(cmon_lexer * _l)
+cmon_idx cmon_lexer_prev(cmon_lexer * _l, cmon_bool _skip_comments)
 {
-    if (_l->tok_idx < 1)
-        return -1;
-    return _l->tok_idx - 1;
+    size_t ret = _l->tok_idx;
+    while(ret > 0)
+    {
+        --ret;
+        if(!_skip_comments || _l->kinds[ret] != cmon_tk_comment)
+            return ret;
+    }
+
+    return -1;
 }
 
 cmon_idx cmon_lexer_current(cmon_lexer * _l)
@@ -550,14 +558,29 @@ cmon_idx cmon_lexer_current(cmon_lexer * _l)
     return _l->tok_idx;
 }
 
-cmon_idx cmon_lexer_next(cmon_lexer * _l)
+static inline cmon_idx _inline_next(cmon_lexer * _l, cmon_bool _skip_comments)
 {
-    return _l->tok_idx < cmon_dyn_arr_count(&_l->tokens) - 1 ? _l->tok_idx + 1 : -1;
+    size_t ret = _l->tok_idx;
+    while(ret < cmon_dyn_arr_count(&_l->tokens))
+    {
+        ++ret;
+        if(!_skip_comments || _l->kinds[ret] != cmon_tk_comment)
+            return ret;
+    }
+
+    return -1;
 }
 
-cmon_idx cmon_lexer_advance(cmon_lexer * _l)
+cmon_idx cmon_lexer_next(cmon_lexer * _l, cmon_bool _skip_comments)
 {
-    return _l->tok_idx < cmon_dyn_arr_count(&_l->tokens) - 1 ? _l->tok_idx++ : -1;
+    return _inline_next(_l, _skip_comments);
+}
+
+cmon_idx cmon_lexer_advance(cmon_lexer * _l, cmon_bool _skip_comments)
+{
+    cmon_idx idx = _inline_next(_l, _skip_comments);
+    _l->tok_idx = idx != -1 ? idx : _l->tok_idx;
+    return idx;
 }
 
 #define _get_token(_l, _idx) (assert(_idx < cmon_dyn_arr_count(&_l->tokens)), _l->tokens[_idx])
@@ -568,7 +591,7 @@ cmon_token_kind cmon_lexer_token_kind(cmon_lexer * _l, cmon_idx _idx)
     return _get_kind(_l, _idx);
 }
 
-cmon_str_view Fcmon_lexer_str_view(cmon_lexer * _l, cmon_idx _idx)
+cmon_str_view cmon_lexer_str_view(cmon_lexer * _l, cmon_idx _idx)
 {
     return _get_token(_l, _idx).str_view;
 }
@@ -606,5 +629,5 @@ cmon_bool cmon_lexer_is_current(cmon_lexer * _l, cmon_token_kind _kind)
 cmon_idx cmon_lexer_accept(cmon_lexer * _l, cmon_token_kind _kind)
 {
     if (cmon_lexer_is_current(_l, _kind))
-        return cmon_lexer_advance(_l);
+        return cmon_lexer_advance(_l, cmon_true);
 }
