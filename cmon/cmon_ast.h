@@ -1,0 +1,110 @@
+#ifndef CMON_CMON_AST_H
+#define CMON_CMON_AST_H
+
+#include <cmon/cmon_allocator.h>
+
+typedef enum
+{
+    cmon_ast_kind_ident,
+    cmon_ast_kind_int_literal,
+    cmon_ast_kind_float_literal,
+    cmon_ast_kind_string_literal,
+    cmon_ast_kind_bool_literal,
+    cmon_ast_kind_type_named,
+    cmon_ast_kind_type_ptr,
+    cmon_ast_kind_type_tuple,
+    cmon_ast_kind_call,
+    cmon_ast_kind_index,
+    cmon_ast_kind_selector,
+    cmon_ast_kind_struct_init,
+    cmon_ast_kind_array_init,
+    cmon_ast_kind_tuple_init,
+    cmon_ast_kind_view_init,
+    cmon_ast_kind_prefix,
+    cmon_ast_kind_binary,
+    // cmon_ast_kind_postfix,
+    cmon_ast_kind_addr,
+    cmon_ast_kind_deref,
+    cmon_ast_kind_cast,
+    // cmon_ast_kind_view,
+    cmon_ast_kind_noinit,
+    cmon_ast_kind_fn_decl,
+    // cmon_ast_kind_range,
+    // cmon_ast_kind_expl_template_fn_init,
+    cmon_ast_kind_var_decl,
+    cmon_ast_kind_struct_decl,
+    // cmon_ast_kind_interface_decl,
+    cmon_ast_kind_exprstmt,
+    cmon_ast_kind_return,
+    cmon_ast_kind_break,
+    cmon_ast_kind_continue,
+    cmon_ast_kind_for,
+    cmon_ast_kind_for_in,
+    // cmon_ast_kind_c_for,
+    cmon_ast_kind_block,
+    cmon_ast_kind_import,
+    cmon_ast_kind_module,
+    cmon_ast_kind_typedef,
+    cmon_ast_kind_typealias,
+    cmon_ast_kind_if,
+    cmon_ast_kind_defer,
+} cmon_ast_kind;
+
+// typedef struct cmon_ast_node
+// {
+//     cmon_ast_kind kind;
+//     size_t token_idx, left_idx, right_idx;
+// } cmon_ast_node;
+
+typedef struct cmon_ast cmon_ast;
+// ast builder
+typedef struct cmon_astb cmon_astb;
+
+CMON_API cmon_astb * cmon_astb_create(cmon_allocator * _alloc);
+CMON_API void cmon_astb_destroy(cmon_astb * _b);
+
+// adding expressions
+CMON_API cmon_idx cmon_astb_add_ident(cmon_astb * _b, cmon_idx _tok_idx);
+CMON_API cmon_idx cmon_astb_add_binary(cmon_astb * _b,
+                                       cmon_idx _op_tok_idx,
+                                       cmon_idx _left,
+                                       cmon_idx _right);
+CMON_API cmon_idx cmon_astb_add_prefix(cmon_astb * _b,
+                                       cmon_idx _op_tok_idx,
+                                       cmon_idx _right);
+
+// adding statements
+CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
+                                      cmon_idx _tok_idx,
+                                      cmon_idx _begin,
+                                      cmon_idx _end);
+
+// adding parsed types
+CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx);
+CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
+                                         cmon_idx _tok_idx,
+                                         cmon_bool _is_mut,
+                                         cmon_idx _type_idx);
+
+// adding type declarations
+
+// getting the ast without taking ownership
+CMON_API cmon_ast * cmon_astb_get_ast(cmon_astb * _b);
+// taking ownership of the ast
+CMON_API cmon_ast * cmon_astb_copy_ast(cmon_astb * _b, cmon_allocator * _alloc);
+
+//destroy an ast that has been copied via cmon_astb_copy_ast
+CMON_API void cmon_ast_destroy(cmon_ast * _ast);
+
+// ast getters
+CMON_API cmon_ast_kind cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx);
+
+// CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API double cmon_ast_float(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_string_view cmon_ast_str(cmon_ast * _ast, cmon_idx _idx);
+
+#endif // CMON_CMON_AST_H
