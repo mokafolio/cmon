@@ -33,11 +33,8 @@
 
 typedef struct cmon_parser cmon_parser;
 
-CMON_API cmon_parser * cmon_parser_create(cmon_parser * _p,
-                               cmon_allocator * _alloc,
-                               cmon_src_file * _file,
-                               cmon_tokenizer * _tok);
-CMON_API void cmon_parser_dealloc(cmon_parser * _p);
+CMON_API cmon_parser * cmon_parser_create(cmon_allocator * _alloc);
+CMON_API void cmon_parser_destroy(cmon_parser * _p);
 CMON_API cmon_err_report cmon_parser_copy_err(cmon_parser * _p);
 CMON_API cmon_ast_file * cmon_parser_parse(cmon_parser * _p);
 

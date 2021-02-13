@@ -47,6 +47,8 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
     strcpy(f.filename, _filename);
     f.code = NULL;
     cmon_dyn_arr_append(&_src->files, f);
+    printf("DA COUNT %lu\n", cmon_dyn_arr_count(&_src->files));
+    printf("ADDING %s\n", _src->files[0].filename);
     return cmon_dyn_arr_count(&_src->files) - 1;
 }
 

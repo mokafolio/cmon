@@ -14,7 +14,7 @@
             cmon_dyn_arr_reserve(_arr, nc);                                                        \
             _md = _cmon_dyn_arr_md(_arr);                                                          \
         }                                                                                          \
-        (*_arr)[_md->count++] = (_val);                                                            \
+        (*(_arr))[_md->count++] = (_val);                                                          \
     } while (0)
 #define cmon_dyn_arr_count(_arr) _cmon_dyn_arr_md(_arr)->count
 #define cmon_dyn_arr_capacity(_arr) _cmon_dyn_arr_md(_arr)->cap
@@ -44,7 +44,7 @@
     do                                                                                             \
     {                                                                                              \
         cmon_dyn_arr_reserve((_arr), (_count));                                                    \
-        _cmon_dyn_arr_md((_arr))->count = (_count);                                                 \
+        _cmon_dyn_arr_md((_arr))->count = (_count);                                                \
     } while (0)
 #define _cmon_dyn_arr_md(_arr)                                                                     \
     ((_cmon_dyn_arr_meta *)((void *)(*(_arr)) - sizeof(_cmon_dyn_arr_meta)))
@@ -52,7 +52,8 @@
     do                                                                                             \
     {                                                                                              \
         void * _mem =                                                                              \
-            cmon_allocator_alloc(_alloc, sizeof(_cmon_dyn_arr_meta) + sizeof(*(_arr)) * _cap).ptr; \
+            cmon_allocator_alloc(_alloc, sizeof(_cmon_dyn_arr_meta) + sizeof(**(_arr)) * _cap)     \
+                .ptr;                                                                              \
         _cmon_dyn_arr_meta * _md = _mem;                                                           \
         _md->alloc = _alloc;                                                                       \
         _md->count = 0;                                                                            \
@@ -77,7 +78,7 @@
         {                                                                                          \
             for (_i = _idx; _i < _md->count - 1; ++_i)                                             \
             {                                                                                      \
-                (*(_arr))[_i] = (*(_arr))[_i + 1];                                                       \
+                (*(_arr))[_i] = (*(_arr))[_i + 1];                                                 \
             }                                                                                      \
             _md->count--;                                                                          \
         }                                                                                          \
@@ -91,9 +92,9 @@
         cmon_dyn_arr_reserve((_arr), _md->count + 1);                                              \
         for (_i = _md->count++; _i > (_idx); --_i)                                                 \
         {                                                                                          \
-            (*(_arr))[_i] = (*(_arr))[_i - 1];                                                          \
+            (*(_arr))[_i] = (*(_arr))[_i - 1];                                                     \
         }                                                                                          \
-        (*(_arr))[(_idx)] = (_val);                                                                  \
+        (*(_arr))[(_idx)] = (_val);                                                                \
     } while (0)
 
 typedef struct

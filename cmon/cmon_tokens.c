@@ -1,7 +1,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_err_report.h>
-#include <cmon/cmon_lexer.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_tokens.h>
 
 // for now the lexer stops on the first error. we simpy save the error.
 #define _err(_l, _msg, ...)                                                                        \
@@ -9,7 +9,7 @@
     {                                                                                              \
         cmon_str_builder_clear(_l->tmp_str_b);                                                     \
         cmon_str_builder_append_fmt(_l->tmp_str_b, _msg, ##__VA_ARGS__);                           \
-        _l->err = cmon_err_report_make(_l->filename,                                               \
+        _l->err = cmon_err_report_make(cmon_src_filename(_l->src, _l->src_file_idx),               \
                                        _l->current_line,                                           \
                                        _l->current_line_off,                                       \
                                        cmon_str_builder_c_str(_l->tmp_str_b));                     \
@@ -25,13 +25,17 @@ typedef struct
     cmon_bool follows_nl;
 } _token;
 
-typedef struct cmon_lexer
+typedef struct cmon_tokens
 {
     cmon_allocator * alloc;
     cmon_dyn_arr(cmon_token_kind) kinds;
     cmon_dyn_arr(_token) tokens;
-    char path[CMON_PATH_MAX];
-    char filename[CMON_FILENAME_MAX];
+    cmon_idx tok_idx;
+} cmon_tokens;
+
+typedef struct
+{
+    cmon_allocator * alloc;
     cmon_src * src;
     cmon_idx src_file_idx;
     const char * input;
@@ -39,24 +43,23 @@ typedef struct cmon_lexer
     const char * end;
     cmon_idx current_line;
     cmon_idx current_line_off;
-    cmon_idx tok_idx;
     cmon_err_report err;
     cmon_str_builder * tmp_str_b;
-} cmon_lexer;
+} _tokenize_session;
 
-static inline void _advance_pos(cmon_lexer * _l, size_t _advance)
+static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
 {
     _l->pos += _advance;
     _l->current_line_off += _advance;
 }
 
-static inline void _advance_line(cmon_lexer * _l)
+static inline void _advance_line(_tokenize_session * _l)
 {
     ++_l->current_line;
-    _l->current_line_off = 0;
+    _l->current_line_off = 1;
 }
 
-static inline size_t _skip_whitespace(cmon_lexer * _l)
+static inline size_t _skip_whitespace(_tokenize_session * _l)
 {
     size_t count = 0;
     while (isspace(*_l->pos))
@@ -136,7 +139,7 @@ static cmon_token_kind _tok_kind_for_name(const char * _begin, const char * _end
     return cmon_tk_ident;
 }
 
-static cmon_bool _peek_float_lit(cmon_lexer * _l)
+static cmon_bool _peek_float_lit(_tokenize_session * _l)
 {
     const char * pos = _l->pos + 1;
 
@@ -152,18 +155,18 @@ static cmon_bool _peek_float_lit(cmon_lexer * _l)
     return cmon_true;
 }
 
-static inline cmon_bool _next_char_is(cmon_lexer * _l, char _c)
+static inline cmon_bool _next_char_is(_tokenize_session * _l, char _c)
 {
     return _l->pos < _l->end && *(_l->pos + 1) == _c;
 }
 
-static inline void _consume_digits(cmon_lexer * _l)
+static inline void _consume_digits(_tokenize_session * _l)
 {
     while (isdigit(*_l->pos))
         _advance_pos(_l, 1);
 }
 
-static inline void _parse_float_or_int_literal(cmon_lexer * _l, cmon_bool * _is_float)
+static inline void _parse_float_or_int_literal(_tokenize_session * _l, cmon_bool * _is_float)
 {
     cmon_bool is_float = cmon_false;
     cmon_bool is_hex = cmon_false;
@@ -228,163 +231,156 @@ static inline void _parse_float_or_int_literal(cmon_lexer * _l, cmon_bool * _is_
     *_is_float = is_float;
 }
 
-static inline cmon_bool _append_tok(cmon_lexer * _l, _token * _tok, cmon_token_kind _kind)
+static inline cmon_bool _finalize_tok(_tokenize_session * _l,
+                                      cmon_token_kind _kind,
+                                      size_t _advance,
+                                      cmon_token_kind * _out_kind,
+                                      _token * _out_tok)
 {
-    cmon_dyn_arr_append(&_l->kinds, _kind);
-    cmon_dyn_arr_append(&_l->tokens, *_tok);
+    _advance_pos(_l, _advance);
+    _out_tok->str_view.end = _l->pos;
+    *_out_kind = _kind;
     return cmon_true;
 }
 
-static inline cmon_bool _add_and_advance_tok(cmon_lexer * _l,
-                                             _token * _tok,
-                                             cmon_token_kind _kind,
-                                             size_t _advance)
+static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind, _token * _out_tok)
 {
-    _advance_pos(_l, _advance);
-    _tok->str_view.end = _l->pos;
-    return _append_tok(_l, _tok, _kind);
-}
+    if (_l->pos >= _l->end)
+        return cmon_false;
 
-static cmon_bool _next_token(cmon_lexer * _l)
-{
-    _token tok;
+    _out_tok->follows_nl = _skip_whitespace(_l) > 0;
 
     if (_l->pos >= _l->end)
         return cmon_false;
 
-    tok.follows_nl = _skip_whitespace(_l) > 0;
-
-    if (_l->pos >= _l->end)
-        return cmon_false;
-
-    tok.str_view.begin = _l->pos;
+    _out_tok->str_view.begin = _l->pos;
 
     if (*_l->pos == '{')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_curl_open, 1);
+        return _finalize_tok(_l, cmon_tk_curl_open, 1, _out_kind, _out_tok);
     else if (*_l->pos == '}')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_curl_close, 1);
+        return _finalize_tok(_l, cmon_tk_curl_close, 1, _out_kind, _out_tok);
     else if (*_l->pos == '(')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_paran_open, 1);
+        return _finalize_tok(_l, cmon_tk_paran_open, 1, _out_kind, _out_tok);
     else if (*_l->pos == ')')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_paran_close, 1);
+        return _finalize_tok(_l, cmon_tk_paran_close, 1, _out_kind, _out_tok);
     else if (*_l->pos == '&')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_bw_and_assign, 2);
+            return _finalize_tok(_l, cmon_tk_bw_and_assign, 2, _out_kind, _out_tok);
 
-        return _add_and_advance_tok(_l, &tok, cmon_tk_bw_and, 1);
+        return _finalize_tok(_l, cmon_tk_bw_and, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '|')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_bw_or_assign, 2);
-        return _add_and_advance_tok(_l, &tok, cmon_tk_bw_or, 1);
+            return _finalize_tok(_l, cmon_tk_bw_or_assign, 2, _out_kind, _out_tok);
+        return _finalize_tok(_l, cmon_tk_bw_or, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '^')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_bw_xor_assign, 2);
-        return _add_and_advance_tok(_l, &tok, cmon_tk_bw_xor, 1);
+            return _finalize_tok(_l, cmon_tk_bw_xor_assign, 2, _out_kind, _out_tok);
+        return _finalize_tok(_l, cmon_tk_bw_xor, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == ';')
     {
-        return _add_and_advance_tok(_l, &tok, cmon_tk_semicolon, 1);
+        return _finalize_tok(_l, cmon_tk_semicolon, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '~')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_bw_not, 1);
+        return _finalize_tok(_l, cmon_tk_bw_not, 1, _out_kind, _out_tok);
     else if (*_l->pos == '?')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_question, 1);
+        return _finalize_tok(_l, cmon_tk_question, 1, _out_kind, _out_tok);
     else if (*_l->pos == '$')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_dollar, 1);
+        return _finalize_tok(_l, cmon_tk_dollar, 1, _out_kind, _out_tok);
     else if (*_l->pos == ':')
     {
-        return _add_and_advance_tok(_l, &tok, cmon_tk_colon, 1);
+        return _finalize_tok(_l, cmon_tk_colon, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '=')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_equals, 2);
+            return _finalize_tok(_l, cmon_tk_equals, 2, _out_kind, _out_tok);
 
-        return _add_and_advance_tok(_l, &tok, cmon_tk_assign, 1);
+        return _finalize_tok(_l, cmon_tk_assign, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '<')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_less_equal, 2);
+            return _finalize_tok(_l, cmon_tk_less_equal, 2, _out_kind, _out_tok);
         else if (_next_char_is(_l, '<'))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_bw_left, 2);
+            return _finalize_tok(_l, cmon_tk_bw_left, 2, _out_kind, _out_tok);
 
-        return _add_and_advance_tok(_l, &tok, cmon_tk_less, 1);
+        return _finalize_tok(_l, cmon_tk_less, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '>')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_greater_equal, 2);
+            return _finalize_tok(_l, cmon_tk_greater_equal, 2, _out_kind, _out_tok);
         else if (_next_char_is(_l, '>'))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_bw_right, 2);
+            return _finalize_tok(_l, cmon_tk_bw_right, 2, _out_kind, _out_tok);
 
-        return _add_and_advance_tok(_l, &tok, cmon_tk_greater, 1);
+        return _finalize_tok(_l, cmon_tk_greater, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '+')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_plus_assign, 2);
+            return _finalize_tok(_l, cmon_tk_plus_assign, 2, _out_kind, _out_tok);
         else if (_next_char_is(_l, '+'))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_inc, 2);
+            return _finalize_tok(_l, cmon_tk_inc, 2, _out_kind, _out_tok);
 
-        return _add_and_advance_tok(_l, &tok, cmon_tk_plus, 1);
+        return _finalize_tok(_l, cmon_tk_plus, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '-')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_minus_assign, 2);
+            return _finalize_tok(_l, cmon_tk_minus_assign, 2, _out_kind, _out_tok);
         else if (_next_char_is(_l, '-'))
         {
             _advance_pos(_l, 1);
             if (_next_char_is(_l, '-'))
             {
                 // noinit
-                _add_and_advance_tok(_l, &tok, cmon_tk_noinit, 2);
+                _finalize_tok(_l, cmon_tk_noinit, 2, _out_kind, _out_tok);
             }
-            return _add_and_advance_tok(_l, &tok, cmon_tk_dec, 1);
+            return _finalize_tok(_l, cmon_tk_dec, 1, _out_kind, _out_tok);
         }
-        return _add_and_advance_tok(_l, &tok, cmon_tk_minus, 1);
+        return _finalize_tok(_l, cmon_tk_minus, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '*')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_mult_assign, 2);
-        return _add_and_advance_tok(_l, &tok, cmon_tk_mult, 1);
+            return _finalize_tok(_l, cmon_tk_mult_assign, 2, _out_kind, _out_tok);
+        return _finalize_tok(_l, cmon_tk_mult, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '%')
     {
         if (_next_char_is(_l, '='))
-            return _add_and_advance_tok(_l, &tok, cmon_tk_mod_assign, 2);
-        return _add_and_advance_tok(_l, &tok, cmon_tk_mod, 1);
+            return _finalize_tok(_l, cmon_tk_mod_assign, 2, _out_kind, _out_tok);
+        return _finalize_tok(_l, cmon_tk_mod, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == ',')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_comma, 1);
+        return _finalize_tok(_l, cmon_tk_comma, 1, _out_kind, _out_tok);
     else if (*_l->pos == '!')
     {
         if (_next_char_is(_l, '='))
         {
-            return _add_and_advance_tok(_l, &tok, cmon_tk_not_equals, 2);
+            return _finalize_tok(_l, cmon_tk_not_equals, 2, _out_kind, _out_tok);
         }
-        return _add_and_advance_tok(_l, &tok, cmon_tk_exclam, 1);
+        return _finalize_tok(_l, cmon_tk_exclam, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '[')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_square_open, 1);
+        return _finalize_tok(_l, cmon_tk_square_open, 1, _out_kind, _out_tok);
     else if (*_l->pos == ']')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_square_close, 1);
+        return _finalize_tok(_l, cmon_tk_square_close, 1, _out_kind, _out_tok);
     else if (*_l->pos == '@')
-        return _add_and_advance_tok(_l, &tok, cmon_tk_at, 1);
+        return _finalize_tok(_l, cmon_tk_at, 1, _out_kind, _out_tok);
     else if (*_l->pos == '.' && !_peek_float_lit(_l))
     {
         if (_next_char_is(_l, '.'))
         {
-            return _add_and_advance_tok(_l, &tok, cmon_tk_double_dot, 2);
+            return _finalize_tok(_l, cmon_tk_double_dot, 2, _out_kind, _out_tok);
         }
-        return _add_and_advance_tok(_l, &tok, cmon_tk_dot, 1);
+        return _finalize_tok(_l, cmon_tk_dot, 1, _out_kind, _out_tok);
     }
     else if (*_l->pos == '"' || *_l->pos == '\'')
     {
@@ -396,9 +392,10 @@ static cmon_bool _next_token(cmon_lexer * _l)
             //     _advance_line(_l);
             _advance_pos(_l, 1);
         }
-        tok.str_view.end = _l->pos;
+        *_out_kind == cmon_tk_string;
+        _out_tok->str_view.end = _l->pos;
         _advance_pos(_l, 1); // skip closing "
-        return _append_tok(_l, &tok, cmon_tk_string);
+        return cmon_true;
     }
     else if (*_l->pos == '/')
     {
@@ -409,8 +406,9 @@ static cmon_bool _next_token(cmon_lexer * _l)
             {
                 _advance_pos(_l, 1);
             }
-            tok.str_view.end = _l->pos;
-            return _append_tok(_l, &tok, cmon_tk_comment);
+            *_out_kind = cmon_tk_comment;
+            _out_tok->str_view.end = _l->pos;
+            return cmon_true;
         }
         // multiline comment
         else if (_next_char_is(_l, '*'))
@@ -440,25 +438,25 @@ static cmon_bool _next_token(cmon_lexer * _l)
             if (openings_to_match)
                 _err(_l, "unclosed multiline comment");
 
-            tok.str_view.end = _l->pos;
-            tok.line_end = _l->current_line;
+            *_out_kind = cmon_tk_comment;
+            _out_tok->str_view.end = _l->pos;
+            _out_tok->line_end = _l->current_line;
 
-            return _append_tok(_l, &tok, cmon_tk_comment);
+            return cmon_true;
         }
         else if (_next_char_is(_l, '='))
         {
-            return _add_and_advance_tok(_l, &tok, cmon_tk_div_assign, 2);
+            return _finalize_tok(_l, cmon_tk_div_assign, 2, _out_kind, _out_tok);
         }
         else
         {
-            return _add_and_advance_tok(_l, &tok, cmon_tk_div, 1);
+            return _finalize_tok(_l, cmon_tk_div, 1, _out_kind, _out_tok);
         }
     }
     else
     {
         // this is not any of the explicitly defined Tokens.
         // it has to be a identifier, number or keyword
-        cmon_token_kind kind;
         const char * startp = _l->pos;
         if (isalpha(*_l->pos) || *_l->pos == '_')
         {
@@ -467,7 +465,7 @@ static cmon_bool _next_token(cmon_lexer * _l)
                 _advance_pos(_l, 1);
 
             // this will set it to either cmon_tok_type_ident or the correct keyword token type
-            kind = _tok_kind_for_name(startp, _l->pos);
+            *_out_kind = _tok_kind_for_name(startp, _l->pos);
         }
         // integer or float
         //@TODO: Make this work for hex, octal, scientific float notation etc.
@@ -476,9 +474,9 @@ static cmon_bool _next_token(cmon_lexer * _l)
             cmon_bool is_float;
             _parse_float_or_int_literal(_l, &is_float);
             if (is_float)
-                kind = cmon_tk_float;
+                *_out_kind = cmon_tk_float;
             else
-                kind = cmon_tk_int;
+                *_out_kind = cmon_tk_int;
 
             printf("DA LIT %.*s\n\n", _l->pos - startp, startp);
         }
@@ -488,146 +486,177 @@ static cmon_bool _next_token(cmon_lexer * _l)
             _err(_l, "invalid character '%c' in source code", *_l->pos);
         }
 
-        tok.str_view.end = _l->pos;
-        return _append_tok(_l, &tok, kind);
+        _out_tok->str_view.end = _l->pos;
+        return cmon_true;
     }
     return cmon_false;
 }
 
-cmon_lexer * cmon_lexer_create(cmon_allocator * _alloc)
+static inline cmon_tokens * _tokens_create(cmon_allocator * _alloc)
 {
-    cmon_lexer * ret = CMON_CREATE(_alloc, cmon_lexer);
+    cmon_tokens * ret = CMON_CREATE(_alloc, cmon_tokens);
     ret->alloc = _alloc;
     cmon_dyn_arr_init(&ret->kinds, _alloc, 128);
     cmon_dyn_arr_init(&ret->tokens, _alloc, 128);
-    memset(ret->path, 0, CMON_PATH_MAX);
-    memset(ret->filename, 0, CMON_FILENAME_MAX);
-    ret->input = NULL;
-    ret->pos = NULL;
-    ret->end = NULL;
-    ret->current_line = -1;
-    ret->current_line_off = -1;
     ret->tok_idx = -1;
-    ret->err = cmon_err_report_make_empty();
-    ret->tmp_str_b = cmon_str_builder_create(_alloc, 512);
     return ret;
 }
 
-void cmon_lexer_destroy(cmon_lexer * _l)
-{
-    if (!_l)
-        return;
-    cmon_str_builder_destroy(_l->tmp_str_b);
-    cmon_dyn_arr_dealloc(&_l->tokens);
-    cmon_dyn_arr_dealloc(&_l->kinds);
-    CMON_DESTROY(_l->alloc, _l);
-}
-
-void cmon_lexer_set_input(cmon_lexer * _l, cmon_src * _src, cmon_idx _src_file_idx)
+static inline void _tokenize_session_init(_tokenize_session * _s,
+                                          cmon_allocator * _alloc,
+                                          cmon_src * _src,
+                                          cmon_idx _src_file_idx)
 {
     const char * code;
-    _l->src = _src;
-    _l->src_file_idx = _src_file_idx;
     code = cmon_src_code(_src, _src_file_idx);
-    _l->input = code;
-    _l->pos = code;
-    _l->end = code + strlen(code);
+
+    printf("session init %s\n", cmon_src_filename(_src, _src_file_idx));
+    _s->alloc = _alloc;
+    _s->src = _src;
+    _s->src_file_idx = _src_file_idx;
+    _s->input = code;
+    _s->pos = code;
+    _s->end = code + strlen(code);
+    _s->current_line = 1;
+    _s->current_line_off = 1;
+    _s->err = cmon_err_report_make_empty();
+    //@TODO: lazy init the string builder only on error
+    _s->tmp_str_b = cmon_str_builder_create(_alloc, 512);
 }
 
-cmon_bool cmon_lexer_tokenize(cmon_lexer * _l)
+static inline void _tokenize_session_dealloc(_tokenize_session * _s)
 {
-    while (_next_token(_l) && cmon_err_report_is_empty(&_l->err));
-    return !cmon_err_report_is_empty(&_l->err);
+    cmon_str_builder_destroy(_s->tmp_str_b);
 }
 
-cmon_idx cmon_lexer_prev(cmon_lexer * _l, cmon_bool _skip_comments)
+cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
+                            cmon_src * _src,
+                            cmon_idx _src_file_idx,
+                            cmon_err_report * _out_err)
 {
-    size_t ret = _l->tok_idx;
-    while(ret > 0)
+    _token tok;
+    cmon_token_kind kind;
+    _tokenize_session s;
+
+    _tokenize_session_init(&s, _alloc, _src, _src_file_idx);
+    cmon_tokens * ret = _tokens_create(_alloc);
+    while (_next_token(&s, &kind, &tok) && cmon_err_report_is_empty(&s.err))
+    {
+        cmon_dyn_arr_append(&ret->kinds, kind);
+        cmon_dyn_arr_append(&ret->tokens, tok);
+    }
+
+    if (!cmon_err_report_is_empty(&s.err))
+    {
+        if (_out_err)
+        {
+            *_out_err = cmon_err_report_copy(&s.err);
+        }
+        cmon_tokens_destroy(ret);
+        ret = NULL;
+    }
+
+    _tokenize_session_dealloc(&s);
+    return ret;
+}
+
+void cmon_tokens_destroy(cmon_tokens * _t)
+{
+    if (!_t)
+        return;
+    cmon_dyn_arr_dealloc(&_t->tokens);
+    cmon_dyn_arr_dealloc(&_t->kinds);
+    CMON_DESTROY(_t->alloc, _t);
+}
+
+cmon_idx cmon_tokens_prev(cmon_tokens * _t, cmon_bool _skip_comments)
+{
+    size_t ret = _t->tok_idx;
+    while (ret > 0)
     {
         --ret;
-        if(!_skip_comments || _l->kinds[ret] != cmon_tk_comment)
+        if (!_skip_comments || _t->kinds[ret] != cmon_tk_comment)
             return ret;
     }
 
     return -1;
 }
 
-cmon_idx cmon_lexer_current(cmon_lexer * _l)
+cmon_idx cmon_tokens_current(cmon_tokens * _t)
 {
-    return _l->tok_idx;
+    return _t->tok_idx;
 }
 
-static inline cmon_idx _inline_next(cmon_lexer * _l, cmon_bool _skip_comments)
+static inline cmon_idx _inline_next(cmon_tokens * _t, cmon_bool _skip_comments)
 {
-    size_t ret = _l->tok_idx;
-    while(ret < cmon_dyn_arr_count(&_l->tokens))
+    size_t ret = _t->tok_idx;
+    while (ret < cmon_dyn_arr_count(&_t->tokens))
     {
         ++ret;
-        if(!_skip_comments || _l->kinds[ret] != cmon_tk_comment)
+        if (!_skip_comments || _t->kinds[ret] != cmon_tk_comment)
             return ret;
     }
 
     return -1;
 }
 
-cmon_idx cmon_lexer_next(cmon_lexer * _l, cmon_bool _skip_comments)
+cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments)
 {
-    return _inline_next(_l, _skip_comments);
+    return _inline_next(_t, _skip_comments);
 }
 
-cmon_idx cmon_lexer_advance(cmon_lexer * _l, cmon_bool _skip_comments)
+cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments)
 {
-    cmon_idx idx = _inline_next(_l, _skip_comments);
-    _l->tok_idx = idx != -1 ? idx : _l->tok_idx;
+    cmon_idx idx = _inline_next(_t, _skip_comments);
+    _t->tok_idx = idx != -1 ? idx : _t->tok_idx;
     return idx;
 }
 
-#define _get_token(_l, _idx) (assert(_idx < cmon_dyn_arr_count(&_l->tokens)), _l->tokens[_idx])
-#define _get_kind(_l, _idx) (assert(_idx < cmon_dyn_arr_count(&_l->kinds)), _l->kinds[_idx])
+#define _get_token(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->tokens)), _t->tokens[_idx])
+#define _get_kind(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->kinds)), _t->kinds[_idx])
 
-cmon_token_kind cmon_lexer_token_kind(cmon_lexer * _l, cmon_idx _idx)
+cmon_token_kind cmon_tokens_token_kind(cmon_tokens * _t, cmon_idx _idx)
 {
-    return _get_kind(_l, _idx);
+    return _get_kind(_t, _idx);
 }
 
-cmon_str_view cmon_lexer_str_view(cmon_lexer * _l, cmon_idx _idx)
+cmon_str_view cmon_tokens_str_view(cmon_tokens * _t, cmon_idx _idx)
 {
-    return _get_token(_l, _idx).str_view;
+    return _get_token(_t, _idx).str_view;
 }
 
-cmon_idx cmon_lexer_line(cmon_lexer * _l, cmon_idx _idx)
+cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx)
 {
-    return _get_token(_l, _idx).line;
+    return _get_token(_t, _idx).line;
 }
 
-cmon_idx cmon_lexer_line_offset(cmon_lexer * _l, cmon_idx _idx)
+cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx)
 {
-    return _get_token(_l, _idx).line_off;
+    return _get_token(_t, _idx).line_off;
 }
 
-cmon_bool cmon_lexer_follows_nl(cmon_lexer * _l, cmon_idx _idx)
+cmon_bool cmon_tokens_follows_nl(cmon_tokens * _t, cmon_idx _idx)
 {
-    return _get_token(_l, _idx).follows_nl;
+    return _get_token(_t, _idx).follows_nl;
 }
 
-cmon_bool cmon_lexer_is_at(cmon_lexer * _l, cmon_token_kind _kind, cmon_idx _idx)
+cmon_bool cmon_tokens_is_at(cmon_tokens * _t, cmon_token_kind _kind, cmon_idx _idx)
 {
-    return _get_kind(_l, _idx) == _kind;
+    return _get_kind(_t, _idx) == _kind;
 }
 
-cmon_bool cmon_lexer_is_next(cmon_lexer * _l, cmon_token_kind _kind)
+cmon_bool cmon_tokens_is_next(cmon_tokens * _t, cmon_token_kind _kind)
 {
-    return cmon_lexer_is_at(_l, _kind, _l->tok_idx + 1);
+    return cmon_tokens_is_at(_t, _kind, _t->tok_idx + 1);
 }
 
-cmon_bool cmon_lexer_is_current(cmon_lexer * _l, cmon_token_kind _kind)
+cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind)
 {
-    return cmon_lexer_is_at(_l, _kind, _l->tok_idx);
+    return cmon_tokens_is_at(_t, _kind, _t->tok_idx);
 }
 
-cmon_idx cmon_lexer_accept(cmon_lexer * _l, cmon_token_kind _kind)
+cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind)
 {
-    if (cmon_lexer_is_current(_l, _kind))
-        return cmon_lexer_advance(_l, cmon_true);
+    if (cmon_tokens_is_current(_t, _kind))
+        return cmon_tokens_advance(_t, cmon_true);
 }

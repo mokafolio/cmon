@@ -1,7 +1,8 @@
-#ifndef CMON_CMON_LEXER_H
-#define CMON_CMON_LEXER_H
+#ifndef CMON_CMON_TOKENS_H
+#define CMON_CMON_TOKENS_H
 
 #include <cmon/cmon_src.h>
+#include <cmon/cmon_err_report.h>
 
 typedef enum
 {
@@ -88,33 +89,37 @@ typedef enum
     cmon_tk_eof
 } cmon_token_kind;
 
-typedef struct cmon_lexer cmon_lexer;
+// typedef struct cmon_lexer cmon_lexer;
+typedef struct cmon_tokens cmon_tokens;
 
-CMON_API cmon_lexer * cmon_lexer_create(cmon_allocator * _alloc);
-CMON_API void cmon_lexer_destroy(cmon_lexer * _l);
+// CMON_API cmon_lexer * cmon_lexer_create(cmon_allocator * _alloc);
+// CMON_API void cmon_lexer_destroy(cmon_lexer * _l);
+// CMON_API void cmon_lexer_set_input(cmon_lexer * _l,
+//                                    cmon_src * _src,
+//                                    cmon_idx _src_file_idx);
 
-// tokenizer does not copy the input, the input string needs to outlive tokenizer.
-CMON_API void cmon_lexer_set_input(cmon_lexer * _l,
-                                   cmon_src * _src,
-                                   cmon_idx _src_file_idx);
-CMON_API cmon_bool cmon_lexer_tokenize(cmon_lexer * _l);
+// CMON_API cmon_tokens * cmon_lexer_tokenize(cmon_lexer * _l);
+
+CMON_API cmon_tokens * cmon_tokenize(cmon_allocator * _alloc, cmon_src * _src, cmon_idx _src_file_idx, cmon_err_report * _out_err);
+
+CMON_API void cmon_tokens_destroy(cmon_tokens * _t);
 
 // functions to retrieve the index of a token
-CMON_API cmon_idx cmon_lexer_prev(cmon_lexer * _l, cmon_bool _skip_comments);
-CMON_API cmon_idx cmon_lexer_current(cmon_lexer * _l);
-CMON_API cmon_idx cmon_lexer_next(cmon_lexer * _l, cmon_bool _skip_comments);
-CMON_API cmon_idx cmon_lexer_advance(cmon_lexer * _l, cmon_bool _skip_comments);
+CMON_API cmon_idx cmon_tokens_prev(cmon_tokens * _t, cmon_bool _skip_comments);
+CMON_API cmon_idx cmon_tokens_current(cmon_tokens * _t);
+CMON_API cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments);
+CMON_API cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments);
 
 // functions to get information about a token
-CMON_API cmon_token_kind cmon_lexer_token_kind(cmon_lexer * _l, cmon_idx _idx);
-CMON_API cmon_str_view cmon_lexer_str_view(cmon_lexer * _l, cmon_idx _idx);
-CMON_API cmon_idx cmon_lexer_line(cmon_lexer * _l, cmon_idx _idx);
-CMON_API cmon_idx cmon_lexer_line_offset(cmon_lexer * _l, cmon_idx _idx);
-CMON_API cmon_bool cmon_lexer_follows_nl(cmon_lexer * _l, cmon_idx _idx);
+CMON_API cmon_token_kind cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx);
+CMON_API cmon_str_view cmon_tokens_str_view(cmon_tokens * _t, cmon_idx _idx);
+CMON_API cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx);
+CMON_API cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx);
+CMON_API cmon_bool cmon_tokens_follows_nl(cmon_tokens * _t, cmon_idx _idx);
 
-CMON_API cmon_bool cmon_lexer_is_at(cmon_lexer * _l, cmon_token_kind _kind, cmon_idx _idx);
-CMON_API cmon_bool cmon_lexer_is_next(cmon_lexer * _l, cmon_token_kind _kind);
-CMON_API cmon_bool cmon_lexer_is_current(cmon_lexer * _l, cmon_token_kind _kind);
-CMON_API cmon_idx cmon_lexer_accept(cmon_lexer * _l, cmon_token_kind _kind);
+CMON_API cmon_bool cmon_tokens_is_at(cmon_tokens * _t, cmon_token_kind _kind, cmon_idx _idx);
+CMON_API cmon_bool cmon_tokens_is_next(cmon_tokens * _t, cmon_token_kind _kind);
+CMON_API cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind);
+CMON_API cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind);
 
 #endif // CMON_CMON_LEXER_H
