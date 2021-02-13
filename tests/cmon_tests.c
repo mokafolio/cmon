@@ -2,11 +2,6 @@
 #include <cmon/cmon_tokens.h>
 #include <cmon/cmon_dyn_arr.h>
 
-typedef struct
-{
-    char str[256];
-}foo_t;
-
 UTEST(cmon, dyn_arr_tests)
 {
     cmon_allocator a = cmon_mallocator_make();
@@ -51,19 +46,51 @@ UTEST(cmon, dyn_arr_tests)
     EXPECT_EQ(cmon_dyn_arr_count(&vec), 0);
 
     cmon_dyn_arr_dealloc(&vec);
-
-
-    // cmon_dyn_arr(foo_t) fv;
-    // cmon_dyn_arr_init(&fv, &a, 16);
-
-    // foo_t f;
-    // strcpy(f.str, "boop");
-
-    // cmon_dyn_arr_append(&fv, f);
-    // EXPECT_EQ(1, cmon_dyn_arr_count(&fv));
-    // cmon_dyn_arr_dealloc(&fv);
-
     cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, basic_tokens_test)
+{
+    cmon_allocator alloc;
+    cmon_src * src;
+    cmon_idx src_idx;
+    cmon_tokens * tokens;
+    cmon_idx idx;
+
+    alloc = cmon_mallocator_make();
+
+    src = cmon_src_create(&alloc);
+    src_idx = cmon_src_add(src, "basic_tokens_test.cmon", "basic_tokens_test.cmon");
+    cmon_src_set_code(src, src_idx, "module foo\nboop := bar();");
+
+    tokens = cmon_tokenize(&alloc, src, src_idx, NULL);
+    EXPECT_NE(NULL, tokens);
+    EXPECT_EQ(10, cmon_tokens_count(tokens));
+
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_module));
+    idx = cmon_tokens_accept(tokens, cmon_tk_ident);
+    EXPECT_NE(-1, idx);
+    EXPECT_EQ(cmon_tk_ident, cmon_tokens_kind(tokens, idx));
+    EXPECT_EQ(1, cmon_tokens_line(tokens, idx));
+    EXPECT_EQ(8, cmon_tokens_line_offset(tokens, idx));
+    cmon_str_view name = cmon_tokens_str_view(tokens, idx);
+    EXPECT_EQ(0, strncmp("foo", name.begin, name.end - name.begin));
+    idx = cmon_tokens_accept(tokens, cmon_tk_ident);
+    EXPECT_NE(-1, idx);
+    EXPECT_EQ(cmon_tk_ident, cmon_tokens_kind(tokens, idx));
+    EXPECT_EQ(2, cmon_tokens_line(tokens, idx));
+    EXPECT_EQ(1, cmon_tokens_line_offset(tokens, idx));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_colon));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_assign));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_ident));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_paran_open));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_paran_close));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_semicolon));
+    EXPECT_EQ(cmon_true, cmon_tokens_is_current(tokens, cmon_tk_eof));
+
+    cmon_tokens_destroy(tokens);
+    cmon_src_destroy(src);
+    cmon_allocator_dealloc(&alloc);
 }
 
 static inline cmon_bool _tokens_test(const char * _name, const char * _code)

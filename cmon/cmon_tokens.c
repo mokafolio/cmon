@@ -56,7 +56,7 @@ static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
 static inline void _advance_line(_tokenize_session * _l)
 {
     ++_l->current_line;
-    _l->current_line_off = 1;
+    _l->current_line_off = 0;
 }
 
 static inline size_t _skip_whitespace(_tokenize_session * _l)
@@ -254,6 +254,8 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind
         return cmon_false;
 
     _out_tok->str_view.begin = _l->pos;
+    _out_tok->line = _l->current_line;
+    _out_tok->line_off = _l->current_line_off;
 
     if (*_l->pos == '{')
         return _finalize_tok(_l, cmon_tk_curl_open, 1, _out_kind, _out_tok);
@@ -555,6 +557,15 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
         cmon_tokens_destroy(ret);
         ret = NULL;
     }
+    else
+    {
+        _token tok;
+        tok.str_view.begin = s.end;
+        tok.str_view.end = s.end;
+        cmon_dyn_arr_append(&ret->kinds, cmon_tk_eof);
+        cmon_dyn_arr_append(&ret->tokens, tok);
+        ret->tok_idx = 0;
+    }
 
     _tokenize_session_dealloc(&s);
     return ret;
@@ -567,6 +578,11 @@ void cmon_tokens_destroy(cmon_tokens * _t)
     cmon_dyn_arr_dealloc(&_t->tokens);
     cmon_dyn_arr_dealloc(&_t->kinds);
     CMON_DESTROY(_t->alloc, _t);
+}
+
+size_t cmon_tokens_count(cmon_tokens * _t)
+{
+    return cmon_dyn_arr_count(&_t->kinds);
 }
 
 cmon_idx cmon_tokens_prev(cmon_tokens * _t, cmon_bool _skip_comments)
@@ -606,16 +622,18 @@ cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments)
 }
 
 cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments)
-{
-    cmon_idx idx = _inline_next(_t, _skip_comments);
+{   
+    cmon_idx ret, idx;
+    ret = _t->tok_idx;
+    idx = _inline_next(_t, _skip_comments);
     _t->tok_idx = idx != -1 ? idx : _t->tok_idx;
-    return idx;
+    return ret;
 }
 
 #define _get_token(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->tokens)), _t->tokens[_idx])
 #define _get_kind(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->kinds)), _t->kinds[_idx])
 
-cmon_token_kind cmon_tokens_token_kind(cmon_tokens * _t, cmon_idx _idx)
+cmon_token_kind cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx)
 {
     return _get_kind(_t, _idx);
 }

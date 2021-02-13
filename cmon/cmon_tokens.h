@@ -89,20 +89,13 @@ typedef enum
     cmon_tk_eof
 } cmon_token_kind;
 
-// typedef struct cmon_lexer cmon_lexer;
 typedef struct cmon_tokens cmon_tokens;
 
-// CMON_API cmon_lexer * cmon_lexer_create(cmon_allocator * _alloc);
-// CMON_API void cmon_lexer_destroy(cmon_lexer * _l);
-// CMON_API void cmon_lexer_set_input(cmon_lexer * _l,
-//                                    cmon_src * _src,
-//                                    cmon_idx _src_file_idx);
-
-// CMON_API cmon_tokens * cmon_lexer_tokenize(cmon_lexer * _l);
 
 CMON_API cmon_tokens * cmon_tokenize(cmon_allocator * _alloc, cmon_src * _src, cmon_idx _src_file_idx, cmon_err_report * _out_err);
-
 CMON_API void cmon_tokens_destroy(cmon_tokens * _t);
+
+CMON_API size_t cmon_tokens_count(cmon_tokens * _t);
 
 // functions to retrieve the index of a token
 CMON_API cmon_idx cmon_tokens_prev(cmon_tokens * _t, cmon_bool _skip_comments);
