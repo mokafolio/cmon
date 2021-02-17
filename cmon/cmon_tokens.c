@@ -2,6 +2,7 @@
 #include <cmon/cmon_err_report.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_tokens.h>
+#include <stdarg.h>
 
 // for now the lexer stops on the first error. we simpy save the error.
 #define _err(_l, _msg, ...)                                                                        \
@@ -135,6 +136,10 @@ static cmon_token_kind _tok_kind_for_name(const char * _begin, const char * _end
         return cmon_tk_try;
     else if (_name_equals(_begin, len, "continue"))
         return cmon_tk_continue;
+    else if (_name_equals(_begin, len, "scoped"))
+        return cmon_tk_scoped;
+    else if (_name_equals(_begin, len, "scope_exit"))
+        return cmon_tk_scope_exit;
 
     return cmon_tk_ident;
 }
@@ -500,7 +505,7 @@ static inline cmon_tokens * _tokens_create(cmon_allocator * _alloc)
     ret->alloc = _alloc;
     cmon_dyn_arr_init(&ret->kinds, _alloc, 128);
     cmon_dyn_arr_init(&ret->tokens, _alloc, 128);
-    ret->tok_idx = -1;
+    ret->tok_idx = CMON_INVALID_IDX;
     return ret;
 }
 
@@ -595,7 +600,7 @@ cmon_idx cmon_tokens_prev(cmon_tokens * _t, cmon_bool _skip_comments)
             return ret;
     }
 
-    return -1;
+    return CMON_INVALID_IDX;
 }
 
 cmon_idx cmon_tokens_current(cmon_tokens * _t)
@@ -613,7 +618,7 @@ static inline cmon_idx _inline_next(cmon_tokens * _t, cmon_bool _skip_comments)
             return ret;
     }
 
-    return -1;
+    return CMON_INVALID_IDX;
 }
 
 cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments)
@@ -622,11 +627,11 @@ cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments)
 }
 
 cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments)
-{   
+{
     cmon_idx ret, idx;
     ret = _t->tok_idx;
     idx = _inline_next(_t, _skip_comments);
-    _t->tok_idx = idx != -1 ? idx : _t->tok_idx;
+    _t->tok_idx = idx != CMON_INVALID_IDX ? idx : _t->tok_idx;
     return ret;
 }
 
@@ -658,23 +663,252 @@ cmon_bool cmon_tokens_follows_nl(cmon_tokens * _t, cmon_idx _idx)
     return _get_token(_t, _idx).follows_nl;
 }
 
-cmon_bool cmon_tokens_is_at(cmon_tokens * _t, cmon_token_kind _kind, cmon_idx _idx)
+static inline cmon_bool _is_impl_v(cmon_tokens * _t, cmon_idx _idx, va_list _args)
 {
-    return _get_kind(_t, _idx) == _kind;
+    cmon_token_kind kind;
+    do
+    {
+        kind = va_arg(_args, cmon_token_kind);
+        if (_get_kind(_t, _idx) == kind)
+            return cmon_true;
+    } while (kind != -1);
+
+    return cmon_false;
 }
 
-cmon_bool cmon_tokens_is_next(cmon_tokens * _t, cmon_token_kind _kind)
+cmon_bool cmon_tokens_is_impl(cmon_tokens * _t, cmon_idx _idx, ...)
 {
-    return cmon_tokens_is_at(_t, _kind, _t->tok_idx + 1);
+    va_list args;
+    cmon_bool ret;
+    va_start(args, _idx);
+    ret = _is_impl_v(_t, _idx, args);
+    va_end(args);
+    return ret;
 }
 
-cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind)
+cmon_bool cmon_tokens_is_current_impl(cmon_tokens * _t, ...)
 {
-    return cmon_tokens_is_at(_t, _kind, _t->tok_idx);
+    va_list args;
+    cmon_bool ret;
+    va_start(args, _t);
+    ret = _is_impl_v(_t, _t->tok_idx, args);
+    va_end(args);
+    return ret;
 }
 
-cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind)
+cmon_bool cmon_tokens_is_next_impl(cmon_tokens * _t, ...)
 {
-    if (cmon_tokens_is_current(_t, _kind))
+    va_list args;
+    cmon_bool ret;
+    va_start(args, _t);
+    ret = _is_impl_v(_t, _t->tok_idx + 1, args);
+    va_end(args);
+    return ret;
+}
+
+cmon_bool cmon_tokens_accept_impl(cmon_tokens * _t, ...)
+{
+    va_list args;
+    cmon_bool ret;
+    va_start(args, _t);
+    ret = _is_impl_v(_t, _t->tok_idx, args);
+    va_end(args);
+
+    if(ret)
         return cmon_tokens_advance(_t, cmon_true);
+    return CMON_INVALID_IDX;
+}
+
+// cmon_bool cmon_tokens_is(cmon_tokens * _t, cmon_idx _idx, cmon_token_kind _kind)
+// {
+//     return _get_kind(_t, _idx) == _kind;
+// }
+
+// cmon_bool cmon_tokens_is_next(cmon_tokens * _t, cmon_token_kind _kind)
+// {
+//     return cmon_tokens_is(_t, _t->tok_idx + 1, _kind);
+// }
+
+// cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind)
+// {
+//     return cmon_tokens_is(_t, _t->tok_idx, _kind);
+// }
+
+// cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind)
+// {
+//     if (cmon_tokens_is_current(_t, _kind))
+//         return cmon_tokens_advance(_t, cmon_true);
+// }
+
+const char * cmon_token_kind_to_str(cmon_token_kind _kind)
+{
+    switch (_kind)
+    {
+    case cmon_tk_ident:
+        return "identifier";
+    case cmon_tk_int:
+        return "int literal";
+    case cmon_tk_float:
+        return "float literal";
+    case cmon_tk_string:
+        return "string literal";
+    case cmon_tk_curl_open:
+        return "{";
+    case cmon_tk_curl_close:
+        return "}";
+    case cmon_tk_paran_open:
+        return "(";
+    case cmon_tk_paran_close:
+        return ")";
+    case cmon_tk_equals:
+        return "==";
+    case cmon_tk_not_equals:
+        return "!=";
+    case cmon_tk_assign:
+        return "=";
+    case cmon_tk_plus_assign:
+        return "+=";
+    case cmon_tk_minus_assign:
+        return "-=";
+    case cmon_tk_mult_assign:
+        return "*=";
+    case cmon_tk_div_assign:
+        return "/=";
+    case cmon_tk_mod_assign:
+        return "%=";
+    case cmon_tk_bw_left_assign:
+        return "<<=";
+    case cmon_tk_bw_right_assign:
+        return ">>=";
+    case cmon_tk_bw_and_assign:
+        return "&=";
+    case cmon_tk_bw_xor_assign:
+        return "^=";
+    case cmon_tk_bw_or_assign:
+        return "|=";
+    case cmon_tk_plus:
+        return "+";
+    case cmon_tk_minus:
+        return "-";
+    case cmon_tk_inc:
+        return "++";
+    case cmon_tk_dec:
+        return "--";
+    case cmon_tk_mult:
+        return "*";
+    case cmon_tk_div:
+        return "/";
+    case cmon_tk_mod:
+        return "%";
+    case cmon_tk_bw_left:
+        return "<<";
+    case cmon_tk_bw_right:
+        return ">>";
+    case cmon_tk_bw_and:
+        return "&";
+    case cmon_tk_bw_xor:
+        return "^";
+    case cmon_tk_bw_or:
+        return "|";
+    case cmon_tk_bw_not:
+        return "~";
+    case cmon_tk_fn:
+        return "fn";
+    case cmon_tk_dot:
+        return ".";
+    case cmon_tk_comma:
+        return ",";
+    case cmon_tk_colon:
+        return ":";
+    case cmon_tk_exclam:
+        return "exclam";
+    case cmon_tk_if:
+        return "if";
+    case cmon_tk_else:
+        return "else";
+    case cmon_tk_return:
+        return "return";
+    case cmon_tk_true:
+        return "true";
+    case cmon_tk_false:
+        return "false";
+    case cmon_tk_square_open:
+        return "[";
+    case cmon_tk_square_close:
+        return "]";
+    case cmon_tk_less:
+        return "<";
+    case cmon_tk_greater:
+        return ">";
+    case cmon_tk_less_equal:
+        return "<=";
+    case cmon_tk_greater_equal:
+        return ">=";
+    case cmon_tk_and:
+        return "and";
+    case cmon_tk_or:
+        return "or";
+    case cmon_tk_for:
+        return "for";
+    case cmon_tk_in:
+        return "in";
+    case cmon_tk_break:
+        return "break";
+    case cmon_tk_none:
+        return "none";
+    case cmon_tk_struct:
+        return "struct";
+    case cmon_tk_pub:
+        return "pub";
+    case cmon_tk_mut:
+        return "mut";
+    //@TODO: amp redundant with bw_and, remove this if amps only use case is bitwise and
+    case cmon_tk_amp:
+        return "&";
+    case cmon_tk_as:
+        return "as";
+    case cmon_tk_double_dot:
+        return "..";
+    case cmon_tk_at:
+        return "@";
+    case cmon_tk_noinit:
+        return "---";
+    case cmon_tk_module:
+        return "module";
+    case cmon_tk_import:
+        return "import";
+    case cmon_tk_question:
+        return "?";
+    case cmon_tk_dollar:
+        return "$";
+    case cmon_tk_embed:
+        return "embed";
+    case cmon_tk_enum:
+        return "enum";
+    case cmon_tk_interface:
+        return "interface";
+    case cmon_tk_semicolon:
+        return ";";
+    case cmon_tk_continue:
+        return "continue";
+    case cmon_tk_self:
+        return "self";
+    case cmon_tk_type:
+        return "type";
+    case cmon_tk_alias:
+        return "alias";
+    case cmon_tk_defer:
+        return "defer";
+    case cmon_tk_try:
+        return "try";
+    case cmon_tk_comment:
+        return "comment";
+    case cmon_tk_scoped:
+        return "scoped";
+    case cmon_tk_scope_exit:
+        return "scope_exit";
+    case cmon_tk_eof:
+        return "EOF";
+    }
+    return "unknown";
 }

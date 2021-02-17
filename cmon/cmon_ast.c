@@ -9,7 +9,14 @@ typedef struct cmon_ast
     cmon_idx * lefts;
     cmon_idx * rights;
     size_t count;
+    cmon_idx root_block_idx;
 } cmon_ast;
+
+typedef struct
+{
+    size_t left;
+    size_t right;
+} _left_right;
 
 typedef struct cmon_astb
 {
@@ -18,6 +25,9 @@ typedef struct cmon_astb
     cmon_dyn_arr(cmon_idx) tokens;
     cmon_dyn_arr(cmon_idx) lefts;
     cmon_dyn_arr(cmon_idx) rights;
+    cmon_dyn_arr(_left_right) left_right;
+    cmon_dyn_arr(cmon_idx) extra_data;
+    cmon_idx root_block_idx;
     cmon_ast ast; // filled in in cmon_astb_get_ast
 } cmon_astb;
 
@@ -29,11 +39,16 @@ cmon_astb * cmon_astb_create(cmon_allocator * _alloc)
     cmon_dyn_arr_init(&ret->tokens, _alloc, 256);
     cmon_dyn_arr_init(&ret->lefts, _alloc, 256);
     cmon_dyn_arr_init(&ret->rights, _alloc, 256);
+    cmon_dyn_arr_init(&ret->left_right, _alloc, 256);
+    cmon_dyn_arr_init(&ret->extra_data, _alloc, 256);
+    ret->root_block_idx = -1;
     return ret;
 }
 
 void cmon_astb_destroy(cmon_astb * _b)
 {
+    cmon_dyn_arr_dealloc(&_b->extra_data);
+    cmon_dyn_arr_dealloc(&_b->left_right);
     cmon_dyn_arr_dealloc(&_b->rights);
     cmon_dyn_arr_dealloc(&_b->lefts);
     cmon_dyn_arr_dealloc(&_b->tokens);
@@ -68,10 +83,39 @@ cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _ri
 }
 
 // adding statements
-cmon_idx cmon_astb_add_block(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _begin, cmon_idx _end)
+cmon_idx cmon_astb_add_block(cmon_astb * _b,
+                             cmon_idx _tok_idx,
+                             cmon_idx * _stmt_indices,
+                             size_t _count)
 {
-    return _add_node(_b, cmon_ast_kind_block, _tok_idx, _begin, _end);
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+
+    for(i=0; i<_count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _stmt_indices[i]);
+    }
+
+    return _add_node(_b, cmon_ast_kind_block, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
 }
+
+cmon_bool cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
+{
+    assert(_idx < cmon_dyn_arr_count(_b->kinds));
+    if (_b->kinds[_idx] == cmon_ast_kind_block)
+    {
+        _b->root_block_idx = _idx;
+        return cmon_false;
+    }
+    return cmon_true;
+}
+
+// cmon_idx cmon_astb_root_block(cmon_astb * _b)
+// {
+//     return _b->root_block_idx;
+// }
 
 // adding parsed types
 cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx)

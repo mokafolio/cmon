@@ -7,6 +7,7 @@ lib_src = [
     'cmon/cmon_ast.c',
     'cmon/cmon_err_report.c',
     'cmon/cmon_hashmap.c',
+    'cmon/cmon_parser.c',
     'cmon/cmon_src.c',
     'cmon/cmon_str_builder.c',
     'cmon/cmon_tokens.c',

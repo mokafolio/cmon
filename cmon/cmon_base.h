@@ -60,6 +60,7 @@
 #define CMON_FILENAME_MAX 256
 #define CMON_EXT_MAX 32
 #define CMON_ERR_MSG_MAX 4096
+#define CMON_INVALID_IDX -1
 // //@TODO: Remove all of these that are not used anymore
 // //@TODO: start using this for fixed size arrays
 // //how many *mut[]mut****mut[] type prefixes dow we want to support?

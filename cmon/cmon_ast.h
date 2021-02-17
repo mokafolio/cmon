@@ -63,21 +63,26 @@ typedef struct cmon_astb cmon_astb;
 CMON_API cmon_astb * cmon_astb_create(cmon_allocator * _alloc);
 CMON_API void cmon_astb_destroy(cmon_astb * _b);
 
+// buffering extra data (i.e. all the statement indices of a block)
+// CMON_API cmon_idx cmon_astb_add_extra_data(cmon_astb * _b, cmon_idx _idx);
+
 // adding expressions
 CMON_API cmon_idx cmon_astb_add_ident(cmon_astb * _b, cmon_idx _tok_idx);
 CMON_API cmon_idx cmon_astb_add_binary(cmon_astb * _b,
                                        cmon_idx _op_tok_idx,
                                        cmon_idx _left,
                                        cmon_idx _right);
-CMON_API cmon_idx cmon_astb_add_prefix(cmon_astb * _b,
-                                       cmon_idx _op_tok_idx,
-                                       cmon_idx _right);
+CMON_API cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _right);
+CMON_API cmon_idx cmon_astb_add_call(
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count);
 
 // adding statements
 CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
                                       cmon_idx _tok_idx,
-                                      cmon_idx _begin,
-                                      cmon_idx _end);
+                                      cmon_idx * _stmt_indices,
+                                      size_t _count);
+
+// CMON_API cmon_idx cmon_astb_root_block(cmon_astb * _b);
 
 // adding parsed types
 CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx);
@@ -93,7 +98,7 @@ CMON_API cmon_ast * cmon_astb_get_ast(cmon_astb * _b);
 // taking ownership of the ast
 CMON_API cmon_ast * cmon_astb_copy_ast(cmon_astb * _b, cmon_allocator * _alloc);
 
-//destroy an ast that has been copied via cmon_astb_copy_ast
+// destroy an ast that has been copied via cmon_astb_copy_ast
 CMON_API void cmon_ast_destroy(cmon_ast * _ast);
 
 // ast getters
