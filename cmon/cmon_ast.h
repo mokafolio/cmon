@@ -77,6 +77,7 @@ CMON_API cmon_idx cmon_astb_add_call(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count);
 
 // adding statements
+CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b, cmon_idx _name_tok_idx, cmon_bool _is_mut, cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
                                       cmon_idx _tok_idx,
                                       cmon_idx * _stmt_indices,

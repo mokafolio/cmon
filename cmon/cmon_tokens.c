@@ -676,6 +676,11 @@ static inline cmon_bool _is_impl_v(cmon_tokens * _t, cmon_idx _idx, va_list _arg
     return cmon_false;
 }
 
+cmon_bool cmon_tokens_is_impl_v(cmon_tokens * _t, cmon_idx _idx, va_list _args)
+{
+    return _is_impl_v(_t, _idx, _args);
+}
+
 cmon_bool cmon_tokens_is_impl(cmon_tokens * _t, cmon_idx _idx, ...)
 {
     va_list args;
@@ -706,17 +711,21 @@ cmon_bool cmon_tokens_is_next_impl(cmon_tokens * _t, ...)
     return ret;
 }
 
-cmon_bool cmon_tokens_accept_impl(cmon_tokens * _t, ...)
+cmon_idx cmon_tokens_accept_impl_v(cmon_tokens * _t, va_list _args)
 {
-    va_list args;
-    cmon_bool ret;
-    va_start(args, _t);
-    ret = _is_impl_v(_t, _t->tok_idx, args);
-    va_end(args);
-
-    if(ret)
+    if(_is_impl_v(_t, _t->tok_idx, _args))
         return cmon_tokens_advance(_t, cmon_true);
     return CMON_INVALID_IDX;
+}
+
+cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...)
+{
+    va_list args;
+    cmon_idx ret;
+    va_start(args, _t);
+    ret = cmon_tokens_accept_impl_v(_t, args);
+    va_end(args);
+    return ret;
 }
 
 // cmon_bool cmon_tokens_is(cmon_tokens * _t, cmon_idx _idx, cmon_token_kind _kind)

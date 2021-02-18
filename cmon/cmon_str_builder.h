@@ -11,6 +11,7 @@ CMON_API void cmon_str_builder_clear(cmon_str_builder * _s);
 CMON_API void cmon_str_builder_append_fmt_v(cmon_str_builder * _s, const char * _fmt, va_list _args);
 CMON_API void cmon_str_builder_append_fmt(cmon_str_builder * _s, const char * _fmt, ...);
 CMON_API void cmon_str_builder_append(cmon_str_builder * _s, const char * _str);
+CMON_API size_t cmon_str_builder_count(cmon_str_builder * _s);
 CMON_API const char * cmon_str_builder_c_str(cmon_str_builder * _s);
 
 #endif // CMON_CMON_STR_BUILDER_H
