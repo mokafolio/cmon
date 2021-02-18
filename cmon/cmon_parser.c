@@ -189,6 +189,28 @@ static inline cmon_idx _token_check_impl(cmon_parser * _p, cmon_bool _allow_line
 static cmon_idx _parse_expr(cmon_parser * _p);
 static cmon_idx _parse_stmt(cmon_parser * _p);
 
+static cmon_idx _parse_type(cmon_parser * _p)
+{
+    cmon_idx ret, tok, tmp;
+    cmon_bool is_mut;
+
+    if(_accept(_p, &tok, cmon_tk_mult))
+    {
+        is_mut = _accept(_p, &tmp, cmon_tk_mut);
+        return cmon_astb_add_type_ptr(_p->ast_builder, tok, is_mut, _parse_type(_p));
+    }
+    else if(_accept(_p, &tok, cmon_tk_ident))
+    {
+        return cmon_astb_add_type_named(_p->ast_builder, tok);
+    }
+
+    //@TODO: error, unexpected token
+
+    return CMON_INVALID_IDX;
+}
+
+
+
 static cmon_idx _parse_expr(cmon_parser * _p)
 {
 }
@@ -222,14 +244,28 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
 static inline cmon_bool _peek_var_decl(cmon_parser * _p)
 {
     return cmon_tokens_is_current(_p->tokens, cmon_tk_mut) ||
-           (cmon_tokens_is_current(_p->tokens, cmon_tk_ident) &&
+           ((cmon_tokens_is_current(_p->tokens, cmon_tk_ident) ||
+             (cmon_tokens_is_current(_p->tokens, cmon_tk_pub) &&
+              cmon_tokens_is_next(_p->tokens, cmon_tk_ident))) &&
             cmon_tokens_is_next(_p->tokens, cmon_tk_colon));
 }
 
-static cmon_idx _parse_var_decl(cmon_parser * _p)
+static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
 {
+    cmon_idx tok, tmp, type;
+    cmon_bool is_pub, is_mut;
 
-} 
+    is_pub = _top_lvl && _accept(_p, &tok, cmon_tk_pub);
+    is_mut = _accept(_p, &tok, cmon_tk_mut);
+    tok = _tok_check(_p, cmon_true, cmon_tk_ident);
+    _tok_check(_p, cmon_false, cmon_tk_colon);
+    if(_accept(_p, &tmp, cmon_tk_assign))
+        type = CMON_INVALID_IDX;
+    else
+        type = _parse_type(_p);
+
+    return cmon_astb_add_var_decl(_p->ast_builder, tok, is_pub, is_mut, type, _parse_expr(_p));
+}
 
 static cmon_idx _parse_stmt(cmon_parser * _p)
 {
@@ -238,11 +274,11 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
     {
         return _parse_block(_p, tok);
     }
-    else if(_peek_var_decl(_p))
+    else if (_peek_var_decl(_p))
     {
-        return _parse_var_decl(_p);
+        return _parse_var_decl(_p, cmon_false);
     }
-    //is this an expression statement?
+    // is this an expression statement?
     return _parse_expr(_p);
 }
 

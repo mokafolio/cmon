@@ -54,7 +54,7 @@ static inline cmon_idx _add_node(
 {
     cmon_dyn_arr_append(&_b->kinds, _kind);
     cmon_dyn_arr_append(&_b->tokens, _tok_idx);
-    cmon_dyn_arr_append(&_b->left_right, ((_left_right){_left, _right}));
+    cmon_dyn_arr_append(&_b->left_right, ((_left_right){ _left, _right }));
     return cmon_dyn_arr_count(&_b->kinds);
 }
 
@@ -75,9 +75,16 @@ cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _ri
 }
 
 // adding statements
-cmon_idx cmon_astb_add_var_decl(cmon_astb * _b, cmon_idx _name_tok_idx, cmon_bool _is_mut, cmon_idx _expr)
+cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
+                                cmon_idx _name_tok_idx,
+                                cmon_bool _is_pub,
+                                cmon_bool _is_mut,
+                                cmon_idx _type,
+                                cmon_idx _expr)
 {
-    return _add_node(_b, cmon_ast_kind_var_decl, _name_tok_idx, (cmon_idx)_is_mut, _expr);
+    cmon_idx extra_data =
+        _add_node(_b, cmon_ast_kind_var_decl_data, (cmon_idx)_is_pub, (cmon_idx)_is_mut, _type);
+    return _add_node(_b, cmon_ast_kind_var_decl, _name_tok_idx, extra_data, _expr);
 }
 
 cmon_idx cmon_astb_add_block(cmon_astb * _b,
@@ -90,7 +97,7 @@ cmon_idx cmon_astb_add_block(cmon_astb * _b,
 
     begin = cmon_dyn_arr_count(&_b->extra_data);
 
-    for(i=0; i<_count; ++i)
+    for (i = 0; i < _count; ++i)
     {
         cmon_dyn_arr_append(&_b->extra_data, _stmt_indices[i]);
     }
