@@ -57,6 +57,20 @@ typedef struct
     cmon_dyn_arr(_idx_buf *) free_bufs;
 } _idx_buf_mng;
 
+typedef enum
+{
+    _precedence_nil,
+    _precedence_assign,
+    _precedence_range,
+    _precedence_or,
+    _precedence_and,
+    _precedence_comp,
+    _precedence_sum,
+    _precedence_product,
+    _precedence_prefix,
+    _precedence_cast
+} _precedence;
+
 static inline _idx_buf * _idx_buf_create(_idx_buf_mng * _mng)
 {
     _idx_buf * ret;
@@ -186,7 +200,7 @@ static inline cmon_idx _token_check_impl(cmon_parser * _p, cmon_bool _allow_line
 #define _accept(_p, _out_tok, ...)                                                                 \
     (cmon_is_valid_idx(*(_out_tok) = cmon_tokens_accept(_p->tokens, __VA_ARGS__)))
 
-static cmon_idx _parse_expr(cmon_parser * _p);
+static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec);
 static cmon_idx _parse_stmt(cmon_parser * _p);
 
 static cmon_idx _parse_type(cmon_parser * _p)
@@ -194,12 +208,12 @@ static cmon_idx _parse_type(cmon_parser * _p)
     cmon_idx ret, tok, tmp;
     cmon_bool is_mut;
 
-    if(_accept(_p, &tok, cmon_tk_mult))
+    if (_accept(_p, &tok, cmon_tk_mult))
     {
         is_mut = _accept(_p, &tmp, cmon_tk_mut);
         return cmon_astb_add_type_ptr(_p->ast_builder, tok, is_mut, _parse_type(_p));
     }
-    else if(_accept(_p, &tok, cmon_tk_ident))
+    else if (_accept(_p, &tok, cmon_tk_ident))
     {
         return cmon_astb_add_type_named(_p->ast_builder, tok);
     }
@@ -209,10 +223,50 @@ static cmon_idx _parse_type(cmon_parser * _p)
     return CMON_INVALID_IDX;
 }
 
-
-
-static cmon_idx _parse_expr(cmon_parser * _p)
+static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 {
+    cmon_idx ret, expr, tmp;
+    _idx_buf * b;
+
+    b = _idx_buf_mng_get(_p->idx_buf_mng);
+    while (!cmon_tokens_is_current(
+        _p->tokens, cmon_tk_paran_close, cmon_tk_eof))
+    {
+        expr = _parse_expr(_p, _precedence_nil);
+        if (_accept(_p, &tmp, cmon_tk_comma))
+        {
+            if (cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close))
+                _err(_p, tmp, "unexpected comma");
+        }
+        else
+            break;
+    }
+    _tok_check(_p, cmon_true, cmon_tk_paran_close);
+    ret = cmon_astb_add_call(_p->ast_builder, _tok, _lhs, b->buf, cmon_dyn_arr_count(&b->buf));
+    _idx_buf_mng_return(_p->idx_buf_mng, b);
+    return ret;
+}
+
+static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
+{
+    cmon_idx tok, ret;
+
+    if (_accept(_p, &tok, cmon_tk_ident))
+    {
+        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+    }
+    else if (_accept(_p, &tok, cmon_tk_minus, cmon_tk_exclam))
+    {
+        ret = cmon_astb_add_prefix(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
+    }
+
+    while(cmon_tokens_is_current(_p->tokens, cmon_tk_paran_open))
+    {
+        if(_accept(_p, &tok, cmon_tk_paran_open))
+        {
+            ret = _parse_call_expr(_p, tok, ret);
+        }
+    }
 }
 
 static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
@@ -259,12 +313,13 @@ static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
     is_mut = _accept(_p, &tok, cmon_tk_mut);
     tok = _tok_check(_p, cmon_true, cmon_tk_ident);
     _tok_check(_p, cmon_false, cmon_tk_colon);
-    if(_accept(_p, &tmp, cmon_tk_assign))
+    if (_accept(_p, &tmp, cmon_tk_assign))
         type = CMON_INVALID_IDX;
     else
         type = _parse_type(_p);
 
-    return cmon_astb_add_var_decl(_p->ast_builder, tok, is_pub, is_mut, type, _parse_expr(_p));
+    return cmon_astb_add_var_decl(
+        _p->ast_builder, tok, is_pub, is_mut, type, _parse_expr(_p, _precedence_nil));
 }
 
 static cmon_idx _parse_stmt(cmon_parser * _p)
@@ -279,7 +334,7 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
         return _parse_var_decl(_p, cmon_false);
     }
     // is this an expression statement?
-    return _parse_expr(_p);
+    return _parse_expr(_p, _precedence_nil);
 }
 
 static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)

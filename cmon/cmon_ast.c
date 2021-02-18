@@ -74,6 +74,21 @@ cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _ri
     return _add_node(_b, cmon_ast_kind_prefix, _op_tok_idx, -1, _right);
 }
 
+cmon_idx cmon_astb_add_call(
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count)
+{
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+    for (i = 0; i < _count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _arg_indices[i]);
+    }
+
+    return _add_node(_b, cmon_ast_kind_call, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
+}
+
 // adding statements
 cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                 cmon_idx _name_tok_idx,
