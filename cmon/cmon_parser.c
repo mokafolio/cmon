@@ -57,20 +57,6 @@ typedef struct
     cmon_dyn_arr(_idx_buf *) free_bufs;
 } _idx_buf_mng;
 
-typedef enum
-{
-    _precedence_nil,
-    _precedence_assign,
-    _precedence_range,
-    _precedence_or,
-    _precedence_and,
-    _precedence_comp,
-    _precedence_sum,
-    _precedence_product,
-    _precedence_prefix,
-    _precedence_cast
-} _precedence;
-
 static inline _idx_buf * _idx_buf_create(_idx_buf_mng * _mng)
 {
     _idx_buf * ret;
@@ -127,6 +113,61 @@ static inline _idx_buf * _idx_buf_mng_get(_idx_buf_mng * _mng)
 static inline void _idx_buf_mng_return(_idx_buf_mng * _mng, _idx_buf * _buf)
 {
     cmon_dyn_arr_append(&_mng->free_bufs, _buf);
+}
+
+typedef enum
+{
+    _precedence_nil,
+    _precedence_assign,
+    _precedence_range,
+    _precedence_or,
+    _precedence_and,
+    _precedence_comp,
+    _precedence_sum,
+    _precedence_product,
+    _precedence_prefix,
+    _precedence_cast
+} _precedence;
+
+static _precedence _tok_prec(cmon_token_kind _kind)
+{
+    switch (_kind)
+    {
+    case cmon_tk_or:
+        return _precedence_or;
+    case cmon_tk_and:
+        return _precedence_and;
+    case cmon_tk_less:
+    case cmon_tk_less_equal:
+    case cmon_tk_greater:
+    case cmon_tk_greater_equal:
+    case cmon_tk_equals:
+    case cmon_tk_not_equals:
+        return _precedence_comp;
+    case cmon_tk_assign:
+    case cmon_tk_plus_assign:
+    case cmon_tk_minus_assign:
+    case cmon_tk_mult_assign:
+    case cmon_tk_div_assign:
+    case cmon_tk_mod_assign:
+    case cmon_tk_bw_and_assign:
+    case cmon_tk_bw_or_assign:
+    case cmon_tk_bw_xor_assign:
+    case cmon_tk_bw_left_assign:
+    case cmon_tk_bw_right_assign:
+        return _precedence_assign;
+    case cmon_tk_plus:
+    case cmon_tk_minus:
+        return _precedence_sum;
+    case cmon_tk_mult:
+    case cmon_tk_div:
+    case cmon_tk_mod:
+        return _precedence_product;
+    case cmon_tk_as:
+        return _precedence_cast;
+    default:
+        return _precedence_nil;
+    }
 }
 
 typedef struct cmon_parser
@@ -229,8 +270,7 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
     _idx_buf * b;
 
     b = _idx_buf_mng_get(_p->idx_buf_mng);
-    while (!cmon_tokens_is_current(
-        _p->tokens, cmon_tk_paran_close, cmon_tk_eof))
+    while (!cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close, cmon_tk_eof))
     {
         expr = _parse_expr(_p, _precedence_nil);
         if (_accept(_p, &tmp, cmon_tk_comma))
@@ -260,9 +300,9 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         ret = cmon_astb_add_prefix(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
     }
 
-    while(cmon_tokens_is_current(_p->tokens, cmon_tk_paran_open))
+    while (cmon_tokens_is_current(_p->tokens, cmon_tk_paran_open))
     {
-        if(_accept(_p, &tok, cmon_tk_paran_open))
+        if (_accept(_p, &tok, cmon_tk_paran_open))
         {
             ret = _parse_call_expr(_p, tok, ret);
         }
