@@ -109,13 +109,14 @@ cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
     cmon_idx begin;
 
     begin = cmon_dyn_arr_count(&_b->extra_data);
+    cmon_dyn_arr_append(&_b->extra_data, _ret_type);
     cmon_dyn_arr_append(&_b->extra_data, _count);
     for (i = 0; i < _count; ++i)
     {
         cmon_dyn_arr_append(&_b->extra_data, _params[i]);
     }
 
-    return _add_node(_b, cmon_ast_kind_fn_decl, _tok_idx, _ret_type, begin);
+    return _add_node(_b, cmon_ast_kind_fn_decl, _tok_idx, begin, _block_idx);
 }
 
 cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
