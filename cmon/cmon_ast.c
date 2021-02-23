@@ -90,6 +90,34 @@ cmon_idx cmon_astb_add_call(
 }
 
 // adding statements
+cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+                                cmon_idx _name_tok_idx,
+                                cmon_bool _is_mut,
+                                cmon_idx _type)
+{
+    return _add_node(_b, cmon_ast_kind_fn_param, _name_tok_idx, _is_mut, _type);
+}
+
+cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
+                               cmon_idx _tok_idx,
+                               cmon_idx _ret_type,
+                               cmon_idx * _params,
+                               size_t _count,
+                               cmon_idx _block_idx)
+{
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+    cmon_dyn_arr_append(&_b->extra_data, _count);
+    for (i = 0; i < _count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _params[i]);
+    }
+
+    return _add_node(_b, cmon_ast_kind_fn_decl, _tok_idx, _ret_type, begin);
+}
+
 cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                 cmon_idx _name_tok_idx,
                                 cmon_bool _is_pub,

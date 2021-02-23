@@ -242,6 +242,7 @@ static inline cmon_idx _token_check_impl(cmon_parser * _p, cmon_bool _allow_line
     (cmon_is_valid_idx(*(_out_tok) = cmon_tokens_accept(_p->tokens, __VA_ARGS__)))
 
 static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec);
+static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok);
 static cmon_idx _parse_stmt(cmon_parser * _p);
 
 static cmon_idx _parse_type(cmon_parser * _p)
@@ -266,13 +267,13 @@ static cmon_idx _parse_type(cmon_parser * _p)
 
 static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 {
-    cmon_idx ret, expr, tmp;
+    cmon_idx ret, tmp;
     _idx_buf * b;
 
     b = _idx_buf_mng_get(_p->idx_buf_mng);
     while (!cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close, cmon_tk_eof))
     {
-        expr = _parse_expr(_p, _precedence_nil);
+        cmon_dyn_arr_append(&b->buf, _parse_expr(_p, _precedence_nil));
         if (_accept(_p, &tmp, cmon_tk_comma))
         {
             if (cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close))
@@ -284,6 +285,67 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
     _tok_check(_p, cmon_true, cmon_tk_paran_close);
     ret = cmon_astb_add_call(_p->ast_builder, _tok, _lhs, b->buf, cmon_dyn_arr_count(&b->buf));
     _idx_buf_mng_return(_p->idx_buf_mng, b);
+    return ret;
+}
+
+static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
+{
+    cmon_idx tok, type, ret, ret_type, body;
+    size_t i;
+    _idx_buf * param_buf;
+    _idx_buf * name_tok_buf;
+    cmon_bool is_mut;
+
+    param_buf = _idx_buf_mng_get(_p->idx_buf_mng);
+    name_tok_buf = _idx_buf_mng_get(_p->idx_buf_mng);
+    _tok_check(_p, cmon_true, cmon_tk_paran_open);
+
+    while (!cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close, cmon_tk_eof))
+    {
+        is_mut = _accept(_p, &tok, cmon_tk_mut);
+
+        cmon_dyn_arr_clear(&name_tok_buf->buf);
+        do
+        {
+            cmon_dyn_arr_append(&name_tok_buf->buf, _tok_check(_p, cmon_true, cmon_tk_ident));
+        } while (_accept(_p, &tok, cmon_tk_comma));
+
+        _tok_check(_p, cmon_true, cmon_tk_colon);
+
+        type = _parse_type(_p);
+
+        for (i = 0; i < cmon_dyn_arr_count(&name_tok_buf->buf); ++i)
+        {
+            cmon_dyn_arr_append(
+                &param_buf->buf,
+                cmon_astb_add_fn_param(_p->ast_builder, name_tok_buf->buf[i], is_mut, type));
+        }
+
+        if (_accept(_p, &tok, cmon_tk_comma))
+        {
+            if (cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close))
+                _err(_p, tok, "unexpected comma");
+        }
+        else
+            break;
+    }
+
+    _tok_check(_p, cmon_true, cmon_tk_paran_close);
+    _tok_check(_p, cmon_true, cmon_tk_arrow);
+
+    ret_type = _parse_type(_p);
+    body = _parse_block(_p, _tok_check(_p, cmon_true, cmon_tk_curl_open));
+
+    ret = cmon_astb_add_fn_decl(_p->ast_builder,
+                                _fn_tok_idx,
+                                ret_type,
+                                param_buf->buf,
+                                cmon_dyn_arr_count(&param_buf->buf),
+                                body);
+
+    _idx_buf_mng_return(_p->idx_buf_mng, name_tok_buf);
+    _idx_buf_mng_return(_p->idx_buf_mng, param_buf);
+
     return ret;
 }
 
@@ -307,6 +369,28 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
             ret = _parse_call_expr(_p, tok, ret);
         }
     }
+
+    while (cmon_tokens_is_current(_p->tokens, CMON_BIN_TOKS, cmon_tk_as))
+    {
+        tok = cmon_tokens_current(_p->tokens);
+        if (_tok_prec(cmon_tokens_kind(_p->tokens, tok)) < _prec)
+            break;
+
+        if (cmon_tokens_is(_p->tokens, tok, CMON_BIN_TOKS))
+        {
+            ret =
+                cmon_astb_add_binary(_p->ast_builder,
+                                     tok,
+                                     ret,
+                                     _parse_expr(_p, _tok_prec(cmon_tokens_kind(_p->tokens, tok))));
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+
+    return ret;
 }
 
 static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)

@@ -28,6 +28,7 @@ typedef enum
     cmon_ast_kind_cast,
     // cmon_ast_kind_view,
     cmon_ast_kind_noinit,
+    cmon_ast_kind_fn_param,
     cmon_ast_kind_fn_decl,
     // cmon_ast_kind_range,
     // cmon_ast_kind_expl_template_fn_init,
@@ -76,8 +77,18 @@ CMON_API cmon_idx cmon_astb_add_binary(cmon_astb * _b,
 CMON_API cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _right);
 CMON_API cmon_idx cmon_astb_add_call(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count);
+CMON_API cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
+                                        cmon_idx _tok_idx,
+                                        cmon_idx _ret_type,
+                                        cmon_idx * _params,
+                                        size_t _count,
+                                        cmon_idx _block_idx);
 
 // adding statements
+CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+                                         cmon_idx _name_tok_idx,
+                                         cmon_bool _is_mut,
+                                         cmon_idx _type);
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                          cmon_idx _name_tok_idx,
                                          cmon_bool _is_pub,

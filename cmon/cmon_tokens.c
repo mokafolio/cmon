@@ -341,6 +341,8 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind
     {
         if (_next_char_is(_l, '='))
             return _finalize_tok(_l, cmon_tk_minus_assign, 2, _out_kind, _out_tok);
+        else if (_next_char_is(_l, '>'))
+            return _finalize_tok(_l, cmon_tk_arrow, 2, _out_kind, _out_tok);
         else if (_next_char_is(_l, '-'))
         {
             _advance_pos(_l, 1);
@@ -713,7 +715,7 @@ cmon_bool cmon_tokens_is_next_impl(cmon_tokens * _t, ...)
 
 cmon_idx cmon_tokens_accept_impl_v(cmon_tokens * _t, va_list _args)
 {
-    if(_is_impl_v(_t, _t->tok_idx, _args))
+    if (_is_impl_v(_t, _t->tok_idx, _args))
         return cmon_tokens_advance(_t, cmon_true);
     return CMON_INVALID_IDX;
 }
@@ -821,6 +823,8 @@ const char * cmon_token_kind_to_str(cmon_token_kind _kind)
         return "|";
     case cmon_tk_bw_not:
         return "~";
+    case cmon_tk_arrow:
+        return "->";
     case cmon_tk_fn:
         return "fn";
     case cmon_tk_dot:

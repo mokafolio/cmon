@@ -1,8 +1,8 @@
 #ifndef CMON_CMON_TOKENS_H
 #define CMON_CMON_TOKENS_H
 
-#include <cmon/cmon_src.h>
 #include <cmon/cmon_err_report.h>
+#include <cmon/cmon_src.h>
 
 typedef enum
 {
@@ -40,6 +40,7 @@ typedef enum
     cmon_tk_bw_xor,
     cmon_tk_bw_or,
     cmon_tk_bw_not,
+    cmon_tk_arrow, // ->
     cmon_tk_fn,
     cmon_tk_dot,
     cmon_tk_comma,
@@ -93,8 +94,10 @@ typedef enum
 
 typedef struct cmon_tokens cmon_tokens;
 
-
-CMON_API cmon_tokens * cmon_tokenize(cmon_allocator * _alloc, cmon_src * _src, cmon_idx _src_file_idx, cmon_err_report * _out_err);
+CMON_API cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
+                                     cmon_src * _src,
+                                     cmon_idx _src_file_idx,
+                                     cmon_err_report * _out_err);
 CMON_API void cmon_tokens_destroy(cmon_tokens * _t);
 
 CMON_API size_t cmon_tokens_count(cmon_tokens * _t);
@@ -112,7 +115,7 @@ CMON_API cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_bool cmon_tokens_follows_nl(cmon_tokens * _t, cmon_idx _idx);
 
-//implementation functions for variadic token check/accept macros below
+// implementation functions for variadic token check/accept macros below
 CMON_API cmon_bool cmon_tokens_is_impl_v(cmon_tokens * _t, cmon_idx _idx, va_list _args);
 CMON_API cmon_bool cmon_tokens_is_impl(cmon_tokens * _t, cmon_idx _idx, ...);
 CMON_API cmon_idx cmon_tokens_accept_impl_v(cmon_tokens * _t, va_list _args);
@@ -124,17 +127,32 @@ CMON_API cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...);
 // CMON_API cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind);
 // CMON_API cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind);
 
-//token utility functions
+// token utility functions
 CMON_API const char * cmon_token_kind_to_str(cmon_token_kind _kind);
 
-//helper macros to postfix __VA_ARGS__ with a -1 delimiter.
+// helper macros to postfix __VA_ARGS__ with a -1 delimiter.
 #define _CMON_VARARGS_COMBINE(...) __VA_ARGS__
 #define _CMON_VARARG_APPEND_LAST(last, ...) _CMON_VARARGS_COMBINE(__VA_ARGS__, last)
 
-//variadic macros to check for one or multiple token kinds
-#define cmon_tokens_is(_t, _idx, ...) cmon_tokens_is_impl((_t), _idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
-#define cmon_tokens_is_current(_t, ...) cmon_tokens_is_impl((_t), cmon_tokens_current((_t)), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
-#define cmon_tokens_is_next(_t, ...) cmon_tokens_is_impl((_t), cmon_tokens_current((_t)) + 1, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
-#define cmon_tokens_accept(_t, ...) cmon_tokens_accept_impl((_t), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+// variadic macros to check for one or multiple token kinds
+#define cmon_tokens_is(_t, _idx, ...)                                                              \
+    cmon_tokens_is_impl((_t), _idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+#define cmon_tokens_is_current(_t, ...)                                                            \
+    cmon_tokens_is_impl((_t), cmon_tokens_current((_t)), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+#define cmon_tokens_is_next(_t, ...)                                                               \
+    cmon_tokens_is_impl(                                                                           \
+        (_t), cmon_tokens_current((_t)) + 1, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+#define cmon_tokens_accept(_t, ...)                                                                \
+    cmon_tokens_accept_impl((_t), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+
+// helper so we don't need to manually write out all binary expression tokens evey time we want to
+// check for that
+#define CMON_BIN_TOKS                                                                              \
+    cmon_tk_equals, cmon_tk_not_equals, cmon_tk_assign, cmon_tk_plus_assign, cmon_tk_minus_assign, \
+        cmon_tk_mult_assign, cmon_tk_div_assign, cmon_tk_mod_assign, cmon_tk_bw_left_assign,       \
+        cmon_tk_bw_right_assign, cmon_tk_bw_and_assign, cmon_tk_bw_xor_assign,                     \
+        cmon_tk_bw_or_assign, cmon_tk_plus, cmon_tk_minus, cmon_tk_inc, cmon_tk_dec, cmon_tk_mult, \
+        cmon_tk_div, cmon_tk_mod, cmon_tk_bw_left, cmon_tk_bw_right, cmon_tk_bw_and,               \
+        cmon_tk_bw_xor, cmon_tk_bw_or
 
 #endif // CMON_CMON_LEXER_H
