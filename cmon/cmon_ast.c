@@ -149,6 +149,19 @@ cmon_idx cmon_astb_add_block(cmon_astb * _b,
     return _add_node(_b, cmon_ast_kind_block, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
 }
 
+cmon_idx cmon_astb_add_module(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _name_tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_module, _tok_idx, _name_tok_idx, CMON_INVALID_IDX);
+}
+
+cmon_idx cmon_astb_add_import(cmon_astb * _b,
+                              cmon_idx _tok_idx,
+                              cmon_idx _name_tok_idx,
+                              cmon_idx _alias_tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_import, _tok_idx, _name_tok_idx, _alias_tok_idx);
+}
+
 cmon_bool cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {
     assert(_idx < cmon_dyn_arr_count(_b->kinds));

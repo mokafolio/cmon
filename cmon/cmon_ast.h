@@ -99,6 +99,14 @@ CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
                                       cmon_idx _tok_idx,
                                       cmon_idx * _stmt_indices,
                                       size_t _count);
+CMON_API cmon_idx cmon_astb_add_module(cmon_astb * _b,
+                                      cmon_idx _tok_idx,
+                                      cmon_idx _name_tok_idx);
+CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
+                                      cmon_idx _tok_idx,
+                                      cmon_idx _name_tok_idx,
+                                      cmon_idx _alias_tok_idx);
+
 
 // CMON_API cmon_idx cmon_astb_root_block(cmon_astb * _b);
 
