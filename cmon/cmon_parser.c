@@ -357,6 +357,10 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     {
         ret = cmon_astb_add_ident(_p->ast_builder, tok);
     }
+    else if(_accept(_p, &tok, cmon_tk_fn))
+    {
+        ret = _parse_fn(_p, cmon_tk_fn);
+    }
     else if (_accept(_p, &tok, cmon_tk_minus, cmon_tk_exclam))
     {
         ret = cmon_astb_add_prefix(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
