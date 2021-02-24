@@ -154,12 +154,37 @@ cmon_idx cmon_astb_add_module(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _name_
     return _add_node(_b, cmon_ast_kind_module, _tok_idx, _name_tok_idx, CMON_INVALID_IDX);
 }
 
-cmon_idx cmon_astb_add_import(cmon_astb * _b,
-                              cmon_idx _tok_idx,
-                              cmon_idx _name_tok_idx,
-                              cmon_idx _alias_tok_idx)
+cmon_idx cmon_astb_add_import_pair(cmon_astb * _b,
+                                   cmon_idx * _path_toks,
+                                   size_t _count,
+                                   cmon_idx _alias_tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_import, _tok_idx, _name_tok_idx, _alias_tok_idx);
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+
+    cmon_dyn_arr_append(&_b->extra_data, _count);
+    for (i = 1; i < _count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _path_toks[i]);
+    }
+    return _add_node(_b, cmon_ast_kind_import_pair, _path_toks[0], begin, _alias_tok_idx);
+}
+
+cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pairs, size_t _count)
+{
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+
+    for (i = 0; i < _count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _pairs[i]);
+    }
+    return _add_node(
+        _b, cmon_ast_kind_import, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
 }
 
 cmon_bool cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)

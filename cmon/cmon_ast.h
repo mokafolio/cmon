@@ -44,6 +44,7 @@ typedef enum
     cmon_ast_kind_for_in,
     // cmon_ast_kind_c_for,
     cmon_ast_kind_block,
+    cmon_ast_kind_import_pair, //the foo.bar as baz part of import foo.bar as baz
     cmon_ast_kind_import,
     cmon_ast_kind_module,
     cmon_ast_kind_typedef,
@@ -99,14 +100,16 @@ CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
                                       cmon_idx _tok_idx,
                                       cmon_idx * _stmt_indices,
                                       size_t _count);
-CMON_API cmon_idx cmon_astb_add_module(cmon_astb * _b,
-                                      cmon_idx _tok_idx,
-                                      cmon_idx _name_tok_idx);
-CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
-                                      cmon_idx _tok_idx,
-                                      cmon_idx _name_tok_idx,
-                                      cmon_idx _alias_tok_idx);
+CMON_API cmon_idx cmon_astb_add_module(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _name_tok_idx);
 
+CMON_API cmon_idx cmon_astb_add_import_pair(cmon_astb * _b,
+                                            cmon_idx * _path_toks,
+                                            size_t _count,
+                                            cmon_idx _alias_tok_idx);
+CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
+                                       cmon_idx _tok_idx,
+                                       cmon_idx * _pairs,
+                                       size_t _count);
 
 // CMON_API cmon_idx cmon_astb_root_block(cmon_astb * _b);
 

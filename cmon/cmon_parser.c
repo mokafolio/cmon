@@ -357,7 +357,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     {
         ret = cmon_astb_add_ident(_p->ast_builder, tok);
     }
-    else if(_accept(_p, &tok, cmon_tk_fn))
+    else if (_accept(_p, &tok, cmon_tk_fn))
     {
         ret = _parse_fn(_p, cmon_tk_fn);
     }
@@ -465,8 +465,56 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
     return _parse_expr(_p, _precedence_nil);
 }
 
+static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
+{
+    cmon_idx tok, next, ret, tmp, alias;
+    _idx_buf *b, *path_tok_buf;
+
+    b = _idx_buf_mng_get(_p->idx_buf_mng);
+    path_tok_buf = _idx_buf_mng_get(_p->idx_buf_mng);
+
+    while (cmon_true)
+    {
+        cmon_dyn_arr_clear(&path_tok_buf->buf);
+        alias = CMON_INVALID_IDX;
+        while (_accept(_p, &tok, cmon_tk_ident))
+        {
+            cmon_dyn_arr_append(&path_tok_buf->buf, tok);
+
+            if (!_accept(_p, &tok, cmon_tk_dot))
+                break;
+        }
+
+        if (_accept(_p, &tok, cmon_tk_as))
+        {
+            alias = _tok_check(_p, cmon_true, cmon_tk_ident);
+        }
+        cmon_dyn_arr_append(
+            &b->buf,
+            cmon_astb_add_import_pair(
+                _p->ast_builder, path_tok_buf->buf, cmon_dyn_arr_count(&path_tok_buf->buf), alias));
+        if(!cmon_tokens_is_current(_p->tokens, cmon_tk_comma))
+            break;
+    }
+
+    ret = cmon_astb_add_import(_p->ast_builder, _tok, b->buf, cmon_dyn_arr_count(&b->buf));
+    _idx_buf_mng_return(_p->idx_buf_mng, path_tok_buf);
+    _idx_buf_mng_return(_p->idx_buf_mng, b);
+
+    return ret;
+}
+
 static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
 {
+    cmon_idx tok;
+    if (_accept(_p, &tok, cmon_tk_module))
+    {
+        return cmon_astb_add_module(_p->ast_builder, tok, _tok_check(_p, cmon_true, cmon_tk_ident));
+    }
+    else if (_accept(_p, &tok, cmon_tk_import))
+    {
+        return _parse_import(_p, tok);
+    }
 }
 
 cmon_parser * cmon_parser_create(cmon_allocator * _alloc)
