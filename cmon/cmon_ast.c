@@ -64,6 +64,26 @@ cmon_idx cmon_astb_add_ident(cmon_astb * _b, cmon_idx _tok_idx)
     return _add_node(_b, cmon_ast_kind_ident, _tok_idx, -1, -1);
 }
 
+cmon_idx cmon_astb_add_float_lit(cmon_astb * _b, cmon_idx _tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_float_literal, _tok_idx, -1, -1);
+}
+
+cmon_idx cmon_astb_add_bool_lit(cmon_astb * _b, cmon_idx _tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_bool_literal, _tok_idx, -1, -1);
+}
+
+cmon_idx cmon_astb_add_int_lit(cmon_astb * _b, cmon_idx _tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_int_literal, _tok_idx, -1, -1);
+}
+
+cmon_idx cmon_astb_add_string_lit(cmon_astb * _b, cmon_idx _tok_idx)
+{
+    return _add_node(_b, cmon_ast_kind_string_literal, _tok_idx, -1, -1);
+}
+
 cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _left, cmon_idx _right)
 {
     return _add_node(_b, cmon_ast_kind_binary, _op_tok_idx, _left, _right);

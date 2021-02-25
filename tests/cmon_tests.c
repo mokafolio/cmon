@@ -1,6 +1,7 @@
 #include "utest.h"
-#include <cmon/cmon_tokens.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_parser.h>
+#include <cmon/cmon_tokens.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -64,7 +65,7 @@ UTEST(cmon, basic_tokens_test)
     cmon_src_set_code(src, src_idx, "module foo\nboop := bar();");
 
     tokens = cmon_tokenize(&alloc, src, src_idx, NULL);
-    EXPECT_NE(NULL, tokens);
+    EXPECT_NE(NULL, (void *)tokens); // void cast hack to make utest.h work with incomplete type
     EXPECT_EQ(10, cmon_tokens_count(tokens));
 
     EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_module));
@@ -118,17 +119,66 @@ static inline cmon_bool _tokens_test(const char * _name, const char * _code)
 }
 
 //@TODO: Make some more in depth tests with expected token counts, checking token types etc.
-#define TOKENS_TEST(_name, _code, _should_pass)                                             \
+#define TOKENS_TEST(_name, _code, _should_pass)                                                    \
     UTEST(cmon, _name)                                                                             \
     {                                                                                              \
-        EXPECT_EQ(_tokens_test(#_name ".cmon", _code), !_should_pass);                       \
+        EXPECT_EQ(_tokens_test(#_name ".cmon", _code), !_should_pass);                             \
     }
 
 TOKENS_TEST(lexer_success,
-               "module foo;import bar, joink as j\npub fn whop() -> s32 { return 3 }",
-               cmon_true);
+            "module foo;import bar, joink as j\npub fn whop() -> s32 { return 3 }",
+            cmon_true);
 TOKENS_TEST(lexer_missing_expo_digits, "foo := 3.12214e", cmon_false);
 TOKENS_TEST(lexer_invalid_character, "hello#", cmon_false);
 
+// #define PARSE_TEST(_name, _code, _should_pass)
+
+static cmon_bool _parse_test_fn(const char * _name, const char * _code)
+{
+    cmon_allocator alloc;
+    cmon_src * src;
+    cmon_idx src_idx;
+    cmon_tokens * tokens;
+    cmon_parser * parser;
+    cmon_bool err;
+
+    alloc = cmon_mallocator_make();
+
+    src = cmon_src_create(&alloc);
+    src_idx = cmon_src_add(src, _name, _name);
+    cmon_src_set_code(src, src_idx, _code);
+
+    parser = cmon_parser_create(&alloc);
+
+    tokens = cmon_tokenize(&alloc, src, src_idx, NULL);
+    err = !tokens;
+    if (err)
+        goto end;
+
+    err = cmon_parser_parse(parser, src, src_idx, tokens) == NULL;
+
+end:
+    cmon_parser_destroy(parser);
+    cmon_tokens_destroy(tokens);
+    cmon_src_destroy(src);
+    cmon_allocator_dealloc(&alloc);
+
+    return err;
+}
+
+#define PARSE_TEST(_name, _code, _should_pass)                                                     \
+    UTEST(cmon, _name)                                                                             \
+    {                                                                                              \
+        EXPECT_EQ(!_should_pass, _parse_test_fn(#_name, _code));                                   \
+    }
+
+PARSE_TEST(parse_basic, "module foo", cmon_true);
+PARSE_TEST(parse_import_fail01, "module foo import bar", cmon_false);
+PARSE_TEST(parse_import_basic01, "module foo; import bar", cmon_true);
+PARSE_TEST(parse_import_basic02, "module foo; import bar as b", cmon_true);
+PARSE_TEST(parse_import_basic03, "module foo; import boink.bar as b", cmon_true);
+PARSE_TEST(parse_import_basic04, "module foo; import bubble, tea", cmon_true);
+PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as t", cmon_true);
+PARSE_TEST(parse_var_decl01, "module foo; mut bar := boink", cmon_true);
 
 UTEST_MAIN();

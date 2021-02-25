@@ -9,12 +9,12 @@
 #define _err(_p, _tok, _msg, ...)                                                                  \
     do                                                                                             \
     {                                                                                              \
-        cmon_str_builder_clear(&_p->err_str_builder);                                              \
-        cmon_str_builder_append_fmt(&_p->err_str_builder, _msg, ##__VA_ARGS__);                    \
+        cmon_str_builder_clear(_p->err_str_builder);                                               \
+        cmon_str_builder_append_fmt(_p->err_str_builder, _msg, ##__VA_ARGS__);                     \
         _p->err = cmon_err_report_make(cmon_src_filename(_p->src, _p->src_file_idx),               \
                                        cmon_tokens_line(_p->tokens, _tok),                         \
                                        cmon_tokens_line_offset(_p->tokens, _tok),                  \
-                                       cmon_str_builder_c_str(&_p->err_str_builder));              \
+                                       cmon_str_builder_c_str(_p->err_str_builder));               \
         longjmp(_p->err_jmp, 1);                                                                   \
     } while (0)
 
@@ -98,6 +98,7 @@ static inline void _idx_buf_mng_destroy(_idx_buf_mng * _mng)
     }
 
     cmon_dyn_arr_dealloc(&_mng->bufs);
+    CMON_DESTROY(a, _mng);
 }
 
 static inline _idx_buf * _idx_buf_mng_get(_idx_buf_mng * _mng)
@@ -247,7 +248,7 @@ static cmon_idx _parse_stmt(cmon_parser * _p);
 
 static cmon_idx _parse_type(cmon_parser * _p)
 {
-    cmon_idx ret, tok, tmp;
+    cmon_idx tok, tmp;
     cmon_bool is_mut;
 
     if (_accept(_p, &tok, cmon_tk_mult))
@@ -357,6 +358,22 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     {
         ret = cmon_astb_add_ident(_p->ast_builder, tok);
     }
+    else if (_accept(_p, &tok, cmon_tk_true, cmon_tk_false))
+    {
+        ret = cmon_astb_add_bool_lit(_p->ast_builder, tok);
+    }
+    else if (_accept(_p, &tok, cmon_tk_float))
+    {
+        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+    }
+    else if (_accept(_p, &tok, cmon_tk_int))
+    {
+        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+    }
+    else if (_accept(_p, &tok, cmon_tk_string))
+    {
+        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+    }
     else if (_accept(_p, &tok, cmon_tk_fn))
     {
         ret = _parse_fn(_p, cmon_tk_fn);
@@ -444,10 +461,34 @@ static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
     if (_accept(_p, &tmp, cmon_tk_assign))
         type = CMON_INVALID_IDX;
     else
+    {
         type = _parse_type(_p);
+        _tok_check(_p, cmon_true, cmon_tk_assign);
+    }
 
     return cmon_astb_add_var_decl(
         _p->ast_builder, tok, is_pub, is_mut, type, _parse_expr(_p, _precedence_nil));
+}
+
+static void _check_stmt_end(cmon_parser * _p)
+{
+    if (!cmon_is_valid_idx(cmon_tokens_accept(_p->tokens, cmon_tk_semicolon)))
+    {
+        cmon_idx cur = cmon_tokens_current(_p->tokens);
+        if (cur && !cmon_tokens_follows_nl(_p->tokens, cur) &&
+            !cmon_tokens_is(_p->tokens,
+                            cur,
+                            cmon_tk_square_close,
+                            cmon_tk_paran_close,
+                            cmon_tk_curl_close,
+                            cmon_tk_eof,
+                            cmon_tk_else))
+        {
+            _err(_p,
+                 cmon_tokens_current(_p->tokens),
+                 "consecutive statements on a line must be separated by ';'");
+        }
+    }
 }
 
 static cmon_idx _parse_stmt(cmon_parser * _p)
@@ -467,16 +508,17 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
 
 static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
 {
-    cmon_idx tok, next, ret, tmp, alias;
+    cmon_idx tok, ret, alias;
     _idx_buf *b, *path_tok_buf;
 
     b = _idx_buf_mng_get(_p->idx_buf_mng);
     path_tok_buf = _idx_buf_mng_get(_p->idx_buf_mng);
 
-    while (cmon_true)
+    do
     {
         cmon_dyn_arr_clear(&path_tok_buf->buf);
         alias = CMON_INVALID_IDX;
+
         while (_accept(_p, &tok, cmon_tk_ident))
         {
             cmon_dyn_arr_append(&path_tok_buf->buf, tok);
@@ -489,13 +531,13 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
         {
             alias = _tok_check(_p, cmon_true, cmon_tk_ident);
         }
+        assert(cmon_dyn_arr_count(&path_tok_buf->buf));
+
         cmon_dyn_arr_append(
             &b->buf,
             cmon_astb_add_import_pair(
                 _p->ast_builder, path_tok_buf->buf, cmon_dyn_arr_count(&path_tok_buf->buf), alias));
-        if(!cmon_tokens_is_current(_p->tokens, cmon_tk_comma))
-            break;
-    }
+    } while (_accept(_p, &tok, cmon_tk_comma));
 
     ret = cmon_astb_add_import(_p->ast_builder, _tok, b->buf, cmon_dyn_arr_count(&b->buf));
     _idx_buf_mng_return(_p->idx_buf_mng, path_tok_buf);
@@ -515,6 +557,15 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
     {
         return _parse_import(_p, tok);
     }
+    else if (_peek_var_decl(_p))
+    {
+        return _parse_var_decl(_p, cmon_false);
+    }
+
+    //@TODO: Better error
+    _err(_p, cmon_tokens_current(_p->tokens), "top level statement expected");
+
+    return CMON_INVALID_IDX;
 }
 
 cmon_parser * cmon_parser_create(cmon_allocator * _alloc)
@@ -538,6 +589,7 @@ void cmon_parser_destroy(cmon_parser * _p)
     cmon_str_builder_destroy(_p->tk_str_builder);
     cmon_str_builder_destroy(_p->err_str_builder);
     cmon_astb_destroy(_p->ast_builder);
+    CMON_DESTROY(_p->alloc, _p);
 }
 
 cmon_err_report cmon_parser_err(cmon_parser * _p)
@@ -550,4 +602,33 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
                              cmon_idx _src_file_idx,
                              cmon_tokens * _tokens)
 {
+    cmon_idx stmt_idx;
+    _idx_buf * b;
+
+    _p->src = _src;
+    _p->src_file_idx = _src_file_idx;
+    _p->tokens = _tokens;
+
+    if (setjmp(_p->err_jmp))
+    {
+        goto end;
+    }
+
+    b = _idx_buf_mng_get(_p->idx_buf_mng);
+
+    while (!cmon_tokens_is_current(_p->tokens, cmon_tk_eof))
+    {
+        stmt_idx = _parse_top_lvl_stmt(_p);
+
+        if (cmon_is_valid_idx(stmt_idx))
+        {
+            cmon_dyn_arr_append(&b->buf, stmt_idx);
+        }
+
+        _check_stmt_end(_p);
+    }
+
+end:
+    _idx_buf_mng_return(_p->idx_buf_mng, b);
+    return cmon_err_report_is_empty(&_p->err) ? cmon_astb_get_ast(_p->ast_builder) : NULL;
 }

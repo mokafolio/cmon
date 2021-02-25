@@ -3,7 +3,7 @@
 tests = executable('cmon_tests', 'cmon_tests.c', 
     include_directories : inc_dirs,
     link_with: [cmon_lib],
-    c_args : ['-fsanitize=address', '-Wall'],
+    c_args : ['-fsanitize=address', '-Wall', '-std=gnu11'],
     link_args : '-fsanitize=address')
 
 test('cmon tests', tests, workdir: meson.current_build_dir())
