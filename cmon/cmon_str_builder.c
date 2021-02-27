@@ -71,5 +71,5 @@ const char * cmon_str_builder_c_str(cmon_str_builder * _s)
 
 size_t cmon_str_builder_count(cmon_str_builder * _s)
 {
-    return cmon_dyn_arr_count(&_s->buf);
+    return cmon_dyn_arr_count(&_s->buf) - 1;
 }

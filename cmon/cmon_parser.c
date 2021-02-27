@@ -196,8 +196,8 @@ const char * _token_kinds_to_str(cmon_str_builder * _b, va_list _args)
         if (kind != -1)
         {
             if (cmon_str_builder_count(_b))
-                cmon_str_builder_append(_b, ", ");
-            cmon_str_builder_append(_b, cmon_token_kind_to_str(kind));
+                cmon_str_builder_append(_b, " or ");
+            cmon_str_builder_append_fmt(_b, "'%s'", cmon_token_kind_to_str(kind));
         }
     } while (kind != -1);
     return cmon_str_builder_c_str(_b);
@@ -205,12 +205,14 @@ const char * _token_kinds_to_str(cmon_str_builder * _b, va_list _args)
 
 static inline cmon_idx _token_check_impl(cmon_parser * _p, cmon_bool _allow_line_break, ...)
 {
-    va_list args;
+    va_list args, cpy;
     va_start(args, _allow_line_break);
+    va_copy(cpy, args);
     cmon_idx tok = cmon_tokens_accept_impl_v(_p->tokens, args);
     if (!cmon_is_valid_idx(tok))
     {
-        const char * tk_kinds_str = _token_kinds_to_str(_p->tk_str_builder, args);
+        const char * tk_kinds_str = _token_kinds_to_str(_p->tk_str_builder, cpy);
+        va_end(cpy);
         va_end(args);
 
         cmon_idx cur = cmon_tokens_current(_p->tokens);
@@ -364,11 +366,11 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     }
     else if (_accept(_p, &tok, cmon_tk_float))
     {
-        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+        ret = cmon_astb_add_float_lit(_p->ast_builder, tok);
     }
     else if (_accept(_p, &tok, cmon_tk_int))
     {
-        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+        ret = cmon_astb_add_int_lit(_p->ast_builder, tok);
     }
     else if (_accept(_p, &tok, cmon_tk_string))
     {
@@ -396,6 +398,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         tok = cmon_tokens_current(_p->tokens);
         if (_tok_prec(cmon_tokens_kind(_p->tokens, tok)) < _prec)
             break;
+        cmon_tokens_advance(_p->tokens, cmon_true);
 
         if (cmon_tokens_is(_p->tokens, tok, CMON_BIN_TOKS))
         {
@@ -443,10 +446,10 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
 static inline cmon_bool _peek_var_decl(cmon_parser * _p)
 {
     return cmon_tokens_is_current(_p->tokens, cmon_tk_mut) ||
-           ((cmon_tokens_is_current(_p->tokens, cmon_tk_ident) ||
-             (cmon_tokens_is_current(_p->tokens, cmon_tk_pub) &&
-              cmon_tokens_is_next(_p->tokens, cmon_tk_ident))) &&
-            cmon_tokens_is_next(_p->tokens, cmon_tk_colon));
+           ((cmon_tokens_is_current(_p->tokens, cmon_tk_ident) &&
+             cmon_tokens_is_next(_p->tokens, cmon_tk_colon)) ||
+            (cmon_tokens_is_current(_p->tokens, cmon_tk_pub) &&
+             cmon_tokens_is_next(_p->tokens, cmon_tk_ident, cmon_tk_mut)));
 }
 
 static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
@@ -559,7 +562,7 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
     }
     else if (_peek_var_decl(_p))
     {
-        return _parse_var_decl(_p, cmon_false);
+        return _parse_var_decl(_p, cmon_true);
     }
 
     //@TODO: Better error
@@ -602,12 +605,14 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
                              cmon_idx _src_file_idx,
                              cmon_tokens * _tokens)
 {
-    cmon_idx stmt_idx;
+    cmon_idx stmt_idx, root_block_idx, first_tok;
     _idx_buf * b;
 
     _p->src = _src;
     _p->src_file_idx = _src_file_idx;
     _p->tokens = _tokens;
+
+    first_tok = cmon_tokens_count(_p->tokens) ? 0 : CMON_INVALID_IDX;
 
     if (setjmp(_p->err_jmp))
     {
@@ -627,6 +632,10 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
 
         _check_stmt_end(_p);
     }
+
+    root_block_idx =
+        cmon_astb_add_block(_p->ast_builder, first_tok, b->buf, cmon_dyn_arr_count(&b->buf));
+    cmon_astb_set_root_block(_p->ast_builder, root_block_idx);
 
 end:
     _idx_buf_mng_return(_p->idx_buf_mng, b);

@@ -55,7 +55,7 @@ static inline cmon_idx _add_node(
     cmon_dyn_arr_append(&_b->kinds, _kind);
     cmon_dyn_arr_append(&_b->tokens, _tok_idx);
     cmon_dyn_arr_append(&_b->left_right, ((_left_right){ _left, _right }));
-    return cmon_dyn_arr_count(&_b->kinds);
+    return cmon_dyn_arr_count(&_b->kinds) - 1;
 }
 
 // adding expressions
@@ -207,15 +207,12 @@ cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pai
         _b, cmon_ast_kind_import, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
 }
 
-cmon_bool cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
+void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {
-    assert(_idx < cmon_dyn_arr_count(_b->kinds));
-    if (_b->kinds[_idx] == cmon_ast_kind_block)
-    {
-        _b->root_block_idx = _idx;
-        return cmon_false;
-    }
-    return cmon_true;
+    printf("da fogging count %lu %lu\n", cmon_dyn_arr_count(&_b->kinds), _idx);
+    assert(_idx < cmon_dyn_arr_count(&_b->kinds));
+    assert (_b->kinds[_idx] == cmon_ast_kind_block);
+    _b->root_block_idx = _idx;
 }
 
 // cmon_idx cmon_astb_root_block(cmon_astb * _b)

@@ -116,7 +116,7 @@ CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
                                        size_t _count);
 
 // CMON_API cmon_idx cmon_astb_root_block(cmon_astb * _b);
-CMON_API cmon_bool cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
+CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
 // adding parsed types
 CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx);

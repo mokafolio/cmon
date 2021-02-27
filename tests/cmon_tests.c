@@ -157,6 +157,12 @@ static cmon_bool _parse_test_fn(const char * _name, const char * _code)
 
     err = cmon_parser_parse(parser, src, src_idx, tokens) == NULL;
 
+    if(err)
+    {
+        cmon_err_report err = cmon_parser_err(parser);
+        printf("%s:%lu:%lu: %s", err.filename, err.line, err.line_offset, err.msg);
+    }
+
 end:
     cmon_parser_destroy(parser);
     cmon_tokens_destroy(tokens);
@@ -180,5 +186,7 @@ PARSE_TEST(parse_import_basic03, "module foo; import boink.bar as b", cmon_true)
 PARSE_TEST(parse_import_basic04, "module foo; import bubble, tea", cmon_true);
 PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as t", cmon_true);
 PARSE_TEST(parse_var_decl01, "module foo; mut bar := boink", cmon_true);
+PARSE_TEST(parse_var_decl02, "module foo; pub mut bar := 2", cmon_true);
+PARSE_TEST(parse_binop01, "module foo; ba := 1 + 2 * 3", cmon_true);
 
 UTEST_MAIN();
