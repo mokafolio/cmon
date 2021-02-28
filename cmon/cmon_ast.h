@@ -28,7 +28,8 @@ typedef enum
     cmon_ast_kind_cast,
     // cmon_ast_kind_view,
     cmon_ast_kind_noinit,
-    cmon_ast_kind_fn_param,
+    cmon_ast_kind_fn_param,      // i.e. mut bar : s32
+    cmon_ast_kind_fn_param_list, // i.e. foo, bar : s32
     cmon_ast_kind_fn_decl,
     // cmon_ast_kind_range,
     // cmon_ast_kind_expl_template_fn_init,
@@ -44,7 +45,7 @@ typedef enum
     cmon_ast_kind_for_in,
     // cmon_ast_kind_c_for,
     cmon_ast_kind_block,
-    cmon_ast_kind_import_pair, //the foo.bar as baz part of import foo.bar as baz
+    cmon_ast_kind_import_pair, // the foo.bar as baz part of import foo.bar as baz
     cmon_ast_kind_import,
     cmon_ast_kind_module,
     cmon_ast_kind_typedef,
@@ -85,15 +86,11 @@ CMON_API cmon_idx cmon_astb_add_call(
 CMON_API cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                         cmon_idx _tok_idx,
                                         cmon_idx _ret_type,
-                                        cmon_idx * _params,
+                                        cmon_idx * _params, //param and param lists
                                         size_t _count,
                                         cmon_idx _block_idx);
 
 // adding statements
-CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
-                                         cmon_idx _name_tok_idx,
-                                         cmon_bool _is_mut,
-                                         cmon_idx _type);
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                          cmon_idx _name_tok_idx,
                                          cmon_bool _is_pub,
@@ -115,7 +112,13 @@ CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
                                        cmon_idx * _pairs,
                                        size_t _count);
 
-// CMON_API cmon_idx cmon_astb_root_block(cmon_astb * _b);
+// helpers
+CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+                                         cmon_idx _name_tok_idx,
+                                         cmon_bool _is_mut,
+                                         cmon_idx _type);
+CMON_API cmon_idx cmon_astb_add_fn_param_list(
+    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type);
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
 // adding parsed types

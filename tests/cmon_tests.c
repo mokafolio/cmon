@@ -187,6 +187,9 @@ PARSE_TEST(parse_import_basic04, "module foo; import bubble, tea", cmon_true);
 PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as t", cmon_true);
 PARSE_TEST(parse_var_decl01, "module foo; mut bar := boink", cmon_true);
 PARSE_TEST(parse_var_decl02, "module foo; pub mut bar := 2", cmon_true);
+PARSE_TEST(parse_fn01, "module foo; ba := fn(){}", cmon_true);
+PARSE_TEST(parse_fn02, "module foo; ba := fn(a : s32)->s32{}", cmon_true);
+PARSE_TEST(parse_fn03, "module foo; ba := fn(a, b : s32)->s32{}", cmon_true);
 PARSE_TEST(parse_binop01, "module foo; ba := 1 + 2 * 3", cmon_true);
 
 UTEST_MAIN();

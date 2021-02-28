@@ -317,11 +317,27 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
 
         type = _parse_type(_p);
 
-        for (i = 0; i < cmon_dyn_arr_count(&name_tok_buf->buf); ++i)
+        // for (i = 0; i < cmon_dyn_arr_count(&name_tok_buf->buf); ++i)
+        // {
+        //     cmon_dyn_arr_append(
+        //         &param_buf->buf,
+        //         cmon_astb_add_fn_param(_p->ast_builder, name_tok_buf->buf[i], is_mut, type));
+        // }
+        assert(cmon_dyn_arr_count(&name_tok_buf->buf));
+        if (cmon_dyn_arr_count(&name_tok_buf->buf) == 1)
         {
             cmon_dyn_arr_append(
                 &param_buf->buf,
-                cmon_astb_add_fn_param(_p->ast_builder, name_tok_buf->buf[i], is_mut, type));
+                cmon_astb_add_fn_param(_p->ast_builder, name_tok_buf->buf[0], is_mut, type));
+        }
+        else
+        {
+            cmon_dyn_arr_append(&param_buf->buf,
+                                cmon_astb_add_fn_param_list(_p->ast_builder,
+                                                            name_tok_buf->buf,
+                                                            cmon_dyn_arr_count(&name_tok_buf->buf),
+                                                            is_mut,
+                                                            type));
         }
 
         if (_accept(_p, &tok, cmon_tk_comma))
@@ -334,9 +350,12 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
     }
 
     _tok_check(_p, cmon_true, cmon_tk_paran_close);
-    _tok_check(_p, cmon_true, cmon_tk_arrow);
 
-    ret_type = _parse_type(_p);
+    if (_accept(_p, &tok, cmon_tk_arrow))
+        ret_type = _parse_type(_p);
+    else
+        ret_type = CMON_INVALID_IDX;
+
     body = _parse_block(_p, _tok_check(_p, cmon_true, cmon_tk_curl_open));
 
     ret = cmon_astb_add_fn_decl(_p->ast_builder,

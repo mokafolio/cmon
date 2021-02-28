@@ -110,14 +110,6 @@ cmon_idx cmon_astb_add_call(
 }
 
 // adding statements
-cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
-                                cmon_idx _name_tok_idx,
-                                cmon_bool _is_mut,
-                                cmon_idx _type)
-{
-    return _add_node(_b, cmon_ast_kind_fn_param, _name_tok_idx, _is_mut, _type);
-}
-
 cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                cmon_idx _tok_idx,
                                cmon_idx _ret_type,
@@ -207,11 +199,35 @@ cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pai
         _b, cmon_ast_kind_import, _tok_idx, begin, cmon_dyn_arr_count(&_b->extra_data));
 }
 
+cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+                                cmon_idx _name_tok_idx,
+                                cmon_bool _is_mut,
+                                cmon_idx _type)
+{
+    return _add_node(_b, cmon_ast_kind_fn_param, _name_tok_idx, _is_mut, _type);
+}
+
+cmon_idx cmon_astb_add_fn_param_list(
+    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type)
+{
+    size_t i;
+    cmon_idx begin;
+
+    begin = cmon_dyn_arr_count(&_b->extra_data);
+
+    cmon_dyn_arr_append(&_b->extra_data, _count);
+    cmon_dyn_arr_append(&_b->extra_data, _is_mut);
+    for (i = 1; i < _count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->extra_data, _name_toks[i]);
+    }
+    return _add_node(_b, cmon_ast_kind_fn_param_list, _name_toks[0], begin, _type);
+}
+
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {
-    printf("da fogging count %lu %lu\n", cmon_dyn_arr_count(&_b->kinds), _idx);
     assert(_idx < cmon_dyn_arr_count(&_b->kinds));
-    assert (_b->kinds[_idx] == cmon_ast_kind_block);
+    assert(_b->kinds[_idx] == cmon_ast_kind_block);
     _b->root_block_idx = _idx;
 }
 
