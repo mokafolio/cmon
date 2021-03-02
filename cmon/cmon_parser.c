@@ -279,8 +279,11 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
         cmon_dyn_arr_append(&b->buf, _parse_expr(_p, _precedence_nil));
         if (_accept(_p, &tmp, cmon_tk_comma))
         {
+            printf("current %s\n", cmon_token_kind_to_str(cmon_tokens_kind(_p->tokens, cmon_tokens_current(_p->tokens))));
             if (cmon_tokens_is_current(_p->tokens, cmon_tk_paran_close))
+            {
                 _err(_p, tmp, "unexpected comma");
+            }
         }
         else
             break;

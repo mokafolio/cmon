@@ -3,6 +3,7 @@
 
 #include <cmon/cmon_err_report.h>
 #include <cmon/cmon_src.h>
+#include <cmon/cmon_util.h>
 
 typedef enum
 {
@@ -129,10 +130,6 @@ CMON_API cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...);
 
 // token utility functions
 CMON_API const char * cmon_token_kind_to_str(cmon_token_kind _kind);
-
-// helper macros to postfix __VA_ARGS__ with a -1 delimiter.
-#define _CMON_VARARGS_COMBINE(...) __VA_ARGS__
-#define _CMON_VARARG_APPEND_LAST(last, ...) _CMON_VARARGS_COMBINE(__VA_ARGS__, last)
 
 // variadic macros to check for one or multiple token kinds
 #define cmon_tokens_is(_t, _idx, ...)                                                              \

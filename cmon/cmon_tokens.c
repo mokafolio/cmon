@@ -393,6 +393,7 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind
     }
     else if (*_l->pos == '"' || *_l->pos == '\'')
     {
+        // assert(0);
         char marks = *_l->pos;
         _advance_pos(_l, 1);
         while (*_l->pos != marks && _l->pos != _l->end)
@@ -401,7 +402,7 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind
             //     _advance_line(_l);
             _advance_pos(_l, 1);
         }
-        *_out_kind == cmon_tk_string;
+        *_out_kind = cmon_tk_string;
         _out_tok->str_view.end = _l->pos;
         _advance_pos(_l, 1); // skip closing "
         return cmon_true;
@@ -469,7 +470,6 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_token_kind * _out_kind
         const char * startp = _l->pos;
         if (isalpha(*_l->pos) || *_l->pos == '_')
         {
-            printf("ident\n");
             while (isalnum(*_l->pos) || *_l->pos == '_')
                 _advance_pos(_l, 1);
 
@@ -551,6 +551,7 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
     cmon_tokens * ret = _tokens_create(_alloc);
     while (_next_token(&s, &kind, &tok) && cmon_err_report_is_empty(&s.err))
     {
+        printf("ADDING TOKEN %s\n", cmon_token_kind_to_str(kind));
         cmon_dyn_arr_append(&ret->kinds, kind);
         cmon_dyn_arr_append(&ret->tokens, tok);
     }

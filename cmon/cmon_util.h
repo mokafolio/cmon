@@ -20,4 +20,9 @@ CMON_API char * cmon_str_create(cmon_allocator * _alloc, const char * _fmt, ...)
 CMON_API const char * cmon_file_ext(const char * _filename, char * _buf, size_t _buf_size);
 CMON_API const char * cmon_join_paths(const char * _a, const char * _b, char * _buf, size_t _buf_size);
 
+// helper macros to postfix __VA_ARGS__ with a -1 delimiter.
+#define _CMON_VARARGS_COMBINE(...) __VA_ARGS__
+#define _CMON_VARARG_APPEND_LAST(last, ...) _CMON_VARARGS_COMBINE(__VA_ARGS__, last)
+// #define _CMON_VARARG_APPEND_LAST(last, ...) _CMON_VARARG_APPEND_LAST_IMPL(last, ##__VA_ARGS__)
+
 #endif //CMON_CMON_UTIL_H
