@@ -37,6 +37,7 @@ typedef enum
     cmon_ast_kind_var_decl_list, //i.e. foo, bar : s32 = 3
     cmon_ast_kind_var_decl_data,
     cmon_ast_kind_struct_field,
+    cmon_ast_kind_struct_field_list,
     cmon_ast_kind_struct_decl,
     // cmon_ast_kind_interface_decl,
     cmon_ast_kind_exprstmt,
@@ -128,7 +129,6 @@ CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
                                          cmon_idx _type);
 CMON_API cmon_idx cmon_astb_add_fn_param_list(
     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type);
-CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b, cmon_idx * _name_toks);
 
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
@@ -140,6 +140,13 @@ CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
                                          cmon_idx _type_idx);
 
 // adding type declarations
+CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b, cmon_idx _name_tok, cmon_idx _type, cmon_idx _expr);
+CMON_API cmon_idx cmon_astb_add_struct_field_list(cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr);
+CMON_API cmon_idx cmon_astb_add_struct_decl(cmon_astb * _b,
+                                         cmon_idx _tok_idx,
+                                         cmon_bool _is_pub,
+                                         cmon_idx * _fields,
+                                         size_t _count);
 
 // getting the ast without taking ownership
 CMON_API cmon_ast * cmon_astb_get_ast(cmon_astb * _b);

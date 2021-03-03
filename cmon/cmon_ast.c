@@ -168,6 +168,12 @@ cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
                                      cmon_idx _type,
                                      cmon_idx _expr)
 {
+    assert(_count);
+    return _add_node(_b,
+                     cmon_ast_kind_var_decl_list,
+                     _name_toks[0],
+                     _add_extra_data_m(_b, _name_toks, _count, _is_pub, _is_mut, _type, _expr),
+                     cmon_dyn_arr_count(&_b->extra_data));
 }
 
 cmon_idx cmon_astb_add_block(cmon_astb * _b,
@@ -293,6 +299,34 @@ cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
 }
 
 // adding type declarations
+cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
+                                    cmon_idx _name_tok,
+                                    cmon_idx _type,
+                                    cmon_idx _expr)
+{
+    return _add_node(_b, cmon_ast_kind_struct_field, _name_tok, _type, _expr);
+}
+
+cmon_idx cmon_astb_add_struct_field_list(
+    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr)
+{
+    assert(_count);
+    return _add_node(_b,
+                     cmon_ast_kind_struct_field_list,
+                     _name_toks[0],
+                     _add_extra_data_m(_b, _name_toks, _count, _type, _expr),
+                     cmon_dyn_arr_count(&_b->extra_data));
+}
+
+cmon_idx cmon_astb_add_struct_decl(
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count)
+{
+    return _add_node(_b,
+                     cmon_ast_kind_struct_decl,
+                     _tok_idx,
+                     _add_extra_data_m(_b, _fields, _count, _is_pub),
+                     cmon_dyn_arr_count(&_b->extra_data));
+}
 
 // getting the ast
 cmon_ast * cmon_astb_get_ast(cmon_astb * _b)

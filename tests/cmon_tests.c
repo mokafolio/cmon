@@ -188,6 +188,8 @@ PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as
 PARSE_TEST(parse_var_decl01, "mut bar := boink", cmon_true);
 PARSE_TEST(parse_var_decl02, "pub mut bar := 2", cmon_true);
 PARSE_TEST(parse_var_decl03, "bar := 'foo'", cmon_true);
+PARSE_TEST(parse_var_decl04, "foo, bar : s32 = -99", cmon_true);
+PARSE_TEST(parse_var_decl05, "foo, bar := 2.3545", cmon_true);
 PARSE_TEST(parse_fn01, "ba := fn(){}", cmon_true);
 PARSE_TEST(parse_fn02, "ba := fn(a : s32)->s32{}", cmon_true);
 PARSE_TEST(parse_fn03, "ba := fn(a, b : s32)->s32{}", cmon_true);
@@ -195,5 +197,7 @@ PARSE_TEST(parse_call01, "foo := bar()", cmon_true);
 PARSE_TEST(parse_call02, "foo := bar(1, 'hey')", cmon_true);
 PARSE_TEST(parse_call03, "foo := bar(1.4, 3.24,)", cmon_false);
 PARSE_TEST(parse_binop01, "ba := 1 + 2 * 3", cmon_true);
+PARSE_TEST(parse_struct_decl01, "struct Foo{}", cmon_true);
+PARSE_TEST(parse_struct_decl02, "struct {}", cmon_false);
 
 UTEST_MAIN();
