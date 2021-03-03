@@ -1,6 +1,8 @@
 #ifndef CMON_TYPE_H
 #define CMON_TYPE_H
 
+#include <cmon/cmon_allocator.h>
+
 typedef enum
 {
     cmon_type_void,

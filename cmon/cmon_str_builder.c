@@ -1,5 +1,5 @@
-#include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_str_builder.h>
 #include <stdarg.h>
 
 typedef struct cmon_str_builder
@@ -17,7 +17,7 @@ cmon_str_builder * cmon_str_builder_create(cmon_allocator * _alloc, size_t _cap)
 
 void cmon_str_builder_destroy(cmon_str_builder * _s)
 {
-    if(!_s)
+    if (!_s)
         return;
 
     cmon_allocator * a = _cmon_dyn_arr_md(&_s->buf)->alloc;
@@ -56,7 +56,7 @@ void cmon_str_builder_append_fmt(cmon_str_builder * _s, const char * _fmt, ...)
 void cmon_str_builder_append(cmon_str_builder * _s, const char * _str)
 {
     size_t len, off;
-    //should always contain at least zero terminator
+    // should always contain at least zero terminator
     assert(cmon_dyn_arr_count(&_s->buf) > 0);
     len = strlen(_str);
     off = cmon_dyn_arr_count(&_s->buf) - 1;
@@ -72,4 +72,46 @@ const char * cmon_str_builder_c_str(cmon_str_builder * _s)
 size_t cmon_str_builder_count(cmon_str_builder * _s)
 {
     return cmon_dyn_arr_count(&_s->buf) - 1;
+}
+
+typedef struct cmon_str_buf
+{
+    cmon_dyn_arr(char) buf;
+} cmon_str_buf;
+
+cmon_str_buf * cmon_str_buf_create(cmon_allocator * _alloc, size_t _cap)
+{
+    cmon_str_buf * ret = CMON_CREATE(_alloc, cmon_str_buf);
+    cmon_dyn_arr_init(&ret->buf, _alloc, _cap);
+    return ret;
+}
+
+void cmon_str_buf_destroy(cmon_str_buf * _s)
+{
+    if (!_s)
+        return;
+    cmon_allocator * a = _cmon_dyn_arr_md(&_s->buf)->alloc;
+    cmon_dyn_arr_dealloc(&_s->buf);
+    CMON_DESTROY(a, _s);
+}
+
+size_t cmon_str_buf_add(cmon_str_buf * _s, const char * _str)
+{
+    size_t ret, len;
+    ret = cmon_dyn_arr_count(&_s->buf);
+    len = strlen(_str);
+    cmon_dyn_arr_resize(&_s->buf, ret + len + 1);
+    memcpy(_s->buf + ret, _str, len + 1);
+    return ret;
+}
+
+const char * cmon_str_buf_get(cmon_str_buf * _s, size_t _offset)
+{
+    assert(_offset < cmon_dyn_arr_count(&_s->buf));
+    return &_s->buf[_offset];
+}
+
+void cmon_str_buf_clear(cmon_str_buf * _s)
+{
+    cmon_dyn_arr_clear(&_s->buf);
 }
