@@ -16,7 +16,7 @@ typedef struct cmon_tr
 {
     cmon_dyn_arr(_struct) structs;
     cmon_dyn_arr(_type) types;
-    // cmon_hashmap()
+    cmon_hashmap(const char *, size_t) name_map;
 } cmon_tr;
 
 cmon_tr * cmon_tr_create(cmon_allocator * _alloc)
