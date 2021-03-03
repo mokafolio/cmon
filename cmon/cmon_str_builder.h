@@ -20,7 +20,7 @@ typedef struct cmon_str_buf cmon_str_buf;
 
 CMON_API cmon_str_buf * cmon_str_buf_create(cmon_allocator * _alloc, size_t _cap);
 CMON_API void cmon_str_buf_destroy(cmon_str_buf * _s);
-CMON_API size_t cmon_str_buf_add(cmon_str_buf * _s, const char * _str);
+CMON_API size_t cmon_str_buf_append(cmon_str_buf * _s, const char * _str);
 CMON_API const char * cmon_str_buf_get(cmon_str_buf * _s, size_t _offset);
 CMON_API void cmon_str_buf_clear(cmon_str_buf * _s);
 

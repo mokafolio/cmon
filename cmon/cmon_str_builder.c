@@ -95,7 +95,7 @@ void cmon_str_buf_destroy(cmon_str_buf * _s)
     CMON_DESTROY(a, _s);
 }
 
-size_t cmon_str_buf_add(cmon_str_buf * _s, const char * _str)
+size_t cmon_str_buf_append(cmon_str_buf * _s, const char * _str)
 {
     size_t ret, len;
     ret = cmon_dyn_arr_count(&_s->buf);
