@@ -148,6 +148,26 @@ cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                      _block_idx);
 }
 
+cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
+                                         cmon_idx _first_tok,
+                                         cmon_idx _name_tok,
+                                         cmon_idx _expr)
+{
+    return _add_node(_b, cmon_ast_kind_struct_init_field, _first_tok, _name_tok, _expr);
+}
+
+cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
+                                   cmon_idx _tok_idx,
+                                   cmon_idx * _fields,
+                                   size_t _count)
+{
+    return _add_node(_b,
+                     cmon_ast_kind_struct_init,
+                     _tok_idx,
+                     _add_extra_data(_b, _fields, _count),
+                     cmon_dyn_arr_count(&_b->extra_data));
+}
+
 cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                 cmon_idx _name_tok_idx,
                                 cmon_bool _is_pub,

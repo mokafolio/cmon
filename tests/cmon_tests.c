@@ -199,5 +199,12 @@ PARSE_TEST(parse_call03, "foo := bar(1.4, 3.24,)", cmon_false);
 PARSE_TEST(parse_binop01, "ba := 1 + 2 * 3", cmon_true);
 PARSE_TEST(parse_struct_decl01, "struct Foo{}", cmon_true);
 PARSE_TEST(parse_struct_decl02, "struct {}", cmon_false);
+PARSE_TEST(parse_struct_decl03, "pub struct Foo{ a, b : f32}", cmon_true);
+PARSE_TEST(parse_struct_decl04, "pub struct Vec{ x, y : f64 = 10.0 }", cmon_true);
+PARSE_TEST(parse_struct_init01, "a := Foo{}", cmon_true);
+PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
+PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);
+PARSE_TEST(parse_struct_init04, "a := Foo{1,}", cmon_false);
+PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
 
 UTEST_MAIN();

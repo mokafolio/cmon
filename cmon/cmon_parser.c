@@ -376,13 +376,60 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
     return ret;
 }
 
+static cmon_idx _parse_struct_init(cmon_parser * _p)
+{
+    cmon_idx struct_name_tok, name_tok, field_idx, ret, tmp;
+    _idx_buf * b;
+
+    b = _idx_buf_mng_get(_p->idx_buf_mng);
+    struct_name_tok = _tok_check(_p, cmon_true, cmon_tk_ident);
+    _tok_check(_p, cmon_true, cmon_tk_curl_open);
+    while (!cmon_tokens_is_current(_p->tokens, cmon_tk_curl_close, cmon_tk_eof))
+    {
+        if (cmon_tokens_is_current(_p->tokens, cmon_tk_ident) &&
+            cmon_tokens_is_next(_p->tokens, cmon_tk_colon))
+        {
+            name_tok = cmon_tokens_advance(_p->tokens, cmon_true);
+            cmon_tokens_advance(_p->tokens, cmon_true); // skip colon
+            field_idx = cmon_astb_add_struct_init_field(
+                _p->ast_builder, name_tok, name_tok, _parse_expr(_p, _precedence_nil));
+        }
+        else
+        {
+            field_idx = cmon_astb_add_struct_init_field(_p->ast_builder,
+                                                        cmon_tokens_current(_p->tokens),
+                                                        CMON_INVALID_IDX,
+                                                        _parse_expr(_p, _precedence_nil));
+        }
+        cmon_dyn_arr_append(&b->buf, field_idx);
+
+        if (_accept(_p, &tmp, cmon_tk_comma))
+        {
+            if (cmon_tokens_is_current(_p->tokens, cmon_tk_curl_close))
+            {
+                _err(_p, tmp, "unexpected comma");
+            }
+        }
+        else
+            break;
+    }
+    _tok_check(_p, cmon_true, cmon_tk_curl_close);
+    ret = cmon_astb_add_struct_init(
+        _p->ast_builder, struct_name_tok, b->buf, cmon_dyn_arr_count(&b->buf));
+    _idx_buf_mng_return(_p->idx_buf_mng, b);
+    return ret;
+}
+
 static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 {
     cmon_idx tok, ret;
 
-    if (_accept(_p, &tok, cmon_tk_ident))
+    if (cmon_tokens_is_current(_p->tokens, cmon_tk_ident))
     {
-        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+        if (cmon_tokens_is_next(_p->tokens, cmon_tk_curl_open))
+            ret = _parse_struct_init(_p);
+        else
+            ret = cmon_astb_add_ident(_p->ast_builder, cmon_tokens_advance(_p->tokens, cmon_true));
     }
     else if (_accept(_p, &tok, cmon_tk_true, cmon_tk_false))
     {

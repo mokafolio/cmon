@@ -17,6 +17,7 @@ typedef enum
     cmon_ast_kind_index,
     cmon_ast_kind_selector,
     cmon_ast_kind_struct_init,
+    cmon_ast_kind_struct_init_field, // the bar: 1 portion of Foo{bar: 1}
     cmon_ast_kind_array_init,
     cmon_ast_kind_tuple_init,
     cmon_ast_kind_view_init,
@@ -92,6 +93,14 @@ CMON_API cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                         cmon_idx * _params, //param and param lists
                                         size_t _count,
                                         cmon_idx _block_idx);
+CMON_API cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
+                                                  cmon_idx _first_tok,      
+                                        cmon_idx _name_tok,
+                                        cmon_idx _expr);
+CMON_API cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
+                                        cmon_idx _tok_idx,
+                                        cmon_idx * _fields,
+                                        size_t _count);
 
 // adding statements
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
