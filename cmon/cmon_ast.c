@@ -38,7 +38,7 @@ cmon_astb * cmon_astb_create(cmon_allocator * _alloc)
     cmon_dyn_arr_init(&ret->tokens, _alloc, 256);
     cmon_dyn_arr_init(&ret->left_right, _alloc, 256);
     cmon_dyn_arr_init(&ret->extra_data, _alloc, 256);
-    ret->root_block_idx = -1;
+    ret->root_block_idx = CMON_INVALID_IDX;
     return ret;
 }
 
@@ -90,27 +90,27 @@ static inline cmon_idx _add_node(
 // adding expressions
 cmon_idx cmon_astb_add_ident(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_ident, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_ident, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_float_lit(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_float_literal, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_float_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_bool_lit(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_bool_literal, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_bool_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_int_lit(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_int_literal, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_int_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_string_lit(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_string_literal, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_string_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _left, cmon_idx _right)
@@ -120,7 +120,12 @@ cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _le
 
 cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _right)
 {
-    return _add_node(_b, cmon_ast_kind_prefix, _op_tok_idx, -1, _right);
+    return _add_node(_b, cmon_ast_kind_prefix, _op_tok_idx, CMON_INVALID_IDX, _right);
+}
+
+cmon_idx cmon_astb_add_paran(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr)
+{
+    return _add_node(_b, cmon_ast_kind_paran_expr, _tok_idx, _expr, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_call(
@@ -307,7 +312,7 @@ void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 // adding parsed types
 cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_type_named, _tok_idx, -1, -1);
+    return _add_node(_b, cmon_ast_kind_type_named, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
