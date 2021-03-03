@@ -1,5 +1,6 @@
 #include "utest.h"
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_parser.h>
 #include <cmon/cmon_tokens.h>
 
@@ -47,6 +48,58 @@ UTEST(cmon, dyn_arr_tests)
     EXPECT_EQ(cmon_dyn_arr_count(&vec), 0);
 
     cmon_dyn_arr_dealloc(&vec);
+    cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, hashmap_tests)
+{
+    cmon_allocator a = cmon_mallocator_make();
+
+    cmon_hashmap(const char *, int) map2;
+    cmon_hashmap_str_key_init(&map2, &a);
+
+    cmon_hashmap_set(&map2, "foo", 99);
+    EXPECT_NE(NULL, cmon_hashmap_get(&map2, "foo"));
+    EXPECT_EQ(99, *cmon_hashmap_get(&map2, "foo"));
+    EXPECT_EQ(1, cmon_hashmap_count(&map2));
+    cmon_hashmap_set(&map2, "foo", 33);
+    EXPECT_EQ(1, cmon_hashmap_count(&map2));
+    EXPECT_EQ(33, *cmon_hashmap_get(&map2, "foo"));
+    cmon_hashmap_set(&map2, "bar", -3);
+    EXPECT_EQ(2, cmon_hashmap_count(&map2));
+    EXPECT_EQ(-3, *cmon_hashmap_get(&map2, "bar"));
+    
+    const char ** key_ref;
+    cmon_hashmap_iter_t it = cmon_hashmap_iter(&map2);
+    while(key_ref = cmon_hashmap_next(&map2, &it))
+    {
+        typeof((*(&map2)).tmp) foo = it.node->value;
+        printf("da key %s\n", *key_ref);
+        printf("WE GOT AN ENTRY %s %i\n", *key_ref, cmon_hashmap_iter_value(&map2, &it));
+    }
+
+    EXPECT_EQ(cmon_true, cmon_hashmap_remove(&map2, "foo"));
+    EXPECT_EQ(cmon_false, cmon_hashmap_remove(&map2, "not there"));
+    EXPECT_EQ(1, cmon_hashmap_count(&map2));
+    EXPECT_EQ(NULL, cmon_hashmap_get(&map2, "foo"));
+    EXPECT_NE(NULL, cmon_hashmap_get(&map2, "bar"));
+
+    cmon_hashmap_dealloc(&map2);
+
+    int b, c;
+    cmon_hashmap(int *, const char *) map3;
+    cmon_hashmap_ptr_key_init(&map3, &a);
+    cmon_hashmap_set(&map3, &b, "foink");
+    cmon_hashmap_set(&map3, &c, "boink");
+    EXPECT_EQ(2, cmon_hashmap_count(&map3));
+    EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
+    EXPECT_STREQ("foink", *cmon_hashmap_get(&map3, &b));
+    EXPECT_STREQ("boink", *cmon_hashmap_get(&map3, &c));
+    EXPECT_EQ(cmon_true, cmon_hashmap_remove(&map3, &c));
+    EXPECT_EQ(NULL, cmon_hashmap_get(&map3, &c));
+    EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
+    cmon_hashmap_dealloc(&map3);
+
     cmon_allocator_dealloc(&a);
 }
 
@@ -199,8 +252,10 @@ PARSE_TEST(parse_call03, "foo := bar(1.4, 3.24,)", cmon_false);
 PARSE_TEST(parse_binop01, "ba := 1 + 2 * 3", cmon_true);
 PARSE_TEST(parse_struct_decl01, "struct Foo{}", cmon_true);
 PARSE_TEST(parse_struct_decl02, "struct {}", cmon_false);
-PARSE_TEST(parse_struct_decl03, "pub struct Foo{ a, b : f32}", cmon_true);
-PARSE_TEST(parse_struct_decl04, "pub struct Vec{ x, y : f64 = 10.0 }", cmon_true);
+PARSE_TEST(parse_struct_decl03, "pub struct Foo{ a : f32; b : f32 }", cmon_true);
+PARSE_TEST(parse_struct_decl04, "pub struct Foo{ a : f32 b : f32 }", cmon_false);
+PARSE_TEST(parse_struct_decl05, "pub struct Foo{ a, b : f32}", cmon_true);
+PARSE_TEST(parse_struct_decl06, "struct Vec{ x, y : f64 = 10.0 }", cmon_true);
 PARSE_TEST(parse_struct_init01, "a := Foo{}", cmon_true);
 PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
 PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);

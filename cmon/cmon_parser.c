@@ -447,6 +447,11 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     {
         ret = cmon_astb_add_ident(_p->ast_builder, tok);
     }
+    else if (_accept(_p, &tok, cmon_tk_paran_open))
+    {
+        ret = cmon_astb_add_paran(_p->ast_builder, tok, _parse_expr(_p, _precedence_nil));
+        _tok_check(_p, cmon_true, cmon_tk_paran_close);
+    }
     else if (_accept(_p, &tok, cmon_tk_fn))
     {
         ret = _parse_fn(_p, cmon_tk_fn);
@@ -567,6 +572,27 @@ static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
     return ret;
 }
 
+static void _check_stmt_end(cmon_parser * _p)
+{
+    if (!cmon_is_valid_idx(cmon_tokens_accept(_p->tokens, cmon_tk_semicolon)))
+    {
+        cmon_idx cur = cmon_tokens_current(_p->tokens);
+        if (cur && !cmon_tokens_follows_nl(_p->tokens, cur) &&
+            !cmon_tokens_is(_p->tokens,
+                            cur,
+                            cmon_tk_square_close,
+                            cmon_tk_paran_close,
+                            cmon_tk_curl_close,
+                            cmon_tk_eof,
+                            cmon_tk_else))
+        {
+            _err(_p,
+                 cmon_tokens_current(_p->tokens),
+                 "consecutive statements on a line must be separated by ';'");
+        }
+    }
+}
+
 static cmon_idx _parse_struct_decl(cmon_parser * _p)
 {
     cmon_idx name_tok, ret, type, tmp, expr;
@@ -610,6 +636,7 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
                 &b->buf,
                 cmon_astb_add_struct_field(_p->ast_builder, name_tok_buf->buf[0], type, expr));
         }
+        _check_stmt_end(_p);
     }
 
     _tok_check(_p, cmon_true, cmon_tk_curl_close);
@@ -620,27 +647,6 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
     _idx_buf_mng_return(_p->idx_buf_mng, b);
 
     return ret;
-}
-
-static void _check_stmt_end(cmon_parser * _p)
-{
-    if (!cmon_is_valid_idx(cmon_tokens_accept(_p->tokens, cmon_tk_semicolon)))
-    {
-        cmon_idx cur = cmon_tokens_current(_p->tokens);
-        if (cur && !cmon_tokens_follows_nl(_p->tokens, cur) &&
-            !cmon_tokens_is(_p->tokens,
-                            cur,
-                            cmon_tk_square_close,
-                            cmon_tk_paran_close,
-                            cmon_tk_curl_close,
-                            cmon_tk_eof,
-                            cmon_tk_else))
-        {
-            _err(_p,
-                 cmon_tokens_current(_p->tokens),
-                 "consecutive statements on a line must be separated by ';'");
-        }
-    }
 }
 
 static cmon_idx _parse_stmt(cmon_parser * _p)
