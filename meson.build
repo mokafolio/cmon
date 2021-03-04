@@ -12,7 +12,7 @@ lib_src = [
     'cmon/cmon_src.c',
     'cmon/cmon_str_builder.c',
     'cmon/cmon_tokens.c',
-    'cmon/cmon_type.c',
+    'cmon/cmon_types.c',
     'cmon/cmon_util.c',
 ]
 
