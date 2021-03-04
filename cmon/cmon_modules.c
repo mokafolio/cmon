@@ -6,6 +6,7 @@ typedef struct
 {
     size_t name_str_off, path_str_off, prefix_str_off;
     cmon_dyn_arr(cmon_idx) src_files;
+    cmon_dyn_arr(cmon_idx) deps; // module indices that this module depends on
 } _module;
 
 typedef struct cmon_modules
@@ -37,6 +38,7 @@ void cmon_modules_destroy(cmon_modules * _m)
 
     for (i = 0; cmon_dyn_arr_count(&_m->mods); ++i)
     {
+        cmon_dyn_arr_dealloc(&_m->mods[i].deps);
         cmon_dyn_arr_dealloc(&_m->mods[i].src_files);
     }
 
@@ -58,6 +60,7 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
     cmon_str_builder_append_fmt(_m->str_builder, "%s%lu", _name, ret);
     mod.prefix_str_off = cmon_str_buf_append(_m->str_buf, cmon_str_builder_c_str(_m->str_builder));
     cmon_dyn_arr_init(&mod.src_files, _m->alloc, 8);
+    cmon_dyn_arr_init(&mod.deps, _m->alloc, 4);
     cmon_dyn_arr_append(&_m->mods, mod);
 
     return ret;
@@ -67,6 +70,11 @@ static inline _module * _get_module(cmon_modules * _m, cmon_idx _mod_idx)
 {
     assert(_mod_idx < cmon_dyn_arr_count(&_m->mods));
     return &_m->mods[_mod_idx];
+}
+
+void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_dep_idx)
+{
+    cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->deps, _mod_dep_idx);
 }
 
 void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file)
