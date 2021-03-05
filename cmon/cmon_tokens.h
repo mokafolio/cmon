@@ -122,12 +122,6 @@ CMON_API cmon_bool cmon_tokens_is_impl(cmon_tokens * _t, cmon_idx _idx, ...);
 CMON_API cmon_idx cmon_tokens_accept_impl_v(cmon_tokens * _t, va_list _args);
 CMON_API cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...);
 
-// CMON_API cmon_bool cmon_tokens_is_impl_v(cmon_tokens * _t, cmon_idx _idx, va_list _args);
-// CMON_API cmon_bool cmon_tokens_is(cmon_tokens * _t, cmon_idx _idx, cmon_token_kind _kind);
-// CMON_API cmon_bool cmon_tokens_is_next(cmon_tokens * _t, cmon_token_kind _kind);
-// CMON_API cmon_bool cmon_tokens_is_current(cmon_tokens * _t, cmon_token_kind _kind);
-// CMON_API cmon_idx cmon_tokens_accept(cmon_tokens * _t, cmon_token_kind _kind);
-
 // token utility functions
 CMON_API const char * cmon_token_kind_to_str(cmon_token_kind _kind);
 

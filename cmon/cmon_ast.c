@@ -26,6 +26,8 @@ typedef struct cmon_astb
     cmon_dyn_arr(cmon_idx) tokens;
     cmon_dyn_arr(_left_right) left_right;
     cmon_dyn_arr(cmon_idx) extra_data;
+    cmon_dyn_arr(cmon_idx) imports; // we put all imports in one additional list for easy dependency
+                                    // tree building later on
     cmon_idx root_block_idx;
     cmon_ast ast; // filled in in cmon_astb_get_ast
 } cmon_astb;
@@ -38,12 +40,14 @@ cmon_astb * cmon_astb_create(cmon_allocator * _alloc)
     cmon_dyn_arr_init(&ret->tokens, _alloc, 256);
     cmon_dyn_arr_init(&ret->left_right, _alloc, 256);
     cmon_dyn_arr_init(&ret->extra_data, _alloc, 256);
+    cmon_dyn_arr_init(&ret->imports, _alloc, 8);
     ret->root_block_idx = CMON_INVALID_IDX;
     return ret;
 }
 
 void cmon_astb_destroy(cmon_astb * _b)
 {
+    cmon_dyn_arr_dealloc(&_b->imports);
     cmon_dyn_arr_dealloc(&_b->extra_data);
     cmon_dyn_arr_dealloc(&_b->left_right);
     cmon_dyn_arr_dealloc(&_b->tokens);
@@ -110,7 +114,8 @@ cmon_idx cmon_astb_add_int_lit(cmon_astb * _b, cmon_idx _tok_idx)
 
 cmon_idx cmon_astb_add_string_lit(cmon_astb * _b, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_ast_kind_string_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
+    return _add_node(
+        _b, cmon_ast_kind_string_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
 cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _left, cmon_idx _right)
@@ -243,11 +248,13 @@ cmon_idx cmon_astb_add_import_pair(cmon_astb * _b,
     // {
     //     cmon_dyn_arr_append(&_b->extra_data, _path_toks[i]);
     // }
-    return _add_node(_b,
+    cmon_idx ret = _add_node(_b,
                      cmon_ast_kind_import_pair,
                      _path_toks[0],
                      _add_extra_data_m(_b, _path_toks, _count, _count),
                      _alias_tok_idx);
+    cmon_dyn_arr_append(&_b->imports, ret);
+    return ret;
 }
 
 cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pairs, size_t _count)
