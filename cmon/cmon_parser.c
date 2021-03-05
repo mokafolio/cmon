@@ -299,7 +299,6 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
 {
     cmon_idx tok, type, ret, ret_type, body;
-    size_t i;
     _idx_buf * param_buf;
     _idx_buf * name_tok_buf;
     cmon_bool is_mut;
@@ -767,8 +766,10 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
                              cmon_tokens * _tokens)
 {
     cmon_idx stmt_idx, root_block_idx, first_tok;
+    cmon_ast * ast;
     _idx_buf * b;
 
+    ast = NULL;
     _p->src = _src;
     _p->src_file_idx = _src_file_idx;
     _p->tokens = _tokens;
@@ -798,7 +799,10 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
         cmon_astb_add_block(_p->ast_builder, first_tok, b->buf, cmon_dyn_arr_count(&b->buf));
     cmon_astb_set_root_block(_p->ast_builder, root_block_idx);
 
+    ast = cmon_astb_get_ast(_p->ast_builder);
+    cmon_src_set_ast(_src, _src_file_idx, ast);
+
 end:
     _idx_buf_mng_return(_p->idx_buf_mng, b);
-    return cmon_err_report_is_empty(&_p->err) ? cmon_astb_get_ast(_p->ast_builder) : NULL;
+    return ast;
 }
