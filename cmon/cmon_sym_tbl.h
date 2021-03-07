@@ -1,5 +1,47 @@
-// #ifndef CMON_CMON_SYM_TBL_H
-// #define CMON_CMON_SYM_TBL_H
+#ifndef CMON_CMON_SYM_TBL_H
+#define CMON_CMON_SYM_TBL_H
+
+#include <cmon/cmon_types.h>
+
+typedef struct cmon_symbols cmon_symbols;
+
+CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc);
+CMON_API void cmon_symbols_destroy(cmon_symbols * _s);
+CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope);
+CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);
+
+// check if a sym table represents the global scope
+CMON_API cmon_bool cmon_symbols_scope_is_global(cmon_symbols * _s, cmon_idx _scope);
+// checks if the table represents a file level scope
+CMON_API cmon_bool cmon_symbols_scope_is_file(cmon_symbols * _s, cmon_idx _scope);
+
+CMON_API cmon_idx cmon_symbols_scope_add_var(
+    cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name, cmon_idx _type_idx, cmon_idx _ast_idx);
+
+CMON_API cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
+                                              cmon_idx _scope,
+                                              cmon_idx _type_idx,
+                                              cmon_idx _ast_idx);
+
+CMON_API cmon_idx cmon_symbols_scope_add_import(cmon_symbols * _s,
+                                                cmon_str_view _alias_name,
+                                                cmon_idx _mod_idx,
+                                                cmon_idx _ast_idx);
+
+// find symbols
+CMON_API cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,
+                                                 cmon_idx _scope,
+                                                 cmon_string_view _name,
+                                                 cmon_token * _tok);
+CMON_API cmon_idx cmon_symbols_find_before(cmon_symbols * _s,
+                                           cmon_idx _scope,
+                                           cmon_string_view _name,
+                                           cmon_token * _tok);
+
+CMON_API cmon_idx cmon_symbols_find_local(cmon_symbols * _s,
+                                          cmon_idx _scope,
+                                          cmon_string_view _name);
+CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_string_view _name);
 
 // #include <cmon/cmon_hashmap.h>
 // // #include <cmon/cmon_struct.h>
@@ -52,7 +94,8 @@
 
 // typedef struct cmon_sym
 // {
-//     // for placeholders, name_tok is NULL as the definition has not been seen yet, but we still need
+//     // for placeholders, name_tok is NULL as the definition has not been seen yet, but we still
+//     need
 //     // the string_view name to find it. Builtin types/names don't have a token attached either.
 //     cmon_string_view name;
 //     cmon_token * name_tok;
@@ -82,7 +125,8 @@
 // // start a new child scope
 // CMON_API cmon_sym_tbl * cmon_sym_tbl_begin_scope(cmon_sym_tbl * _tbl);
 
-// // end a scope, returns the parent (or null if the ended scope is global, which really should never
+// // end a scope, returns the parent (or null if the ended scope is global, which really should
+// never
 // // happen)
 // CMON_API cmon_sym_tbl * cmon_sym_tbl_end_scope(cmon_sym_tbl * _tbl);
 
@@ -143,4 +187,4 @@
 // CMON_API cmon_sym * cmon_sym_tbl_find_local(cmon_sym_tbl * _s, cmon_string_view _name);
 // CMON_API cmon_sym * cmon_sym_tbl_find(cmon_sym_tbl * _s, cmon_string_view _name);
 
-// #endif // CMON_CMON_SYM_TBL_H
+#endif // CMON_CMON_SYM_TBL_H

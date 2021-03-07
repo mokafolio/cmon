@@ -8,6 +8,7 @@ typedef struct
     char filename[CMON_FILENAME_MAX];
     char * code;
     cmon_ast * ast;
+    cmon_tokens * tokens;
 } cmon_src_file;
 
 typedef struct cmon_src
@@ -48,14 +49,14 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
     strcpy(f.filename, _filename);
     f.code = NULL;
     f.ast = NULL;
+    f.tokens = NULL;
     cmon_dyn_arr_append(&_src->files, f);
-    // printf("DA COUNT %lu\n", cmon_dyn_arr_count(&_src->files));
-    // printf("ADDING %s\Sn", _src->files[0].filename);
     return cmon_dyn_arr_count(&_src->files) - 1;
 }
 
 cmon_bool cmon_src_load_code(cmon_src * _src, cmon_idx _file_idx)
 {
+    
 }
 
 void cmon_src_set_code(cmon_src * _src, cmon_idx _file_idx, const char * _code)
@@ -71,6 +72,16 @@ void cmon_src_set_ast(cmon_src * _src, cmon_idx _file_idx, cmon_ast * _ast)
 cmon_ast * cmon_src_ast(cmon_src * _src, cmon_idx _file_idx)
 {
     return _get_file(_src, _file_idx)->ast;
+}
+
+void cmon_src_set_tokens(cmon_src * _src, cmon_idx _file_idx, cmon_tokens * _tokens)
+{
+    _get_file(_src, _file_idx)->tokens = _tokens;
+}
+
+cmon_tokens * cmon_src_tokens(cmon_src * _src, cmon_idx _file_idx)
+{
+    return _get_file(_src, _file_idx)->tokens;
 }
 
 const char * cmon_src_path(cmon_src * _src, cmon_idx _file_idx)
