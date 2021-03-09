@@ -3,6 +3,13 @@
 
 #include <cmon/cmon_types.h>
 
+typedef enum
+{
+    cmon_sk_var,
+    cmon_sk_import,
+    cmon_sk_type
+} cmon_symbol_kind;
+
 typedef struct cmon_symbols cmon_symbols;
 
 CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc);
@@ -15,8 +22,12 @@ CMON_API cmon_bool cmon_symbols_scope_is_global(cmon_symbols * _s, cmon_idx _sco
 // checks if the table represents a file level scope
 CMON_API cmon_bool cmon_symbols_scope_is_file(cmon_symbols * _s, cmon_idx _scope);
 
-CMON_API cmon_idx cmon_symbols_scope_add_var(
-    cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name, cmon_idx _type_idx, cmon_idx _ast_idx);
+CMON_API cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
+                                             cmon_idx _scope,
+                                             cmon_str_view _name,
+                                             cmon_idx _type_idx,
+                                             cmon_idx _ast_idx,
+                                             cmon_bool _is_pub);
 
 CMON_API cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
                                               cmon_idx _scope,
@@ -31,17 +42,15 @@ CMON_API cmon_idx cmon_symbols_scope_add_import(cmon_symbols * _s,
 // find symbols
 CMON_API cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,
                                                  cmon_idx _scope,
-                                                 cmon_string_view _name,
-                                                 cmon_token * _tok);
+                                                 cmon_str_view _name,
+                                                 cmon_idx _tok);
 CMON_API cmon_idx cmon_symbols_find_before(cmon_symbols * _s,
                                            cmon_idx _scope,
-                                           cmon_string_view _name,
-                                           cmon_token * _tok);
+                                           cmon_str_view _name,
+                                           cmon_idx _tok);
 
-CMON_API cmon_idx cmon_symbols_find_local(cmon_symbols * _s,
-                                          cmon_idx _scope,
-                                          cmon_string_view _name);
-CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_string_view _name);
+CMON_API cmon_idx cmon_symbols_find_local(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
+CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
 
 // #include <cmon/cmon_hashmap.h>
 // // #include <cmon/cmon_struct.h>

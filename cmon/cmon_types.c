@@ -33,7 +33,7 @@ typedef struct cmon_types
     cmon_modules * mods;
     cmon_dyn_arr(_struct) structs;
     cmon_dyn_arr(_type) types;
-    cmon_hashmap(const char *, size_t) name_map;
+    cmon_hashmap(const char *, cmon_idx) name_map;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
 } cmon_types;
