@@ -7,6 +7,7 @@ typedef struct cmon_modules cmon_modules;
 
 CMON_API cmon_modules * cmon_modules_create(cmon_allocator * _a, cmon_src * _src);
 CMON_API void cmon_modules_destroy(cmon_modules * _m);
+CMON_API cmon_src * cmon_modules_src(cmon_modules * _m);
 CMON_API cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _name);
 CMON_API void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file);
 CMON_API void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_dep_idx);

@@ -47,6 +47,11 @@ void cmon_modules_destroy(cmon_modules * _m)
     cmon_str_builder_destroy(_m->str_builder);
 }
 
+cmon_src * cmon_modules_src(cmon_modules * _m)
+{
+    return _m->src;
+}
+
 cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _name)
 {
     cmon_idx ret;

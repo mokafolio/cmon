@@ -293,8 +293,13 @@ uint64_t _murmur2_64(const void * _key, int _len, unsigned int _seed)
 
 uint64_t _cmon_str_hash(const char * _str)
 {
+    return _cmon_str_range_hash(_str, _str + strlen(_str));
+}
+
+uint64_t _cmon_str_range_hash(const char * _begin, const char * _end)
+{
     //@TODO: randomize seed on program start? Not really needed I guess?
-    return _murmur2_64(_str, strlen(_str), 0);
+    return _murmur2_64(_begin, _end - _begin, 0);
 }
 
 uint64_t _cmon_integer_hash(uint64_t _i)

@@ -1,6 +1,7 @@
 #ifndef CMON_CMON_SYM_TBL_H
 #define CMON_CMON_SYM_TBL_H
 
+#include <cmon/cmon_modules.h>
 #include <cmon/cmon_types.h>
 
 typedef enum
@@ -12,7 +13,7 @@ typedef enum
 
 typedef struct cmon_symbols cmon_symbols;
 
-CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc);
+CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_modules * _mods);
 CMON_API void cmon_symbols_destroy(cmon_symbols * _s);
 CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);
@@ -21,13 +22,15 @@ CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_bool cmon_symbols_scope_is_global(cmon_symbols * _s, cmon_idx _scope);
 // checks if the table represents a file level scope
 CMON_API cmon_bool cmon_symbols_scope_is_file(cmon_symbols * _s, cmon_idx _scope);
+CMON_API cmon_idx cmon_symbols_scope_parent(cmon_symbols * _s, cmon_idx _scope);
 
 CMON_API cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
                                              cmon_idx _scope,
                                              cmon_str_view _name,
                                              cmon_idx _type_idx,
-                                             cmon_idx _ast_idx,
-                                             cmon_bool _is_pub);
+                                             cmon_bool _is_pub,
+                                             cmon_idx _src_file_idx,
+                                             cmon_idx _ast_idx);
 
 CMON_API cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
                                               cmon_idx _scope,
