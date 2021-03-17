@@ -3,6 +3,7 @@
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_parser.h>
 #include <cmon/cmon_tokens.h>
+#include <cmon/cmon_symbols.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -121,26 +122,26 @@ UTEST(cmon, basic_tokens_test)
     EXPECT_NE(NULL, (void *)tokens); // void cast hack to make utest.h work with incomplete type
     EXPECT_EQ(10, cmon_tokens_count(tokens));
 
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_module));
-    idx = cmon_tokens_accept(tokens, cmon_tk_ident);
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_module));
+    idx = cmon_tokens_accept(tokens, cmon_tokk_ident);
     EXPECT_NE(-1, idx);
-    EXPECT_EQ(cmon_tk_ident, cmon_tokens_kind(tokens, idx));
+    EXPECT_EQ(cmon_tokk_ident, cmon_tokens_kind(tokens, idx));
     EXPECT_EQ(1, cmon_tokens_line(tokens, idx));
     EXPECT_EQ(8, cmon_tokens_line_offset(tokens, idx));
     cmon_str_view name = cmon_tokens_str_view(tokens, idx);
     EXPECT_EQ(0, strncmp("foo", name.begin, name.end - name.begin));
-    idx = cmon_tokens_accept(tokens, cmon_tk_ident);
+    idx = cmon_tokens_accept(tokens, cmon_tokk_ident);
     EXPECT_NE(-1, idx);
-    EXPECT_EQ(cmon_tk_ident, cmon_tokens_kind(tokens, idx));
+    EXPECT_EQ(cmon_tokk_ident, cmon_tokens_kind(tokens, idx));
     EXPECT_EQ(2, cmon_tokens_line(tokens, idx));
     EXPECT_EQ(1, cmon_tokens_line_offset(tokens, idx));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_colon));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_assign));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_ident));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_paran_open));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_paran_close));
-    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tk_semicolon));
-    EXPECT_EQ(cmon_true, cmon_tokens_is_current(tokens, cmon_tk_eof));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_colon));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_assign));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_ident));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_paran_open));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_paran_close));
+    EXPECT_NE(-1, cmon_tokens_accept(tokens, cmon_tokk_semicolon));
+    EXPECT_EQ(cmon_true, cmon_tokens_is_current(tokens, cmon_tokk_eof));
 
     cmon_tokens_destroy(tokens);
     cmon_src_destroy(src);
@@ -261,5 +262,45 @@ PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
 PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);
 PARSE_TEST(parse_struct_init04, "a := Foo{1,}", cmon_false);
 PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
+
+UTEST(cmon, basic_symbols_test)
+{   
+    cmon_symbols * s;
+    cmon_src * src;
+    cmon_modules * mods;
+    cmon_allocator a;
+
+    cmon_idx global_scope, file_scope, scope;
+    cmon_idx foo, bar, car;
+
+    a = cmon_mallocator_make();
+    src = cmon_src_create(&a);
+    mods = cmon_modules_create(&a, src);
+    s = cmon_symbols_create(&a, mods);
+
+    global_scope = cmon_symbols_scope_begin(s, CMON_INVALID_IDX);
+    file_scope = cmon_symbols_scope_begin(s, global_scope);
+    EXPECT_EQ(global_scope, cmon_symbols_scope_end(s, file_scope));
+    EXPECT_EQ(cmon_true, cmon_symbols_scope_is_global(s, global_scope));
+    EXPECT_EQ(cmon_true, cmon_symbols_scope_is_file(s, file_scope));
+    EXPECT_EQ(cmon_false, cmon_symbols_scope_is_global(s, file_scope));
+    EXPECT_EQ(cmon_false, cmon_symbols_scope_is_file(s, global_scope));
+
+    foo = cmon_symbols_scope_add_var(s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, 99, 33);
+    EXPECT_EQ(CMON_INVALID_IDX, cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
+    EXPECT_EQ(foo, cmon_symbols_find(s, global_scope, cmon_str_view_make("foo")));
+    EXPECT_EQ(foo, cmon_symbols_find(s, file_scope, cmon_str_view_make("foo")));
+
+    EXPECT_EQ(cmon_symk_var, cmon_symbols_kind(s, foo));
+    EXPECT_EQ(global_scope, cmon_symbols_scope(s, foo));
+    EXPECT_EQ(0, cmon_str_view_cmp(cmon_str_view_make("foo"), cmon_symbols_name(s, foo)));
+    EXPECT_EQ(cmon_true, cmon_symbols_is_pub(s, foo));
+    EXPECT_EQ(99, cmon_symbols_src_file(s, foo));
+    EXPECT_EQ(33, cmon_symbols_ast(s, foo));
+    cmon_symbols_destroy(s);
+    cmon_modules_destroy(mods);
+    cmon_src_destroy(src);
+    cmon_allocator_dealloc(&a);
+}
 
 UTEST_MAIN();

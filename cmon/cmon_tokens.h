@@ -7,91 +7,91 @@
 
 typedef enum
 {
-    cmon_tk_ident,
-    cmon_tk_int,
-    cmon_tk_float,
-    cmon_tk_string,
-    cmon_tk_curl_open,
-    cmon_tk_curl_close,
-    cmon_tk_paran_open,
-    cmon_tk_paran_close,
-    cmon_tk_equals,
-    cmon_tk_not_equals,
-    cmon_tk_assign,
-    cmon_tk_plus_assign,
-    cmon_tk_minus_assign,
-    cmon_tk_mult_assign,
-    cmon_tk_div_assign,
-    cmon_tk_mod_assign,
-    cmon_tk_bw_left_assign,
-    cmon_tk_bw_right_assign,
-    cmon_tk_bw_and_assign,
-    cmon_tk_bw_xor_assign,
-    cmon_tk_bw_or_assign,
-    cmon_tk_plus,
-    cmon_tk_minus,
-    cmon_tk_inc,
-    cmon_tk_dec,
-    cmon_tk_mult,
-    cmon_tk_div,
-    cmon_tk_mod,
-    cmon_tk_bw_left,
-    cmon_tk_bw_right,
-    cmon_tk_bw_and,
-    cmon_tk_bw_xor,
-    cmon_tk_bw_or,
-    cmon_tk_bw_not,
-    cmon_tk_arrow, // ->
-    cmon_tk_fn,
-    cmon_tk_dot,
-    cmon_tk_comma,
-    cmon_tk_colon,
-    cmon_tk_exclam,
-    cmon_tk_if,
-    cmon_tk_else,
-    cmon_tk_return,
-    cmon_tk_true,
-    cmon_tk_false,
-    cmon_tk_square_open,
-    cmon_tk_square_close,
-    cmon_tk_less,
-    cmon_tk_greater,
-    cmon_tk_less_equal,
-    cmon_tk_greater_equal,
-    cmon_tk_and,
-    cmon_tk_or,
-    cmon_tk_for,
-    cmon_tk_in,
-    cmon_tk_break,
-    cmon_tk_none,
-    cmon_tk_struct,
-    cmon_tk_pub,
-    cmon_tk_mut,
+    cmon_tokk_ident,
+    cmon_tokk_int,
+    cmon_tokk_float,
+    cmon_tokk_string,
+    cmon_tokk_curl_open,
+    cmon_tokk_curl_close,
+    cmon_tokk_paran_open,
+    cmon_tokk_paran_close,
+    cmon_tokk_equals,
+    cmon_tokk_not_equals,
+    cmon_tokk_assign,
+    cmon_tokk_plus_assign,
+    cmon_tokk_minus_assign,
+    cmon_tokk_mult_assign,
+    cmon_tokk_div_assign,
+    cmon_tokk_mod_assign,
+    cmon_tokk_bw_left_assign,
+    cmon_tokk_bw_right_assign,
+    cmon_tokk_bw_and_assign,
+    cmon_tokk_bw_xor_assign,
+    cmon_tokk_bw_or_assign,
+    cmon_tokk_plus,
+    cmon_tokk_minus,
+    cmon_tokk_inc,
+    cmon_tokk_dec,
+    cmon_tokk_mult,
+    cmon_tokk_div,
+    cmon_tokk_mod,
+    cmon_tokk_bw_left,
+    cmon_tokk_bw_right,
+    cmon_tokk_bw_and,
+    cmon_tokk_bw_xor,
+    cmon_tokk_bw_or,
+    cmon_tokk_bw_not,
+    cmon_tokk_arrow, // ->
+    cmon_tokk_fn,
+    cmon_tokk_dot,
+    cmon_tokk_comma,
+    cmon_tokk_colon,
+    cmon_tokk_exclam,
+    cmon_tokk_if,
+    cmon_tokk_else,
+    cmon_tokk_return,
+    cmon_tokk_true,
+    cmon_tokk_false,
+    cmon_tokk_square_open,
+    cmon_tokk_square_close,
+    cmon_tokk_less,
+    cmon_tokk_greater,
+    cmon_tokk_less_equal,
+    cmon_tokk_greater_equal,
+    cmon_tokk_and,
+    cmon_tokk_or,
+    cmon_tokk_for,
+    cmon_tokk_in,
+    cmon_tokk_break,
+    cmon_tokk_none,
+    cmon_tokk_struct,
+    cmon_tokk_pub,
+    cmon_tokk_mut,
     //@TODO: amp redundant with bw_and, remove this if amps only use case is bitwise and
-    cmon_tk_amp,
-    cmon_tk_as,
-    cmon_tk_double_dot,
-    cmon_tk_at,
-    cmon_tk_noinit,
-    cmon_tk_module,
-    cmon_tk_import,
-    cmon_tk_question,
-    cmon_tk_dollar,
-    cmon_tk_embed,
-    cmon_tk_enum,
-    cmon_tk_interface,
-    cmon_tk_semicolon,
-    cmon_tk_continue,
-    cmon_tk_self,
-    cmon_tk_type,
-    cmon_tk_alias,
-    cmon_tk_defer,
-    cmon_tk_try,
-    cmon_tk_comment,
-    cmon_tk_scoped,
-    cmon_tk_scope_exit,
-    cmon_tk_eof
-} cmon_token_kind;
+    cmon_tokk_amp,
+    cmon_tokk_as,
+    cmon_tokk_double_dot,
+    cmon_tokk_at,
+    cmon_tokk_noinit,
+    cmon_tokk_module,
+    cmon_tokk_import,
+    cmon_tokk_question,
+    cmon_tokk_dollar,
+    cmon_tokk_embed,
+    cmon_tokk_enum,
+    cmon_tokk_interface,
+    cmon_tokk_semicolon,
+    cmon_tokk_continue,
+    cmon_tokk_self,
+    cmon_tokk_type,
+    cmon_tokk_alias,
+    cmon_tokk_defer,
+    cmon_tokk_try,
+    cmon_tokk_comment,
+    cmon_tokk_scoped,
+    cmon_tokk_scope_exit,
+    cmon_tokk_eof
+} cmon_tokk;
 
 typedef struct cmon_tokens cmon_tokens;
 
@@ -110,7 +110,7 @@ CMON_API cmon_idx cmon_tokens_next(cmon_tokens * _t, cmon_bool _skip_comments);
 CMON_API cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments);
 
 // functions to get information about a token
-CMON_API cmon_token_kind cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx);
+CMON_API cmon_tokk cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_str_view cmon_tokens_str_view(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx);
@@ -123,7 +123,7 @@ CMON_API cmon_idx cmon_tokens_accept_impl_v(cmon_tokens * _t, va_list _args);
 CMON_API cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...);
 
 // token utility functions
-CMON_API const char * cmon_token_kind_to_str(cmon_token_kind _kind);
+CMON_API const char * cmon_tokk_to_str(cmon_tokk _kind);
 
 // variadic macros to check for one or multiple token kinds
 #define cmon_tokens_is(_t, _idx, ...)                                                              \
@@ -139,11 +139,11 @@ CMON_API const char * cmon_token_kind_to_str(cmon_token_kind _kind);
 // helper so we don't need to manually write out all binary expression tokens evey time we want to
 // check for that
 #define CMON_BIN_TOKS                                                                              \
-    cmon_tk_equals, cmon_tk_not_equals, cmon_tk_assign, cmon_tk_plus_assign, cmon_tk_minus_assign, \
-        cmon_tk_mult_assign, cmon_tk_div_assign, cmon_tk_mod_assign, cmon_tk_bw_left_assign,       \
-        cmon_tk_bw_right_assign, cmon_tk_bw_and_assign, cmon_tk_bw_xor_assign,                     \
-        cmon_tk_bw_or_assign, cmon_tk_plus, cmon_tk_minus, cmon_tk_inc, cmon_tk_dec, cmon_tk_mult, \
-        cmon_tk_div, cmon_tk_mod, cmon_tk_bw_left, cmon_tk_bw_right, cmon_tk_bw_and,               \
-        cmon_tk_bw_xor, cmon_tk_bw_or
+    cmon_tokk_equals, cmon_tokk_not_equals, cmon_tokk_assign, cmon_tokk_plus_assign, cmon_tokk_minus_assign, \
+        cmon_tokk_mult_assign, cmon_tokk_div_assign, cmon_tokk_mod_assign, cmon_tokk_bw_left_assign,       \
+        cmon_tokk_bw_right_assign, cmon_tokk_bw_and_assign, cmon_tokk_bw_xor_assign,                     \
+        cmon_tokk_bw_or_assign, cmon_tokk_plus, cmon_tokk_minus, cmon_tokk_inc, cmon_tokk_dec, cmon_tokk_mult, \
+        cmon_tokk_div, cmon_tokk_mod, cmon_tokk_bw_left, cmon_tokk_bw_right, cmon_tokk_bw_and,               \
+        cmon_tokk_bw_xor, cmon_tokk_bw_or
 
-#endif // CMON_CMON_LEXER_H
+#endif // CMON_CMON_TOKENS_H

@@ -18,7 +18,7 @@ typedef struct
 
 typedef struct
 {
-    cmon_type_kind kind;
+    cmon_typek kind;
     size_t name_str_off;
     size_t full_name_str_off;
     size_t unique_name_str_off;
@@ -85,7 +85,7 @@ void cmon_types_destroy(cmon_types * _t)
     } while (0)
 
 static inline cmon_idx _add_type(cmon_types * _t,
-                                 cmon_type_kind _kind,
+                                 cmon_typek _kind,
                                  size_t _name_off,
                                  size_t _unique_off,
                                  size_t _full_off,
@@ -110,7 +110,7 @@ cmon_idx cmon_types_add_struct(cmon_types * _t, cmon_idx _mod, cmon_str_view _na
     cmon_dyn_arr_append(&_t->structs, strct);
     return _add_type(
         _t,
-        cmon_tk_struct,
+        cmon_typek_struct,
         _intern_str(_t, "%.*s", _name.begin, _name.end - _name.begin),
         _intern_str(_t,
                     "%s_%.*s",
@@ -140,7 +140,7 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
     _return_if_found(_t, unique_name);
     return _add_type(
         _t,
-        cmon_tk_ptr,
+        cmon_typek_ptr,
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
         cmon_str_buf_append(_t->str_buf, unique_name),
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
@@ -170,7 +170,7 @@ const char * cmon_types_full_name(cmon_types * _t, cmon_idx _type_idx)
     return cmon_str_buf_get(_t->str_buf, _get_type(_t, _type_idx).full_name_str_off);
 }
 
-cmon_type_kind cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
+cmon_typek cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
 {
     return _get_type(_t, _type_idx).kind;
 }

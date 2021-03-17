@@ -45,6 +45,7 @@ void cmon_modules_destroy(cmon_modules * _m)
     cmon_dyn_arr_dealloc(&_m->mods);
     cmon_str_buf_destroy(_m->str_buf);
     cmon_str_builder_destroy(_m->str_builder);
+    CMON_DESTROY(_m->alloc, _m);
 }
 
 cmon_src * cmon_modules_src(cmon_modules * _m)

@@ -9,6 +9,7 @@ lib_src = [
     'cmon/cmon_hashmap.c',
     'cmon/cmon_modules.c',
     'cmon/cmon_parser.c',
+    'cmon/cmon_resolver.c',
     'cmon/cmon_src.c',
     'cmon/cmon_str_builder.c',
     'cmon/cmon_symbols.c',

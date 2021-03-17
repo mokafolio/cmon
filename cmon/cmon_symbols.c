@@ -15,10 +15,11 @@ typedef struct
 typedef struct
 {
     cmon_str_view name;
-    cmon_symbol_kind kind;
+    cmon_symk kind;
     cmon_bool is_pub;
     cmon_idx src_file_idx;
     cmon_idx ast_idx;
+    cmon_idx scope_idx;
     union
     {
         cmon_idx idx;
@@ -82,21 +83,26 @@ static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmo
 }
 
 static inline cmon_idx _add_symbol(cmon_symbols * _s,
-                                   cmon_idx _scope,
+                                   cmon_idx _scp,
                                    cmon_str_view _name,
-                                   cmon_symbol_kind _kind,
+                                   cmon_symk _kind,
                                    cmon_bool _is_pub,
                                    cmon_idx _src_file_idx,
                                    cmon_idx _ast_idx)
 {
     _symbol s;
+    _scope * scope;
     s.name = _name;
     s.kind = _kind;
     s.is_pub = _is_pub;
     s.src_file_idx = _src_file_idx;
     s.ast_idx = _ast_idx;
-    cmon_dyn_arr_append(&_get_scope(_s, _scope)->symbols, cmon_dyn_arr_count(&_s->symbols));
+    s.scope_idx = _scp;
+
+    scope = _get_scope(_s, _scp);
+    cmon_dyn_arr_append(&scope->symbols, cmon_dyn_arr_count(&_s->symbols));
     cmon_dyn_arr_append(&_s->symbols, s);
+    cmon_hashmap_set(&scope->name_map, _name, cmon_dyn_arr_count(&_s->symbols) - 1);
     return cmon_dyn_arr_count(&_s->symbols) - 1;
 }
 
@@ -112,6 +118,16 @@ cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_modules * _mods
 
 void cmon_symbols_destroy(cmon_symbols * _s)
 {
+    size_t i;
+    for (i = 0; i < cmon_dyn_arr_count(&_s->scopes); ++i)
+    {
+        cmon_hashmap_dealloc(&_s->scopes[i].name_map);
+        cmon_dyn_arr_dealloc(&_s->scopes[i].children);
+        cmon_dyn_arr_dealloc(&_s->scopes[i].symbols);
+    }
+    cmon_dyn_arr_dealloc(&_s->scopes);
+    cmon_dyn_arr_dealloc(&_s->symbols);
+    CMON_DESTROY(_s->alloc, _s);
 }
 
 cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope)
@@ -126,10 +142,13 @@ cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope)
 
 cmon_bool cmon_symbols_scope_is_global(cmon_symbols * _s, cmon_idx _scope)
 {
+    return _get_scope(_s, _scope)->parent == CMON_INVALID_IDX;
 }
 
 cmon_bool cmon_symbols_scope_is_file(cmon_symbols * _s, cmon_idx _scope)
 {
+    cmon_idx parent = _get_scope(_s, _scope)->parent;
+    return cmon_is_valid_idx(parent) && cmon_symbols_scope_is_global(_s, parent);
 }
 
 cmon_idx cmon_symbols_scope_parent(cmon_symbols * _s, cmon_idx _scope)
@@ -145,7 +164,7 @@ cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
                                     cmon_idx _src_file_idx,
                                     cmon_idx _ast_idx)
 {
-    cmon_idx ret = _add_symbol(_s, _scope, _name, cmon_sk_var, _is_pub, _src_file_idx, _ast_idx);
+    cmon_idx ret = _add_symbol(_s, _scope, _name, cmon_symk_var, _is_pub, _src_file_idx, _ast_idx);
     _get_symbol(_s, ret)->data.idx = _type_idx;
     return ret;
 }
@@ -158,8 +177,7 @@ cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
                                      cmon_idx _src_file_idx,
                                      cmon_idx _ast_idx)
 {
-    cmon_idx ret =
-        _add_symbol(_s, _scope, _name, cmon_sk_type, _is_pub, _src_file_idx, _ast_idx);
+    cmon_idx ret = _add_symbol(_s, _scope, _name, cmon_symk_type, _is_pub, _src_file_idx, _ast_idx);
     _get_symbol(_s, ret)->data.idx = _type_idx;
     return ret;
 }
@@ -172,7 +190,7 @@ cmon_idx cmon_symbols_scope_add_import(cmon_symbols * _s,
                                        cmon_idx _ast_idx)
 {
     cmon_idx ret =
-        _add_symbol(_s, _scope, _alias_name, cmon_sk_import, cmon_false, _src_file_idx, _ast_idx);
+        _add_symbol(_s, _scope, _alias_name, cmon_symk_import, cmon_false, _src_file_idx, _ast_idx);
     _get_symbol(_s, ret)->data.idx = _mod_idx;
     return ret;
 }
@@ -220,4 +238,34 @@ cmon_idx cmon_symbols_find_local(cmon_symbols * _s, cmon_idx _scope, cmon_str_vi
 cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name)
 {
     return cmon_symbols_find_before(_s, _scope, _name, CMON_INVALID_IDX);
+}
+
+cmon_symk cmon_symbols_kind(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->kind;
+}
+
+cmon_idx cmon_symbols_scope(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->scope_idx;
+}
+
+cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->name;
+}
+
+cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->is_pub;
+}
+
+cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->src_file_idx;
+}
+
+cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym)
+{
+    return _get_symbol(_s, _sym)->ast_idx;
 }

@@ -6,10 +6,10 @@
 
 typedef enum
 {
-    cmon_sk_var,
-    cmon_sk_import,
-    cmon_sk_type
-} cmon_symbol_kind;
+    cmon_symk_var,
+    cmon_symk_import,
+    cmon_symk_type
+} cmon_symk;
 
 typedef struct cmon_symbols cmon_symbols;
 
@@ -59,5 +59,13 @@ CMON_API cmon_idx cmon_symbols_find_before(cmon_symbols * _s,
 
 CMON_API cmon_idx cmon_symbols_find_local(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
 CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
+
+//get symbol info
+CMON_API cmon_symk cmon_symbols_kind(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_idx cmon_symbols_scope(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym);
 
 #endif // CMON_CMON_SYMBOLS_H
