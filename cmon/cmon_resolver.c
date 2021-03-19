@@ -114,8 +114,20 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     _r->global_scope = cmon_symbols_scope_begin(_r->symbols, CMON_INVALID_IDX);
 }
 
-cmon_ast * cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
+cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
+    size_t i;
+    cmon_src * src;
+    cmon_idx src_file_idx;
+    cmon_ast * ast;
+
+    src = cmon_modules_src(_r->mods);
+    src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
+    ast = cmon_src_ast(src, src_file_idx);
+
+
+
+    return cmon_false;
 }
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)

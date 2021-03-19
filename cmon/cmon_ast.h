@@ -5,63 +5,68 @@
 
 typedef enum
 {
-    cmon_ast_kind_ident,
-    cmon_ast_kind_int_literal,
-    cmon_ast_kind_float_literal,
-    cmon_ast_kind_string_literal,
-    cmon_ast_kind_bool_literal,
-    cmon_ast_kind_type_named,
-    cmon_ast_kind_type_ptr,
-    cmon_ast_kind_type_tuple,
-    cmon_ast_kind_call,
-    cmon_ast_kind_index,
-    cmon_ast_kind_selector,
-    cmon_ast_kind_struct_init,
-    cmon_ast_kind_struct_init_field, // the bar: 1 portion of Foo{bar: 1}
-    cmon_ast_kind_array_init,
-    cmon_ast_kind_tuple_init,
-    cmon_ast_kind_view_init,
-    cmon_ast_kind_prefix,
-    cmon_ast_kind_binary,
-    // cmon_ast_kind_postfix,
-    cmon_ast_kind_addr,
-    cmon_ast_kind_deref,
-    cmon_ast_kind_cast,
-    // cmon_ast_kind_view,
-    cmon_ast_kind_noinit,
-    cmon_ast_kind_fn_param,      // i.e. mut bar : s32
-    cmon_ast_kind_fn_param_list, // i.e. foo, bar : s32
-    cmon_ast_kind_fn_decl,
-    // cmon_ast_kind_range,
-    // cmon_ast_kind_expl_template_fn_init,
-    cmon_ast_kind_var_decl,
-    cmon_ast_kind_var_decl_list, // i.e. foo, bar : s32 = 3
-    cmon_ast_kind_var_decl_data,
-    cmon_ast_kind_struct_field,
-    cmon_ast_kind_struct_field_list,
-    cmon_ast_kind_struct_decl,
-    // cmon_ast_kind_interface_decl,
-    cmon_ast_kind_exprstmt,
-    cmon_ast_kind_return,
-    cmon_ast_kind_break,
-    cmon_ast_kind_continue,
-    cmon_ast_kind_for,
-    cmon_ast_kind_for_in,
-    // cmon_ast_kind_c_for,
-    cmon_ast_kind_block,
-    cmon_ast_kind_import_pair, // the foo.bar as baz part of import foo.bar as baz
-    cmon_ast_kind_import,
-    cmon_ast_kind_module,
-    cmon_ast_kind_typedef,
-    cmon_ast_kind_typealias,
-    cmon_ast_kind_if,
-    cmon_ast_kind_defer,
-    cmon_ast_kind_paran_expr // i.e. (1 + 2)
-} cmon_ast_kind;
+    cmon_astk_ident,
+    cmon_astk_int_literal,
+    cmon_astk_float_literal,
+    cmon_astk_string_literal,
+    cmon_astk_bool_literal,
+    cmon_astk_type_named,
+    cmon_astk_type_ptr,
+    cmon_astk_type_tuple,
+    cmon_astk_call,
+    cmon_astk_index,
+    cmon_astk_selector,
+    cmon_astk_struct_init,
+    cmon_astk_struct_init_field, // the bar: 1 portion of Foo{bar: 1}
+    cmon_astk_array_init,
+    cmon_astk_tuple_init,
+    cmon_astk_view_init,
+    cmon_astk_prefix,
+    cmon_astk_binary,
+    // cmon_astk_postfix,
+    cmon_astk_addr,
+    cmon_astk_deref,
+    cmon_astk_cast,
+    // cmon_astk_view,
+    cmon_astk_noinit,
+    cmon_astk_fn_param,      // i.e. mut bar : s32
+    cmon_astk_fn_param_list, // i.e. foo, bar : s32
+    cmon_astk_fn_decl,
+    // cmon_astk_range,
+    // cmon_astk_expl_template_fn_init,
+    cmon_astk_var_decl,
+    cmon_astk_var_decl_list, // i.e. foo, bar : s32 = 3
+    cmon_astk_var_decl_data,
+    cmon_astk_struct_field,
+    cmon_astk_struct_field_list,
+    cmon_astk_struct_decl,
+    // cmon_astk_interface_decl,
+    cmon_astk_exprstmt,
+    cmon_astk_return,
+    cmon_astk_break,
+    cmon_astk_continue,
+    cmon_astk_for,
+    cmon_astk_for_in,
+    // cmon_astk_c_for,
+    cmon_astk_block,
+    cmon_astk_import_pair, // the foo.bar as baz part of import foo.bar as baz
+    cmon_astk_import,
+    cmon_astk_module,
+    cmon_astk_typedef,
+    cmon_astk_typealias,
+    cmon_astk_if,
+    cmon_astk_defer,
+    cmon_astk_paran_expr // i.e. (1 + 2)
+} cmon_astk;
+
+// typedef struct
+// {
+//     cmon_idx begin;
+// } cmon_ast_iter;
 
 // typedef struct cmon_ast_node
 // {
-//     cmon_ast_kind kind;
+//     cmon_astk kind;
 //     size_t token_idx, left_idx, right_idx;
 // } cmon_ast_node;
 
@@ -169,10 +174,23 @@ CMON_API cmon_ast * cmon_astb_copy_ast(cmon_astb * _b, cmon_allocator * _alloc);
 CMON_API void cmon_ast_destroy(cmon_ast * _ast);
 
 // ast getters
-CMON_API cmon_ast_kind cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_root_block(cmon_ast * _ast);
+CMON_API cmon_astk cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx);
+
+// block specific getters
+typedef struct cmon_ast_block_iter
+{
+    cmon_idx idx;
+    cmon_idx end;
+} cmon_ast_iter;
+
+CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
+CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
+CMON_API cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx);
+CMON_API cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);
