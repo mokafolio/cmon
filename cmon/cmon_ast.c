@@ -17,6 +17,8 @@ typedef struct cmon_ast
     _left_right * left_right;
     size_t count;
     cmon_idx root_block_idx;
+    cmon_idx * extra_data;
+    size_t extra_data_count;
 } cmon_ast;
 
 typedef struct cmon_astb
@@ -153,8 +155,8 @@ cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
     return _add_node(_b,
                      cmon_astk_fn_decl,
                      _tok_idx,
-                     _add_extra_data_m(_b, _params, _count, _ret_type, _count),
-                     _block_idx);
+                     _add_extra_data_m(_b, _params, _count, _ret_type, _block_idx),
+                     cmon_dyn_arr_count(&_b->extra_data));
 }
 
 cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
@@ -368,6 +370,8 @@ cmon_ast * cmon_astb_get_ast(cmon_astb * _b)
     _b->ast.left_right = _b->left_right;
     _b->ast.count = cmon_dyn_arr_count(&_b->kinds);
     _b->ast.root_block_idx = _b->root_block_idx;
+    _b->ast.extra_data = _b->extra_data;
+    _b->ast.extra_data_count = cmon_dyn_arr_count(&_b->extra_data);
     return &_b->ast;
 }
 
@@ -384,6 +388,12 @@ static inline cmon_astk _get_kind(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
     return _ast->kinds[_idx];
+}
+
+static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_idx < _ast->extra_data_count);
+    return _ast->extra_data[_idx];
 }
 
 cmon_astk cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx)
@@ -409,6 +419,13 @@ cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx)
     return _ast->left_right[_idx].right;
 }
 
+cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it)
+{
+    cmon_idx ret = _it->idx;
+    _it->idx = ++_it->idx == _it->end ? CMON_INVALID_IDX : _it->idx;
+    return ret;
+}
+
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
 {
     assert(_get_kind(_ast, _block_idx) == cmon_astk_block);
@@ -427,9 +444,56 @@ cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx)
                             cmon_ast_block_end(_ast, _block_idx) };
 }
 
-cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it)
+cmon_idx cmon_ast_fn_params_begin(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    cmon_idx ret = _it->idx;
-    _it->idx = ++_it->idx == _it->end ? CMON_INVALID_IDX : _it->idx;
-    return ret;
+    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    return _ast->left_right[_fn_idx].left + 2;
+}
+
+cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx)
+{
+    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    return _ast->left_right[_fn_idx].right;
+}
+
+cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
+{
+    return (cmon_ast_iter){ cmon_ast_fn_params_begin(_ast, _fn_idx),
+                            cmon_ast_fn_params_end(_ast, _fn_idx) };
+}
+
+cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx)
+{
+    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    return _get_extra_data(_ast, _ast->left_right[_fn_idx].left);
+}
+
+cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx)
+{
+    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    return _get_extra_data(_ast, _ast->left_right[_fn_idx].left + 1);
+}
+
+cmon_idx cmon_ast_struct_fields_begin(cmon_ast * _ast, cmon_idx _struct_idx)
+{
+    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    return _get_extra_data(_ast, _ast->left_right[_struct_idx].left + 1);
+}
+
+cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx)
+{
+    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    return _get_extra_data(_ast, _ast->left_right[_struct_idx].right);
+}
+
+cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx)
+{
+    return (cmon_ast_iter){ cmon_ast_struct_fields_begin(_ast, _struct_idx),
+                            cmon_ast_struct_fields_end(_ast, _struct_idx) };
+}
+
+cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx)
+{
+    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    return _get_extra_data(_ast, _ast->left_right[_struct_idx].left);
 }

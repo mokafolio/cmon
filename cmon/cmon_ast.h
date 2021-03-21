@@ -180,17 +180,32 @@ CMON_API cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx);
 
-// block specific getters
-typedef struct cmon_ast_block_iter
+// simple iterator interface to iterate over ranges of ast nodes
+typedef struct cmon_ast_iter
 {
     cmon_idx idx;
     cmon_idx end;
 } cmon_ast_iter;
 
+CMON_API cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it);
+
+// block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx);
-CMON_API cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it);
+
+// fn specific getters
+CMON_API cmon_idx cmon_ast_fn_params_begin(cmon_ast * _ast, cmon_idx _fn_idx);
+CMON_API cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx);
+CMON_API cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx);
+CMON_API cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx);
+CMON_API cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx);
+
+// struct declaration specific getters
+CMON_API cmon_idx cmon_ast_struct_fields_begin(cmon_ast * _ast, cmon_idx _struct_idx);
+CMON_API cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx);
+CMON_API cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx);
+CMON_API cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);
