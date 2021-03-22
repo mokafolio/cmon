@@ -216,6 +216,7 @@ UTEST(cmon, basic_ast_test)
     cmon_idx idx;
     while(cmon_is_valid_idx(idx = cmon_ast_iter_next(&it)))
     {
+        printf("da focking idx %lu %lu\n", idx, c);
         EXPECT_EQ(cmon_astk_var_decl, cmon_ast_node_kind(ast, idx));
         ++count;
     }
