@@ -239,7 +239,8 @@ static inline cmon_idx _token_check_impl(cmon_parser * _p, cmon_bool _allow_line
 }
 
 #define _tok_check(_p, _allow_line_break, ...)                                                     \
-    _token_check_impl(_p, _allow_line_break, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+    _token_check_impl(                                                                             \
+        _p, _allow_line_break, _CMON_VARARG_APPEND_LAST(CMON_INVALID_IDX, __VA_ARGS__))
 
 #define _accept(_p, _out_tok, ...)                                                                 \
     (cmon_is_valid_idx(*(_out_tok) = cmon_tokens_accept(_p->tokens, __VA_ARGS__)))
@@ -280,8 +281,7 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
         if (_accept(_p, &tmp, cmon_tokk_comma))
         {
             printf("current %s\n",
-                   cmon_tokk_to_str(
-                       cmon_tokens_kind(_p->tokens, cmon_tokens_current(_p->tokens))));
+                   cmon_tokk_to_str(cmon_tokens_kind(_p->tokens, cmon_tokens_current(_p->tokens))));
             if (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close))
             {
                 _err(_p, tmp, "unexpected comma");
@@ -616,8 +616,8 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
         _tok_check(_p, cmon_true, cmon_tokk_colon);
         type = _parse_type(_p);
 
-        expr =
-            _accept(_p, &tmp, cmon_tokk_assign) ? _parse_expr(_p, _precedence_nil) : CMON_INVALID_IDX;
+        expr = _accept(_p, &tmp, cmon_tokk_assign) ? _parse_expr(_p, _precedence_nil)
+                                                   : CMON_INVALID_IDX;
 
         if (cmon_dyn_arr_count(&name_tok_buf->buf) > 1)
         {
@@ -708,7 +708,8 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
     cmon_idx tok;
     if (_accept(_p, &tok, cmon_tokk_module))
     {
-        return cmon_astb_add_module(_p->ast_builder, tok, _tok_check(_p, cmon_true, cmon_tokk_ident));
+        return cmon_astb_add_module(
+            _p->ast_builder, tok, _tok_check(_p, cmon_true, cmon_tokk_ident));
     }
     else if (_accept(_p, &tok, cmon_tokk_import))
     {
@@ -799,7 +800,7 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
         cmon_astb_add_block(_p->ast_builder, first_tok, b->buf, cmon_dyn_arr_count(&b->buf));
     cmon_astb_set_root_block(_p->ast_builder, root_block_idx);
 
-    ast = cmon_astb_get_ast(_p->ast_builder);
+    ast = cmon_astb_ast(_p->ast_builder);
     cmon_src_set_ast(_src, _src_file_idx, ast);
 
 end:

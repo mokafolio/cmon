@@ -185,7 +185,45 @@ TOKENS_TEST(lexer_success,
 TOKENS_TEST(lexer_missing_expo_digits, "foo := 3.12214e", cmon_false);
 TOKENS_TEST(lexer_invalid_character, "hello#", cmon_false);
 
-// #define PARSE_TEST(_name, _code, _should_pass)
+UTEST(cmon, basic_ast_test)
+{
+    cmon_allocator alloc;
+    cmon_astb * builder;
+    cmon_ast * ast;
+
+    alloc = cmon_mallocator_make();
+    builder = cmon_astb_create(&alloc);
+
+    cmon_idx l = cmon_astb_add_float_lit(builder, 1);
+    cmon_idx r = cmon_astb_add_float_lit(builder, 3);
+    cmon_idx b = cmon_astb_add_binary(builder, 2, l, r);
+    cmon_idx c = cmon_astb_add_var_decl(builder, 0, cmon_true, cmon_true, 1, b);
+
+    cmon_idx stms[] = {c};
+
+    cmon_idx block = cmon_astb_add_block(builder, 0, stms, sizeof(stms) / sizeof(cmon_idx));
+    cmon_astb_set_root_block(builder, block);
+
+    ast = cmon_astb_ast(builder);
+    
+    cmon_idx root_block = cmon_ast_root_block(ast);
+    EXPECT_EQ(cmon_astk_block, cmon_ast_node_kind(ast, root_block));
+    printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block), cmon_ast_block_begin(ast, root_block));
+    EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) - cmon_ast_block_begin(ast, root_block));
+
+    size_t count = 0;
+    cmon_ast_iter it = cmon_ast_block_iter(ast, root_block);
+    cmon_idx idx;
+    while(cmon_is_valid_idx(idx = cmon_ast_iter_next(&it)))
+    {
+        EXPECT_EQ(cmon_astk_var_decl, cmon_ast_node_kind(ast, idx));
+        ++count;
+    }
+    EXPECT_EQ(1, count);
+
+    cmon_astb_destroy(builder);
+    cmon_allocator_dealloc(&alloc);
+}
 
 static cmon_bool _parse_test_fn(const char * _name, const char * _code)
 {
@@ -232,36 +270,36 @@ end:
         EXPECT_EQ(!_should_pass, _parse_test_fn(#_name, _code));                                   \
     }
 
-PARSE_TEST(parse_basic, "module foo", cmon_true);
-PARSE_TEST(parse_import_fail01, "module foo import bar", cmon_false);
-PARSE_TEST(parse_import_basic01, "module foo; import bar", cmon_true);
-PARSE_TEST(parse_import_basic02, "module foo; import bar as b", cmon_true);
-PARSE_TEST(parse_import_basic03, "module foo; import boink.bar as b", cmon_true);
-PARSE_TEST(parse_import_basic04, "module foo; import bubble, tea", cmon_true);
-PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as t", cmon_true);
-PARSE_TEST(parse_var_decl01, "mut bar := boink", cmon_true);
-PARSE_TEST(parse_var_decl02, "pub mut bar := 2", cmon_true);
-PARSE_TEST(parse_var_decl03, "bar := 'foo'", cmon_true);
-PARSE_TEST(parse_var_decl04, "foo, bar : s32 = -99", cmon_true);
-PARSE_TEST(parse_var_decl05, "foo, bar := 2.3545", cmon_true);
-PARSE_TEST(parse_fn01, "ba := fn(){}", cmon_true);
-PARSE_TEST(parse_fn02, "ba := fn(a : s32)->s32{}", cmon_true);
-PARSE_TEST(parse_fn03, "ba := fn(a, b : s32)->s32{}", cmon_true);
-PARSE_TEST(parse_call01, "foo := bar()", cmon_true);
-PARSE_TEST(parse_call02, "foo := bar(1, 'hey')", cmon_true);
-PARSE_TEST(parse_call03, "foo := bar(1.4, 3.24,)", cmon_false);
-PARSE_TEST(parse_binop01, "ba := 1 + 2 * 3", cmon_true);
-PARSE_TEST(parse_struct_decl01, "struct Foo{}", cmon_true);
-PARSE_TEST(parse_struct_decl02, "struct {}", cmon_false);
-PARSE_TEST(parse_struct_decl03, "pub struct Foo{ a : f32; b : f32 }", cmon_true);
-PARSE_TEST(parse_struct_decl04, "pub struct Foo{ a : f32 b : f32 }", cmon_false);
-PARSE_TEST(parse_struct_decl05, "pub struct Foo{ a, b : f32}", cmon_true);
-PARSE_TEST(parse_struct_decl06, "struct Vec{ x, y : f64 = 10.0 }", cmon_true);
-PARSE_TEST(parse_struct_init01, "a := Foo{}", cmon_true);
-PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
-PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);
-PARSE_TEST(parse_struct_init04, "a := Foo{1,}", cmon_false);
-PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
+// PARSE_TEST(parse_basic, "module foo", cmon_true);
+// PARSE_TEST(parse_import_fail01, "module foo import bar", cmon_false);
+// PARSE_TEST(parse_import_basic01, "module foo; import bar", cmon_true);
+// PARSE_TEST(parse_import_basic02, "module foo; import bar as b", cmon_true);
+// PARSE_TEST(parse_import_basic03, "module foo; import boink.bar as b", cmon_true);
+// PARSE_TEST(parse_import_basic04, "module foo; import bubble, tea", cmon_true);
+// PARSE_TEST(parse_import_basic05, "module foo; import bubble.foo as boink, tea as t", cmon_true);
+// PARSE_TEST(parse_var_decl01, "mut bar := boink", cmon_true);
+// PARSE_TEST(parse_var_decl02, "pub mut bar := 2", cmon_true);
+// PARSE_TEST(parse_var_decl03, "bar := 'foo'", cmon_true);
+// PARSE_TEST(parse_var_decl04, "foo, bar : s32 = -99", cmon_true);
+// PARSE_TEST(parse_var_decl05, "foo, bar := 2.3545", cmon_true);
+// PARSE_TEST(parse_fn01, "ba := fn(){}", cmon_true);
+// PARSE_TEST(parse_fn02, "ba := fn(a : s32)->s32{}", cmon_true);
+// PARSE_TEST(parse_fn03, "ba := fn(a, b : s32)->s32{}", cmon_true);
+// PARSE_TEST(parse_call01, "foo := bar()", cmon_true);
+// PARSE_TEST(parse_call02, "foo := bar(1, 'hey')", cmon_true);
+// PARSE_TEST(parse_call03, "foo := bar(1.4, 3.24,)", cmon_false);
+// PARSE_TEST(parse_binop01, "ba := 1 + 2 * 3", cmon_true);
+// PARSE_TEST(parse_struct_decl01, "struct Foo{}", cmon_true);
+// PARSE_TEST(parse_struct_decl02, "struct {}", cmon_false);
+// PARSE_TEST(parse_struct_decl03, "pub struct Foo{ a : f32; b : f32 }", cmon_true);
+// PARSE_TEST(parse_struct_decl04, "pub struct Foo{ a : f32 b : f32 }", cmon_false);
+// PARSE_TEST(parse_struct_decl05, "pub struct Foo{ a, b : f32}", cmon_true);
+// PARSE_TEST(parse_struct_decl06, "struct Vec{ x, y : f64 = 10.0 }", cmon_true);
+// PARSE_TEST(parse_struct_init01, "a := Foo{}", cmon_true);
+// PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
+// PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);
+// PARSE_TEST(parse_struct_init04, "a := Foo{1,}", cmon_false);
+// PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
 
 UTEST(cmon, basic_symbols_test)
 {   

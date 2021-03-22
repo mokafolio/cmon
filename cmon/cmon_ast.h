@@ -166,7 +166,7 @@ CMON_API cmon_idx cmon_astb_add_struct_decl(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count);
 
 // getting the ast without taking ownership
-CMON_API cmon_ast * cmon_astb_get_ast(cmon_astb * _b);
+CMON_API cmon_ast * cmon_astb_ast(cmon_astb * _b);
 // taking ownership of the ast
 CMON_API cmon_ast * cmon_astb_copy_ast(cmon_astb * _b, cmon_allocator * _alloc);
 

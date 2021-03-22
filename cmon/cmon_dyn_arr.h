@@ -7,12 +7,12 @@
 #define cmon_dyn_arr_append(_arr, _val)                                                            \
     do                                                                                             \
     {                                                                                              \
-        _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md(_arr);                                         \
+        _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md((_arr));                                       \
         if (_md->count + 1 > _md->cap)                                                             \
         {                                                                                          \
             size_t nc = _md->cap * 2;                                                              \
-            cmon_dyn_arr_reserve(_arr, nc);                                                        \
-            _md = _cmon_dyn_arr_md(_arr);                                                          \
+            cmon_dyn_arr_reserve((_arr), nc);                                                      \
+            _md = _cmon_dyn_arr_md((_arr));                                                        \
         }                                                                                          \
         (*(_arr))[_md->count++] = (_val);                                                          \
     } while (0)
@@ -24,20 +24,20 @@
 #define cmon_dyn_arr_reserve(_arr, _count)                                                         \
     do                                                                                             \
     {                                                                                              \
-        _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md(_arr);                                         \
+        _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md((_arr));                                       \
         if (_md->cap < _count)                                                                     \
         {                                                                                          \
             _cmon_dyn_arr_meta _old_md = *_md;                                                     \
-            void * _mem =                                                                          \
-                cmon_allocator_realloc(                                                            \
-                    _md->alloc,                                                                    \
-                    (cmon_mem_blk){ _md, sizeof(*_arr) * _md->cap + sizeof(_cmon_dyn_arr_meta) },  \
-                    sizeof(*_arr) * _count + sizeof(_cmon_dyn_arr_meta))                           \
-                    .ptr;                                                                          \
+            void * _mem = cmon_allocator_realloc(                                                  \
+                              _md->alloc,                                                          \
+                              (cmon_mem_blk){                                                      \
+                                  _md, sizeof(*(_arr)) * _md->cap + sizeof(_cmon_dyn_arr_meta) },  \
+                              sizeof(*(_arr)) * _count + sizeof(_cmon_dyn_arr_meta))               \
+                              .ptr;                                                                \
             _cmon_dyn_arr_meta * _nmd = _mem;                                                      \
             *_nmd = _old_md;                                                                       \
             _nmd->cap = _count;                                                                    \
-            *_arr = _mem + sizeof(_cmon_dyn_arr_meta);                                             \
+            *(_arr) = _mem + sizeof(_cmon_dyn_arr_meta);                                           \
         }                                                                                          \
     } while (0)
 #define cmon_dyn_arr_resize(_arr, _count)                                                          \

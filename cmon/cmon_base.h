@@ -60,7 +60,7 @@
 #define CMON_FILENAME_MAX 256
 #define CMON_EXT_MAX 32
 #define CMON_ERR_MSG_MAX 4096
-#define CMON_INVALID_IDX -1
+#define CMON_INVALID_IDX (cmon_idx)-1
 #define cmon_is_valid_idx(_idx) ((_idx) != CMON_INVALID_IDX)
 // //@TODO: Remove all of these that are not used anymore
 // //@TODO: start using this for fixed size arrays
