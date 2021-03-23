@@ -115,6 +115,34 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     _r->global_scope = cmon_symbols_scope_begin(_r->symbols, CMON_INVALID_IDX);
 }
 
+static inline cmon_src * _fr_src(_file_resolver * _fr)
+{
+    return cmon_modules_src(_fr->mods);
+}
+
+static inline cmon_tokens * _fr_tokens(_file_resolver * _fr)
+{
+    return cmon_src_tokens(_fr_src(_fr), _fr->src_file_idx);
+}
+
+static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon_idx _name_tok)
+{
+    cmon_idx s;
+    cmon_str_view str_view;
+
+    str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
+    if (cmon_is_valid_idx(s = cmon_symbols_find(_fr->symbols, _scope, str_view)))
+    {
+        _fr_err(_fr,
+                _name_tok,
+                "redeclaration of '%.*s'",
+                str_view.end - str_view.begin,
+                str_view.begin);
+        return cmon_true;
+    }
+    return cmon_false;
+}
+
 cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
 
@@ -135,6 +163,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     fr = &_r->file_resolvers[_file_idx];
 
     assert(ast);
+    assert(tokens);
     root_block = cmon_ast_root_block(ast);
 
     it = cmon_ast_block_iter(ast, root_block);
