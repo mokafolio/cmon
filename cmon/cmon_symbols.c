@@ -62,7 +62,7 @@ static inline cmon_idx _get_sym_tok_idx(cmon_symbols * _s, cmon_idx _sym)
     _symbol * sym;
     src = cmon_modules_src(_s->mods);
     sym = _get_symbol(_s, _sym);
-    return cmon_ast_node_token(cmon_src_ast(src, sym->src_file_idx), sym->ast_idx);
+    return cmon_ast_token(cmon_src_ast(src, sym->src_file_idx), sym->ast_idx);
 }
 
 static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmon_str_view _name)

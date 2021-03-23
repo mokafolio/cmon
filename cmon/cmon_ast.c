@@ -370,24 +370,24 @@ cmon_idx cmon_ast_root_block(cmon_ast * _ast)
     return _ast->root_block_idx;
 }
 
-cmon_astk cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx)
+cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx)
 {
     return _get_kind(_ast, _idx);
 }
 
-cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx)
+cmon_idx cmon_ast_token(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
     return _ast->tokens[_idx];
 }
 
-cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx)
+cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
     return _ast->left_right[_idx].left;
 }
 
-cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx)
+cmon_idx cmon_ast_right(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
     return _ast->left_right[_idx].right;

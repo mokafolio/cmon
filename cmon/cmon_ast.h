@@ -175,10 +175,10 @@ CMON_API void cmon_ast_destroy(cmon_ast * _ast);
 
 // ast getters
 CMON_API cmon_idx cmon_ast_root_block(cmon_ast * _ast);
-CMON_API cmon_astk cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_token(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_right(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx);
 
 // simple iterator interface to iterate over ranges of ast nodes

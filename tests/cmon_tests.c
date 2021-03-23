@@ -207,7 +207,7 @@ UTEST(cmon, basic_ast_test)
     ast = cmon_astb_ast(builder);
     
     cmon_idx root_block = cmon_ast_root_block(ast);
-    EXPECT_EQ(cmon_astk_block, cmon_ast_node_kind(ast, root_block));
+    EXPECT_EQ(cmon_astk_block, cmon_ast_kind(ast, root_block));
     // printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block), cmon_ast_block_begin(ast, root_block));
     EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) - cmon_ast_block_begin(ast, root_block));
 
@@ -217,7 +217,7 @@ UTEST(cmon, basic_ast_test)
     while(cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &it)))
     {
         printf("da focking idx %lu %lu\n", idx, c);
-        EXPECT_EQ(cmon_astk_var_decl, cmon_ast_node_kind(ast, idx));
+        EXPECT_EQ(cmon_astk_var_decl, cmon_ast_kind(ast, idx));
         ++count;
     }
     EXPECT_EQ(1, count);

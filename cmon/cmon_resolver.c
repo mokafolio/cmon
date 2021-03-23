@@ -1,6 +1,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_tokens.h>
 #include <setjmp.h>
 #include <stdarg.h>
 
@@ -68,7 +69,7 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   _fr->max_errors,                                                                 \
                   &_fr->err_jmp,                                                                   \
                   _fmt,                                                                            \
-                  ...);                                                                            \
+                  ##__VA_ARGS__);                                                                  \
     } while (0)
 
 cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc)
@@ -116,16 +117,37 @@ void cmon_resolver_set_input(cmon_resolver * _r,
 
 cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
-    size_t i;
+
     cmon_src * src;
     cmon_idx src_file_idx;
     cmon_ast * ast;
+    cmon_ast_iter it;
+    cmon_idx idx, root_block;
+    cmon_bool is_first_stmt;
+    _file_resolver * fr;
 
     src = cmon_modules_src(_r->mods);
     src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
     ast = cmon_src_ast(src, src_file_idx);
+    is_first_stmt = cmon_true;
+    fr = &_r->file_resolvers[_file_idx];
 
-    
+    assert(ast);
+    root_block = cmon_ast_root_block(ast);
+
+    it = cmon_ast_block_iter(ast, root_block);
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &it)))
+    {
+        if (is_first_stmt)
+        {
+            is_first_stmt = cmon_false;
+            // make sure every file declares the module its part of at the top
+            if (cmon_ast_kind(ast, idx) != cmon_astk_module)
+            {
+                _fr_err(fr, cmon_ast_token(ast, idx), "missing module statement");
+            }
+        }
+    }
 
     return cmon_false;
 }
