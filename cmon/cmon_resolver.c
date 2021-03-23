@@ -121,6 +121,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     cmon_src * src;
     cmon_idx src_file_idx;
     cmon_ast * ast;
+    cmon_tokens * tokens;
     cmon_ast_iter it;
     cmon_idx idx, root_block;
     cmon_bool is_first_stmt;
@@ -129,6 +130,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     src = cmon_modules_src(_r->mods);
     src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
     ast = cmon_src_ast(src, src_file_idx);
+    tokens = cmon_src_tokens(src, src_file_idx);
     is_first_stmt = cmon_true;
     fr = &_r->file_resolvers[_file_idx];
 
@@ -145,6 +147,24 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             if (cmon_ast_kind(ast, idx) != cmon_astk_module)
             {
                 _fr_err(fr, cmon_ast_token(ast, idx), "missing module statement");
+            }
+            else
+            {
+                // make sure the name matches the currently compiling module
+                cmon_idx mod_name_tok;
+                cmon_str_view name_str_view;
+                mod_name_tok = cmon_ast_module_name_tok(ast, idx);
+                name_str_view = cmon_tokens_str_view(tokens, mod_name_tok);
+                if (cmon_str_view_c_str_cmp(name_str_view,
+                                            cmon_modules_name(_r->mods, _r->mod_idx)) != 0)
+                {
+                    _fr_err(fr,
+                            mod_name_tok,
+                            "module '%s' expected, got '%.*s'",
+                            cmon_modules_name(_r->mods, _r->mod_idx),
+                            name_str_view.end - name_str_view.begin,
+                            name_str_view.begin);
+                }
             }
         }
     }

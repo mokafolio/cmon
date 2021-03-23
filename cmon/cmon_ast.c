@@ -406,6 +406,12 @@ cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it)
     return idx != CMON_INVALID_IDX ? _ast->extra_data[idx] : idx;
 }
 
+cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx)
+{
+    assert(_get_kind(_ast, _mod_idx) == cmon_astk_module);
+    return _ast->left_right[_mod_idx].left;
+}
+
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
 {
     assert(_get_kind(_ast, _block_idx) == cmon_astk_block);

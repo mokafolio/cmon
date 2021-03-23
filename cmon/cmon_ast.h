@@ -190,6 +190,9 @@ typedef struct cmon_ast_iter
 
 CMON_API cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it);
 
+//module stmt specific getters
+CMON_API cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx);
+
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
