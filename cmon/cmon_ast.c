@@ -393,11 +393,17 @@ cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx)
     return _ast->left_right[_idx].right;
 }
 
-cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it)
+cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx)
+{
+    assert(_extra_idx < _ast->extra_data_count);
+    return _ast->extra_data[_extra_idx];
+}
+
+cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it)
 {
     cmon_idx idx = _it->idx;
     _it->idx = ++_it->idx == _it->end ? CMON_INVALID_IDX : _it->idx;
-    return idx != CMON_INVALID_IDX ? _it->ast->extra_data[idx] : idx;
+    return idx != CMON_INVALID_IDX ? _ast->extra_data[idx] : idx;
 }
 
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
@@ -414,8 +420,7 @@ cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx)
 
 cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx)
 {
-    return (cmon_ast_iter){ _ast,
-                            cmon_ast_block_begin(_ast, _block_idx),
+    return (cmon_ast_iter){cmon_ast_block_begin(_ast, _block_idx),
                             cmon_ast_block_end(_ast, _block_idx) };
 }
 
@@ -433,8 +438,7 @@ cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx)
 
 cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    return (cmon_ast_iter){ _ast,
-                            cmon_ast_fn_params_begin(_ast, _fn_idx),
+    return (cmon_ast_iter){cmon_ast_fn_params_begin(_ast, _fn_idx),
                             cmon_ast_fn_params_end(_ast, _fn_idx) };
 }
 
@@ -464,8 +468,7 @@ cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx)
 
 cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx)
 {
-    return (cmon_ast_iter){ _ast,
-                            cmon_ast_struct_fields_begin(_ast, _struct_idx),
+    return (cmon_ast_iter){ cmon_ast_struct_fields_begin(_ast, _struct_idx),
                             cmon_ast_struct_fields_end(_ast, _struct_idx) };
 }
 

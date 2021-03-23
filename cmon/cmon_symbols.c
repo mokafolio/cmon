@@ -204,7 +204,7 @@ cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,
     _scope * scope;
 
     scope = _get_scope(_s, _scope_idx);
-    if (fidx = cmon_hashmap_get(&scope->name_map, _name))
+    if ((fidx = cmon_hashmap_get(&scope->name_map, _name)))
     {
         if (!cmon_is_valid_idx(_tok) || _get_sym_tok_idx(_s, *fidx) < _tok)
             return *fidx;

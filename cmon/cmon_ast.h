@@ -179,16 +179,16 @@ CMON_API cmon_astk cmon_ast_node_kind(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_token(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_node_right(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx);
 
 // simple iterator interface to iterate over ranges of ast nodes
 typedef struct cmon_ast_iter
 {
-    cmon_ast * ast;
     cmon_idx idx;
     cmon_idx end;
 } cmon_ast_iter;
 
-CMON_API cmon_idx cmon_ast_iter_next(cmon_ast_iter * _it);
+CMON_API cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it);
 
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);

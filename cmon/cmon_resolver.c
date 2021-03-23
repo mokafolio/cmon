@@ -125,7 +125,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
     ast = cmon_src_ast(src, src_file_idx);
 
-
+    
 
     return cmon_false;
 }

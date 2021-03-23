@@ -198,7 +198,7 @@ UTEST(cmon, basic_ast_test)
     cmon_idx r = cmon_astb_add_float_lit(builder, 3);
     cmon_idx b = cmon_astb_add_binary(builder, 2, l, r);
     cmon_idx c = cmon_astb_add_var_decl(builder, 0, cmon_true, cmon_true, 1, b);
-
+    
     cmon_idx stms[] = {c};
 
     cmon_idx block = cmon_astb_add_block(builder, 0, stms, sizeof(stms) / sizeof(cmon_idx));
@@ -208,13 +208,13 @@ UTEST(cmon, basic_ast_test)
     
     cmon_idx root_block = cmon_ast_root_block(ast);
     EXPECT_EQ(cmon_astk_block, cmon_ast_node_kind(ast, root_block));
-    printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block), cmon_ast_block_begin(ast, root_block));
+    // printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block), cmon_ast_block_begin(ast, root_block));
     EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) - cmon_ast_block_begin(ast, root_block));
 
     size_t count = 0;
     cmon_ast_iter it = cmon_ast_block_iter(ast, root_block);
     cmon_idx idx;
-    while(cmon_is_valid_idx(idx = cmon_ast_iter_next(&it)))
+    while(cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &it)))
     {
         printf("da focking idx %lu %lu\n", idx, c);
         EXPECT_EQ(cmon_astk_var_decl, cmon_ast_node_kind(ast, idx));
