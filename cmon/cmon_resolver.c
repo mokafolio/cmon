@@ -145,7 +145,6 @@ static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon
 
 cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
-
     cmon_src * src;
     cmon_idx src_file_idx;
     cmon_ast * ast;
@@ -194,6 +193,74 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                             name_str_view.end - name_str_view.begin,
                             name_str_view.begin);
                 }
+            }
+        }
+        else
+        {
+            cmon_astk kind;
+            kind = cmon_ast_kind(ast, idx);
+            if (kind == cmon_astk_import)
+            {
+                cmon_idx ipp_idx, imod_idx, alias_tok_idx;
+                cmon_ast_iter pit = cmon_ast_import_iter(ast, idx);
+                while (cmon_is_valid_idx(ipp_idx = cmon_ast_iter_next(ast, &pit)))
+                {
+                    cmon_str_view path = cmon_ast_import_pair_path(ast, ipp_idx);
+
+                    if (!cmon_is_valid_idx(imod_idx = cmon_modules_find(fr->mods, path)))
+                    {
+                        _fr_err(fr,
+                                cmon_ast_import_pair_path_begin(ast, ipp_idx),
+                                "could not find module '%.*s'",
+                                path.end - path.begin,
+                                path.begin);
+                    }
+                    else if (!_check_redec(fr,
+                                           fr->file_scope,
+                                           alias_tok_idx =
+                                               cmon_ast_import_pair_alias(ast, ipp_idx)))
+                    {
+                        cmon_modules_add_dep(fr->mods, fr->mod_idx, imod_idx);
+                        cmon_symbols_scope_add_import(fr->symbols,
+                                                      fr->file_scope,
+                                                      cmon_tokens_str_view(tokens, alias_tok_idx),
+                                                      imod_idx,
+                                                      fr->src_file_idx,
+                                                      idx);
+                    }
+
+                    // if (!_check_redec(r, r->file_scope, cmon_ast_import_pair_alias(ast, ippidx)))
+                    // {
+                    // cmon_module * dep = cmon_module_reg_find(_r->mod_reg, imp->path);
+                    // if (!dep)
+                    // {
+                    //     _fr_err(r,
+                    //             imp->path_toks[0],
+                    //             "could not find module '%.*s'",
+                    //             imp->path.end - imp->path.begin,
+                    //             imp->path.begin);
+                    // }
+                    // else
+                    // {
+                    //     cmon_module_add_dep(_r->module, dep);
+                    // }
+
+                    // imp->sym = cmon_sym_tbl_decl_import(
+                    //     r->file_scope, imp->path_toks, imp->alias_tok, dep);
+                    // }
+                }
+            }
+            else if (kind == cmon_astk_var_decl)
+            {
+            }
+            else if (kind == cmon_astk_struct_decl)
+            {
+            }
+            else
+            {
+                assert(cmon_false);
+                //@TODO: Unexpected top lvl statement? (I guess it would have already failed
+                // parsing?)
             }
         }
     }

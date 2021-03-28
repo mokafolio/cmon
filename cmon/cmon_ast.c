@@ -1,5 +1,6 @@
 #include <cmon/cmon_ast.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_tokens.h>
 #include <cmon/cmon_util.h>
 #include <stdarg.h>
 
@@ -412,6 +413,57 @@ cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx)
     return _ast->left_right[_mod_idx].left;
 }
 
+cmon_idx cmon_ast_import_begin(cmon_ast * _ast, cmon_idx _import_idx)
+{
+    assert(_get_kind(_ast, _import_idx) == cmon_astk_import);
+    return _ast->left_right[_import_idx].left;
+}
+
+cmon_idx cmon_ast_import_end(cmon_ast * _ast, cmon_idx _import_idx)
+{
+    assert(_get_kind(_ast, _import_idx) == cmon_astk_import);
+    return _ast->left_right[_import_idx].right;
+}
+
+cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_idx)
+{
+    return (cmon_ast_iter){ cmon_ast_import_begin(_ast, _import_idx),
+                            cmon_ast_import_end(_ast, _import_idx) };
+}
+
+cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    cmon_str_view b, e;
+    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    b = cmon_tokens_str_view(_ast->tokens, cmon_ast_import_pair_path_begin(_ast, _importp_idx));
+    e = cmon_tokens_str_view(_ast->tokens, cmon_ast_import_pair_path_end(_ast, _importp_idx));
+    return (cmon_str_view){ b.begin, e.end };
+}
+
+cmon_idx cmon_ast_import_pair_path_begin(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    return _ast->left_right[_importp_idx].left + 1;
+}
+
+cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    return _ast->left_right[_importp_idx].right;
+}
+
+cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    return (cmon_ast_iter){ cmon_ast_import_pair_path_begin(_ast, _importp_idx),
+                            cmon_ast_import_pair_path_end(_ast, _importp_idx) };
+}
+
+cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
+}
+
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
 {
     assert(_get_kind(_ast, _block_idx) == cmon_astk_block);
@@ -426,7 +478,7 @@ cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx)
 
 cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx)
 {
-    return (cmon_ast_iter){cmon_ast_block_begin(_ast, _block_idx),
+    return (cmon_ast_iter){ cmon_ast_block_begin(_ast, _block_idx),
                             cmon_ast_block_end(_ast, _block_idx) };
 }
 
@@ -444,7 +496,7 @@ cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx)
 
 cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    return (cmon_ast_iter){cmon_ast_fn_params_begin(_ast, _fn_idx),
+    return (cmon_ast_iter){ cmon_ast_fn_params_begin(_ast, _fn_idx),
                             cmon_ast_fn_params_end(_ast, _fn_idx) };
 }
 

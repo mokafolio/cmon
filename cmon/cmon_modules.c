@@ -88,6 +88,11 @@ void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _s
     cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->src_files, _src_file);
 }
 
+cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
+{
+    
+}
+
 const char * cmon_modules_path(cmon_modules * _m, cmon_idx _mod_idx)
 {
     return cmon_str_buf_get(_m->str_buf, _get_module(_m, _mod_idx)->path_str_off);

@@ -193,6 +193,16 @@ CMON_API cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it);
 //module stmt specific getters
 CMON_API cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx);
 
+//import specific getters
+CMON_API cmon_idx cmon_ast_import_begin(cmon_ast * _ast, cmon_idx _import_idx);
+CMON_API cmon_idx cmon_ast_import_end(cmon_ast * _ast, cmon_idx _import_idx);
+CMON_API cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_idx);
+CMON_API cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx);
+CMON_API cmon_idx cmon_ast_import_pair_path_begin(cmon_ast * _ast, cmon_idx _importp_idx);
+CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _importp_idx);
+CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
+CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
+
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);

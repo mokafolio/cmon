@@ -198,7 +198,7 @@ UTEST(cmon, basic_ast_test)
     cmon_idx r = cmon_astb_add_float_lit(builder, 3);
     cmon_idx b = cmon_astb_add_binary(builder, 2, l, r);
     cmon_idx c = cmon_astb_add_var_decl(builder, 0, cmon_true, cmon_true, 1, b);
-    
+
     cmon_idx stms[] = {c};
 
     cmon_idx block = cmon_astb_add_block(builder, 0, stms, sizeof(stms) / sizeof(cmon_idx));
