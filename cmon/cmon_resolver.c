@@ -253,10 +253,26 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             }
             else if (kind == cmon_astk_var_decl)
             {
-                _add_global_var_name(_r, fr, cmon_ast_var_decl_name_tok(ast, idx), cmon_ast_var_decl_is_pub(ast, idx), cmon_ast_var_decl_is_mut(ast, idx), idx);
+                _add_global_var_name(_r,
+                                     fr,
+                                     cmon_ast_var_decl_name_tok(ast, idx),
+                                     cmon_ast_var_decl_is_pub(ast, idx),
+                                     cmon_ast_var_decl_is_mut(ast, idx),
+                                     idx);
             }
             else if (kind == cmon_astk_var_decl_list)
             {
+                cmon_ast_iter name_it;
+                cmon_idx name_tok_idx, expr_idx;
+                cmon_bool is_pub, is_mut;
+
+                name_it = cmon_ast_var_decl_list_names_iter(ast, idx);
+                is_pub = cmon_ast_var_decl_list_is_pub(ast, idx);
+                is_mut = cmon_ast_var_decl_list_is_mut(ast, idx);
+                while (cmon_is_valid_idx(name_tok_idx = cmon_ast_iter_next(ast, &name_it)))
+                {
+                    _add_global_var_name(_r, fr, name_tok_idx, is_pub, is_mut, idx);
+                }
             }
             else if (kind == cmon_astk_struct_decl)
             {
