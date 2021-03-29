@@ -5,6 +5,7 @@ inc_dirs = include_directories('.')
 lib_src = [
     'cmon/cmon_allocator.c',
     'cmon/cmon_ast.c',
+    'cmon/cmon_dep_graph.c',
     'cmon/cmon_err_report.c',
     'cmon/cmon_hashmap.c',
     'cmon/cmon_modules.c',

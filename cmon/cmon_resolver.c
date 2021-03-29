@@ -13,6 +13,7 @@ typedef struct
     cmon_idx mod_idx;
     cmon_idx src_file_idx;
     cmon_str_builder * str_builder;
+    cmon_dyn_arr(cmon_idx) type_decls; //types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     jmp_buf err_jmp;
@@ -276,14 +277,18 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             }
             else if (kind == cmon_astk_struct_decl)
             {
-                cmon_idx name_tok_idx;
+                cmon_idx name_tok_idx, tidx;
+                cmon_str_view name;
                 name_tok_idx = cmon_ast_struct_name(ast, idx);
                 if (!_check_redec(_r, _r->global_scope, name_tok_idx))
                 {
+                    name = cmon_tokens_str_view(tokens, name_tok_idx);
+                    tidx = cmon_types_add_struct(_r->types, _r->mod_idx, name);
+                    cmon_dyn_arr_append(&fr->type_decls, tidx);
                     cmon_symbols_scope_add_type(_r,
                                                 _r->global_scope,
-                                                cmon_tokens_str_view(tokens, name_tok_idx),
-                                                CMON_INVALID_IDX,
+                                                name,
+                                                tidx,
                                                 cmon_ast_struct_is_pub(ast, idx),
                                                 fr->src_file_idx,
                                                 idx);
@@ -303,6 +308,11 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
 {
+    // size_t i;
+    // for (i = 0; i < cmon_dyn_arr_count(_r->file_resolvers); ++i)
+    // {
+        
+    // }
 }
 
 cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
