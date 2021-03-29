@@ -29,6 +29,7 @@ CMON_API cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
                                              cmon_str_view _name,
                                              cmon_idx _type_idx,
                                              cmon_bool _is_pub,
+                                             cmon_bool _is_mut,
                                              cmon_idx _src_file_idx,
                                              cmon_idx _ast_idx);
 
@@ -60,7 +61,7 @@ CMON_API cmon_idx cmon_symbols_find_before(cmon_symbols * _s,
 CMON_API cmon_idx cmon_symbols_find_local(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
 CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_str_view _name);
 
-//get symbol info
+// get symbol info
 CMON_API cmon_symk cmon_symbols_kind(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_scope(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym);

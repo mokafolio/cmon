@@ -233,15 +233,26 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             else if (kind == cmon_astk_var_decl)
             {
                 // cmon_ast_stmt_var_decl * vdecl = &s->data.var_decl;
-                // if (!_check_redec(fr, fr->file_scope, vdecl->name_tok))
-                // {
-                //     // top level variables are declared in module/gobal scope
-                //     vdecl->sym = cmon_sym_tbl_decl_var(
-                //         _r->module->symbols, vdecl->name_tok, vdecl->is_mut, vdecl->is_pub, NULL);
+                cmon_idx vname_tok;
+                if (!_check_redec(
+                        fr, fr->file_scope, vname_tok = cmon_ast_var_decl_name_tok(ast, idx)))
+                {
+                    // top level variables are declared in module/gobal scope
+                    // vdecl->sym = cmon_sym_tbl_decl_var(
+                    //     _r->module->symbols, vdecl->name_tok, vdecl->is_mut, vdecl->is_pub,
+                    //     NULL);
 
-                //     vdecl->sym->data.var.ast_stmt = s;
-                //     cmon_dyn_arr_append(r->global_var_decls, s);
-                // }
+                    // vdecl->sym->data.var.ast_stmt = s;
+                    // cmon_dyn_arr_append(r->global_var_decls, s);
+                    cmon_symbols_scope_add_var(_r->symbols,
+                                               _r->global_scope,
+                                               cmon_tokens_str_view(tokens, vname_tok),
+                                               CMON_INVALID_IDX,
+                                               cmon_ast_var_decl_is_pub(ast, idx),
+                                               cmon_ast_var_decl_is_mut(ast, idx),
+                                               fr->src_file_idx,
+                                               idx);
+                }
             }
             else if (kind == cmon_astk_struct_decl)
             {

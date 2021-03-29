@@ -325,7 +325,7 @@ UTEST(cmon, basic_symbols_test)
     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_global(s, file_scope));
     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_file(s, global_scope));
 
-    foo = cmon_symbols_scope_add_var(s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, 99, 33);
+    foo = cmon_symbols_scope_add_var(s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, cmon_false, 99, 33);
     EXPECT_EQ(CMON_INVALID_IDX, cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
     EXPECT_EQ(foo, cmon_symbols_find(s, global_scope, cmon_str_view_make("foo")));
     EXPECT_EQ(foo, cmon_symbols_find(s, file_scope, cmon_str_view_make("foo")));

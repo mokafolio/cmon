@@ -14,6 +14,12 @@ typedef struct
 
 typedef struct
 {
+    cmon_idx type_idx;
+    cmon_bool is_mut;
+} _var_data;
+
+typedef struct
+{
     cmon_str_view name;
     cmon_symk kind;
     cmon_bool is_pub;
@@ -23,6 +29,7 @@ typedef struct
     union
     {
         cmon_idx idx;
+        _var_data var;
     } data;
 } _symbol;
 
@@ -161,11 +168,13 @@ cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
                                     cmon_str_view _name,
                                     cmon_idx _type_idx,
                                     cmon_bool _is_pub,
+                                    cmon_bool _is_mut,
                                     cmon_idx _src_file_idx,
                                     cmon_idx _ast_idx)
 {
     cmon_idx ret = _add_symbol(_s, _scope, _name, cmon_symk_var, _is_pub, _src_file_idx, _ast_idx);
-    _get_symbol(_s, ret)->data.idx = _type_idx;
+    _get_symbol(_s, ret)->data.var.type_idx = _type_idx;
+    _get_symbol(_s, ret)->data.var.is_mut = _is_mut;
     return ret;
 }
 
