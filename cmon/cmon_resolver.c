@@ -276,6 +276,18 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             }
             else if (kind == cmon_astk_struct_decl)
             {
+                cmon_idx name_tok_idx;
+                name_tok_idx = cmon_ast_struct_name(ast, idx);
+                if (!_check_redec(_r, _r->global_scope, name_tok_idx))
+                {
+                    cmon_symbols_scope_add_type(_r,
+                                                _r->global_scope,
+                                                cmon_tokens_str_view(tokens, name_tok_idx),
+                                                CMON_INVALID_IDX,
+                                                cmon_ast_struct_is_pub(ast, idx),
+                                                fr->src_file_idx,
+                                                idx);
+                }
             }
             else
             {

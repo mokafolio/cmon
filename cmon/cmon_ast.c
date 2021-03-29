@@ -610,3 +610,9 @@ cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx)
     assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return _get_extra_data(_ast, _ast->left_right[_struct_idx].left);
 }
+
+cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx)
+{
+    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    return cmon_ast_token(_ast, _struct_idx);
+}
