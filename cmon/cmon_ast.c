@@ -194,9 +194,12 @@ cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                 cmon_idx _type,
                                 cmon_idx _expr)
 {
-    cmon_idx extra_data =
-        _add_node(_b, cmon_astk_var_decl_data, (cmon_idx)_is_pub, (cmon_idx)_is_mut, _type);
-    return _add_node(_b, cmon_astk_var_decl, _name_tok_idx, extra_data, _expr);
+    // cmon_idx extra_data =
+    //     _add_node(_b, cmon_astk_var_decl_data, (cmon_idx)_is_pub, (cmon_idx)_is_mut, _type);
+        cmon_idx left;
+    //@NOTE: see note in cmon_astb_add_block
+    left = _add_extra_data_m(_b, NULL, 0, (cmon_idx)_is_pub, (cmon_idx)_is_mut, _type);
+    return _add_node(_b, cmon_astk_var_decl, _name_tok_idx, left, _expr);
 }
 
 cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
@@ -462,6 +465,36 @@ cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
 {
     assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
+}
+
+cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return cmon_ast_token(_ast, _vidx);
+}
+
+cmon_bool cmon_ast_var_decl_is_pub(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return _get_extra_data(_ast, _ast->left_right[_vidx].left);
+}
+
+cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 1);
+}
+
+cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 2);
+}
+
+cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return _ast->left_right[_vidx].right;
 }
 
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)

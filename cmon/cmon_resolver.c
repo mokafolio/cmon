@@ -228,30 +228,20 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                                       fr->src_file_idx,
                                                       idx);
                     }
-
-                    // if (!_check_redec(r, r->file_scope, cmon_ast_import_pair_alias(ast, ippidx)))
-                    // {
-                    // cmon_module * dep = cmon_module_reg_find(_r->mod_reg, imp->path);
-                    // if (!dep)
-                    // {
-                    //     _fr_err(r,
-                    //             imp->path_toks[0],
-                    //             "could not find module '%.*s'",
-                    //             imp->path.end - imp->path.begin,
-                    //             imp->path.begin);
-                    // }
-                    // else
-                    // {
-                    //     cmon_module_add_dep(_r->module, dep);
-                    // }
-
-                    // imp->sym = cmon_sym_tbl_decl_import(
-                    //     r->file_scope, imp->path_toks, imp->alias_tok, dep);
-                    // }
                 }
             }
             else if (kind == cmon_astk_var_decl)
             {
+                // cmon_ast_stmt_var_decl * vdecl = &s->data.var_decl;
+                // if (!_check_redec(fr, fr->file_scope, vdecl->name_tok))
+                // {
+                //     // top level variables are declared in module/gobal scope
+                //     vdecl->sym = cmon_sym_tbl_decl_var(
+                //         _r->module->symbols, vdecl->name_tok, vdecl->is_mut, vdecl->is_pub, NULL);
+
+                //     vdecl->sym->data.var.ast_stmt = s;
+                //     cmon_dyn_arr_append(r->global_var_decls, s);
+                // }
             }
             else if (kind == cmon_astk_struct_decl)
             {
