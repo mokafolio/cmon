@@ -210,6 +210,15 @@ CMON_API cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx);
 
+//var decl list specific getters
+CMON_API cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _vidx);
+
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
