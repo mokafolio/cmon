@@ -191,10 +191,12 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
 {
     cmon_bool err = cmon_false;
 
-    while (cmon_dyn_arr_count(_g->unresolved))
+    while (cmon_dyn_arr_count(&_g->unresolved))
     {
-        printf("woop\n");
+        printf("woop %lu\n", cmon_dyn_arr_count(&_g->unmarked));
+
         cmon_dep_graph_node * n = cmon_dyn_arr_last(&_g->unmarked);
+        printf("DA DATA %lu\n", n->data);
         assert(n->mark == cmon_dep_graph_mark_none);
         if (_visit(_g, n))
         {
@@ -208,4 +210,14 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
 
     printf("resolve no err\n");
     return (cmon_dep_graph_result){ _g->resolved, cmon_dyn_arr_count(&_g->resolved) };
+}
+
+cmon_idx cmon_dep_graph_conflict_a(cmon_dep_graph * _g)
+{
+    return _g->conflict_a;
+}
+
+cmon_idx cmon_dep_graph_conflict_b(cmon_dep_graph * _g)
+{
+    return _g->conflict_b;
 }

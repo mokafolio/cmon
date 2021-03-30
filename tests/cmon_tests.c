@@ -1,4 +1,5 @@
 #include "utest.h"
+#include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_parser.h>
@@ -102,6 +103,119 @@ UTEST(cmon, hashmap_tests)
     cmon_hashmap_dealloc(&map3);
 
     cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, dep_graph_tests_success)
+{
+    size_t i;
+
+    cmon_allocator alloc = cmon_mallocator_make();
+
+    cmon_dep_graph * g = cmon_dep_graph_create(&alloc);
+
+    cmon_idx a, b, c, d;
+    a = 1;
+    b = 2;
+    c = 3;
+    d = 4;
+    cmon_dyn_arr(cmon_idx) adeps;
+    cmon_dyn_arr(cmon_idx) bdeps;
+    cmon_dyn_arr(cmon_idx) cdeps;
+    cmon_dyn_arr(cmon_idx) ddeps;
+    cmon_dyn_arr_init(&adeps, &alloc, 2);
+    cmon_dyn_arr_init(&bdeps, &alloc, 2);
+    cmon_dyn_arr_init(&cdeps, &alloc, 2);
+    cmon_dyn_arr_init(&ddeps, &alloc, 2);
+
+    cmon_dyn_arr_append(&adeps, b);
+    cmon_dyn_arr_append(&adeps, c);
+    cmon_dyn_arr_append(&bdeps, c);
+    cmon_dyn_arr_append(&ddeps, a);
+    cmon_dyn_arr_append(&ddeps, c);
+
+    cmon_dep_graph_add(g, a, adeps, cmon_dyn_arr_count(&adeps));
+    cmon_dep_graph_add(g, b, bdeps, cmon_dyn_arr_count(&bdeps));
+    cmon_dep_graph_add(g, c, cdeps, cmon_dyn_arr_count(&cdeps));
+    cmon_dep_graph_add(g, d, ddeps, cmon_dyn_arr_count(&ddeps));
+
+    cmon_dep_graph_result res = cmon_dep_graph_resolve(g);
+
+    if (res.count)
+    {
+        printf("got a result\n");
+        for (i = 0; i < res.count; ++i)
+        {
+            cmon_idx s = res.array[i];
+            if (s == a)
+            {
+                printf("a\n");
+            }
+            else if (s == b)
+            {
+                printf("b\n");
+            }
+            else if (s == c)
+            {
+                printf("c\n");
+            }
+            else if (s == d)
+            {
+                printf("d\n");
+            }
+        }
+    }
+
+    cmon_dyn_arr_dealloc(&adeps);
+    cmon_dyn_arr_dealloc(&bdeps);
+    cmon_dyn_arr_dealloc(&cdeps);
+    cmon_dyn_arr_dealloc(&ddeps);
+    cmon_dep_graph_destroy(g);
+    cmon_allocator_dealloc(&alloc);
+}
+
+UTEST(cmon, dep_graph_tests_fail)
+{
+    cmon_allocator alloc = cmon_mallocator_make();
+
+    cmon_dep_graph * g = cmon_dep_graph_create(&alloc);
+
+    cmon_idx a, b, c;
+    a = 1;
+    b = 2;
+    c = 3;
+
+    cmon_dyn_arr(cmon_idx) adeps;
+    cmon_dyn_arr(cmon_idx) bdeps;
+    cmon_dyn_arr(cmon_idx) cdeps;
+
+    cmon_dyn_arr_init(&adeps, &alloc, 2);
+    cmon_dyn_arr_init(&bdeps, &alloc, 2);
+    cmon_dyn_arr_init(&cdeps, &alloc, 2);
+
+    cmon_dyn_arr_append(&adeps, b);
+    cmon_dyn_arr_append(&bdeps, c);
+    cmon_dyn_arr_append(&cdeps, a);
+
+    cmon_dep_graph_add(g, a, adeps, cmon_dyn_arr_count(&adeps));
+    cmon_dep_graph_add(g, b, bdeps, cmon_dyn_arr_count(&bdeps));
+    cmon_dep_graph_add(g, c, cdeps, cmon_dyn_arr_count(&cdeps));
+
+    cmon_dep_graph_result res = cmon_dep_graph_resolve(g);
+
+    if (!res.count)
+    {
+        printf("circular dependency between: %lu and %lu\n",
+               cmon_dep_graph_conflict_a(g),
+               cmon_dep_graph_conflict_b(g));
+    }
+
+    EXPECT_EQ(res.array, NULL);
+
+    cmon_dyn_arr_dealloc(&adeps);
+    cmon_dyn_arr_dealloc(&bdeps);
+    cmon_dyn_arr_dealloc(&cdeps);
+    cmon_dep_graph_destroy(g);
+    cmon_allocator_dealloc(&alloc);
 }
 
 UTEST(cmon, basic_tokens_test)
