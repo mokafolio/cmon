@@ -8,10 +8,8 @@
 
 typedef struct
 {
-    cmon_symbols * symbols;
-    cmon_modules * mods;
+    cmon_resolver * resolver;
     cmon_idx file_scope;
-    cmon_idx mod_idx;
     cmon_idx src_file_idx;
     cmon_str_builder * str_builder;
     cmon_dyn_arr(cmon_idx) type_decls; // types declared in the file
@@ -71,7 +69,7 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
     {                                                                                              \
         _emit_err(_fr->str_builder,                                                                \
                   &_fr->errs,                                                                      \
-                  cmon_modules_src(_fr->mods),                                                     \
+                  cmon_modules_src(_fr->resolver->mods),                                                     \
                   _fr->src_file_idx,                                                               \
                   _tok,                                                                            \
                   _fr->max_errors,                                                                 \
@@ -131,7 +129,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
 
 static inline cmon_src * _fr_src(_file_resolver * _fr)
 {
-    return cmon_modules_src(_fr->mods);
+    return cmon_modules_src(_fr->resolver->mods);
 }
 
 static inline cmon_tokens * _fr_tokens(_file_resolver * _fr)
@@ -150,7 +148,7 @@ static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon
     cmon_str_view str_view;
 
     str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
-    if (cmon_is_valid_idx(s = cmon_symbols_find(_fr->symbols, _scope, str_view)))
+    if (cmon_is_valid_idx(s = cmon_symbols_find(_fr->resolver->symbols, _scope, str_view)))
     {
         _fr_err(_fr,
                 _name_tok,
@@ -249,7 +247,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 {
                     cmon_str_view path = cmon_ast_import_pair_path(ast, ipp_idx);
 
-                    if (!cmon_is_valid_idx(imod_idx = cmon_modules_find(fr->mods, path)))
+                    if (!cmon_is_valid_idx(imod_idx = cmon_modules_find(fr->resolver->mods, path)))
                     {
                         _fr_err(fr,
                                 cmon_ast_import_pair_path_begin(ast, ipp_idx),
@@ -262,8 +260,8 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                            alias_tok_idx =
                                                cmon_ast_import_pair_alias(ast, ipp_idx)))
                     {
-                        cmon_modules_add_dep(fr->mods, fr->mod_idx, imod_idx);
-                        cmon_symbols_scope_add_import(fr->symbols,
+                        cmon_modules_add_dep(fr->resolver->mods, fr->resolver->mod_idx, imod_idx);
+                        cmon_symbols_scope_add_import(fr->resolver->symbols,
                                                       fr->file_scope,
                                                       cmon_tokens_str_view(tokens, alias_tok_idx),
                                                       imod_idx,
@@ -402,7 +400,7 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
             parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
             if(cmon_is_valid_idx(parsed_type_idx))
             {
-                
+
             }
             // _resolve_var_decl(fr, fr->file_scope, ast_idx);
         }
