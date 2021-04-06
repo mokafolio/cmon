@@ -19,6 +19,9 @@ typedef struct
 typedef struct
 {
     cmon_typek kind;
+    // if it's a none builtin type, src_file_idx and name_tok will be set.
+    cmon_idx src_file_idx;
+    cmon_idx name_tok;
     size_t name_str_off;
     size_t full_name_str_off;
     size_t unique_name_str_off;
@@ -89,10 +92,14 @@ static inline cmon_idx _add_type(cmon_types * _t,
                                  size_t _name_off,
                                  size_t _unique_off,
                                  size_t _full_off,
+                                 cmon_idx _src_file_idx,
+                                 cmon_idx _name_tok,
                                  cmon_idx _extra_data)
 {
     _type t;
     t.kind = _kind;
+    t.src_file_idx = _src_file_idx;
+    t.name_tok = _name_tok;
     t.name_str_off = _name_off;
     t.unique_name_str_off = _unique_off;
     t.full_name_str_off = _full_off;
@@ -103,7 +110,8 @@ static inline cmon_idx _add_type(cmon_types * _t,
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
-cmon_idx cmon_types_add_struct(cmon_types * _t, cmon_idx _mod, cmon_str_view _name)
+cmon_idx cmon_types_add_struct(
+    cmon_types * _t, cmon_idx _mod, cmon_str_view _name, cmon_idx _src_file_idx, cmon_idx _name_tok)
 {
     _struct strct;
     cmon_dyn_arr_init(&strct.fields, _t->alloc, 8);
@@ -119,6 +127,8 @@ cmon_idx cmon_types_add_struct(cmon_types * _t, cmon_idx _mod, cmon_str_view _na
                     _name.end - _name.begin),
         _intern_str(
             _t, "%s.%.*s", cmon_modules_name(_t->mods, _mod), _name.begin, _name.end - _name.begin),
+        _src_file_idx,
+        _name_tok,
         cmon_dyn_arr_count(&_t->structs) - 1);
 }
 
@@ -144,15 +154,22 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
         cmon_str_buf_append(_t->str_buf, unique_name),
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
+        CMON_INVALID_IDX,
+        CMON_INVALID_IDX,
         (cmon_idx)_is_mut);
 }
 
 cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name)
 {
     cmon_idx * idx_ptr;
-    if (idx_ptr = cmon_hashmap_get(&_t->name_map, _unique_name))
+    if ((idx_ptr = cmon_hashmap_get(&_t->name_map, _unique_name)))
         return *idx_ptr;
     return CMON_INVALID_IDX;
+}
+
+inline const char * _get_str(cmon_types * _t, cmon_idx _str_idx)
+{
+    return cmon_str_buf_get(_t->str_buf, _str_idx);
 }
 
 const char * cmon_types_unique_name(cmon_types * _t, cmon_idx _type_idx)
@@ -173,4 +190,51 @@ const char * cmon_types_full_name(cmon_types * _t, cmon_idx _type_idx)
 cmon_typek cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
 {
     return _get_type(_t, _type_idx).kind;
+}
+
+cmon_idx cmon_types_src_file(cmon_types * _t, cmon_idx _type_idx)
+{
+    return _get_type(_t, _type_idx).src_file_idx;
+}
+
+cmon_idx cmon_types_name_tok(cmon_types * _t, cmon_idx _type_idx)
+{
+    return _get_type(_t, _type_idx).name_tok;
+}
+
+static inline _struct_field * _get_struct_field(cmon_types * _t,
+                                                cmon_idx _struct_idx,
+                                                cmon_idx _field_idx)
+{
+    assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
+    assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
+    assert(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
+    return &_t->structs[_t->types[_struct_idx].data_idx].fields[_field_idx];
+}
+
+cmon_idx cmon_types_struct_field_count(cmon_types * _t, cmon_idx _struct_idx)
+{
+    assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
+    assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
+    return cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields);
+}
+
+const char * cmon_types_struct_field_name(cmon_types * _t,
+                                          cmon_idx _struct_idx,
+                                          cmon_idx _field_idx)
+{
+    return cmon_str_buf_get(_t->str_buf,
+                            _get_struct_field(_t, _struct_idx, _field_idx)->name_str_off);
+}
+
+cmon_idx cmon_types_struct_field_type(cmon_types * _t, cmon_idx _struct_idx, cmon_idx _field_idx)
+{
+    return _get_struct_field(_t, _struct_idx, _field_idx)->type;
+}
+
+cmon_idx cmon_types_struct_field_def_expr(cmon_types * _t,
+                                          cmon_idx _struct_idx,
+                                          cmon_idx _field_idx)
+{
+    return _get_struct_field(_t, _struct_idx, _field_idx)->def_expr;
 }

@@ -1,3 +1,4 @@
+#include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_str_builder.h>
@@ -13,7 +14,7 @@ typedef struct
     cmon_idx mod_idx;
     cmon_idx src_file_idx;
     cmon_str_builder * str_builder;
-    cmon_dyn_arr(cmon_idx) type_decls; //types declared in the file
+    cmon_dyn_arr(cmon_idx) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     jmp_buf err_jmp;
@@ -27,9 +28,13 @@ typedef struct cmon_resolver
     cmon_types * types;
     cmon_modules * mods;
     cmon_idx mod_idx;
+    cmon_dep_graph * dep_graph;
     cmon_dyn_arr(_file_resolver) file_resolvers;
-    cmon_dyn_arr(void *) dep_buffer;
+    cmon_dyn_arr(cmon_idx) dep_buffer;
     cmon_dyn_arr(cmon_err_report) errs;
+    size_t max_errors;
+    jmp_buf err_jmp;
+    cmon_str_builder * str_builder;
 } cmon_resolver;
 
 static inline void _emit_err(cmon_str_builder * _str_builder,
@@ -73,7 +78,21 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   ##__VA_ARGS__);                                                                  \
     } while (0)
 
-cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc)
+#define _r_err(_r, _src_idx, _tok, _fmt, ...)                                                      \
+    do                                                                                             \
+    {                                                                                              \
+        _emit_err(_r->str_builder,                                                                 \
+                  &_r->errs,                                                                       \
+                  cmon_modules_src(_r->mods),                                                      \
+                  _src_idx,                                                                        \
+                  _tok,                                                                            \
+                  _r->max_errors,                                                                  \
+                  &_r->err_jmp,                                                                    \
+                  _fmt,                                                                            \
+                  ##__VA_ARGS__);                                                                  \
+    } while (0)
+
+cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors)
 {
     cmon_resolver * ret;
     ret = CMON_CREATE(_alloc, cmon_resolver);
@@ -83,9 +102,12 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc)
     ret->types = NULL;
     ret->mods = NULL;
     ret->mod_idx = CMON_INVALID_IDX;
+    ret->dep_graph = cmon_dep_graph_create(_alloc);
+    ret->max_errors = _max_errors;
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
+    ret->str_builder = cmon_str_builder_create(_alloc, 1024);
     return ret;
 }
 
@@ -96,9 +118,11 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
     }
+    cmon_str_builder_destroy(_r->str_builder);
     cmon_dyn_arr_dealloc(&_r->errs);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
+    cmon_dep_graph_destroy(_r->dep_graph);
     CMON_DESTROY(_r->alloc, _r);
 }
 
@@ -283,7 +307,8 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 if (!_check_redec(_r, _r->global_scope, name_tok_idx))
                 {
                     name = cmon_tokens_str_view(tokens, name_tok_idx);
-                    tidx = cmon_types_add_struct(_r->types, _r->mod_idx, name);
+                    tidx = cmon_types_add_struct(
+                        _r->types, _r->mod_idx, name, src_file_idx, name_tok_idx);
                     cmon_dyn_arr_append(&fr->type_decls, tidx);
                     cmon_symbols_scope_add_type(_r,
                                                 _r->global_scope,
@@ -308,11 +333,52 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
 {
-    // size_t i;
-    // for (i = 0; i < cmon_dyn_arr_count(_r->file_resolvers); ++i)
-    // {
-        
-    // }
+    size_t i, j, k;
+    _file_resolver * fr;
+    cmon_dep_graph_result result;
+
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        fr = &_r->file_resolvers[i];
+        for (j = 0; j < cmon_dyn_arr_count(&fr->type_decls); ++j)
+        {
+            // the only user defined type can be a struct for now
+            assert(cmon_types_kind(_r->types, fr->type_decls[j]) == cmon_typek_struct);
+            cmon_dyn_arr_clear(&_r->dep_buffer);
+            for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j]); ++k)
+            {
+                cmon_dyn_arr_append(&_r->dep_buffer,
+                                    cmon_types_struct_field_type(_r->types, fr->type_decls[j], k));
+            }
+            cmon_dep_graph_add(_r->dep_graph,
+                               fr->type_decls[j],
+                               &_r->dep_buffer[0],
+                               cmon_dyn_arr_count(&_r->dep_buffer));
+        }
+    }
+
+    result = cmon_dep_graph_resolve(_r->dep_graph);
+    if (!result.array)
+    {
+        cmon_idx a, b;
+        a = cmon_dep_graph_conflict_a(_r->dep_graph);
+        b = cmon_dep_graph_conflict_b(_r->dep_graph);
+        // if (a != b)
+        // {
+        //     _r_err(_r,
+        //                       a->name_tok,
+        //                       "circular dependency between types '%s' and '%s'",
+        //                       a->name,
+        //                       b->name);
+        // }
+        // else
+        // {
+        //     _r_err(_r, a->name_tok, "recursive type '%s'", a->name);
+        // }
+        return cmon_true;
+    }
+
+    return cmon_false;
 }
 
 cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
