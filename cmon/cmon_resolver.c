@@ -33,8 +33,6 @@ typedef struct cmon_resolver
     cmon_dyn_arr(cmon_idx) dep_buffer;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
-    jmp_buf err_jmp;
-    cmon_str_builder * str_builder;
 } cmon_resolver;
 
 static inline void _emit_err(cmon_str_builder * _str_builder,
@@ -107,7 +105,6 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
-    ret->str_builder = cmon_str_builder_create(_alloc, 1024);
     return ret;
 }
 
@@ -118,7 +115,6 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
     }
-    cmon_str_builder_destroy(_r->str_builder);
     cmon_dyn_arr_dealloc(&_r->errs);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
@@ -363,18 +359,18 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         cmon_idx a, b;
         a = cmon_dep_graph_conflict_a(_r->dep_graph);
         b = cmon_dep_graph_conflict_b(_r->dep_graph);
-        // if (a != b)
-        // {
-        //     _r_err(_r,
-        //                       a->name_tok,
-        //                       "circular dependency between types '%s' and '%s'",
-        //                       a->name,
-        //                       b->name);
-        // }
-        // else
-        // {
-        //     _r_err(_r, a->name_tok, "recursive type '%s'", a->name);
-        // }
+        if (a != b)
+        {
+            _fr_err(fr,
+                    cmon_types_name_tok(_r->types, a),
+                    "circular dependency between types '%s' and '%s'",
+                    cmon_types_name(_r->types, a),
+                    cmon_types_name(_r->types, b));
+        }
+        else
+        {
+            _fr_err(fr, cmon_types_name_tok(_r->types, a), "recursive type '%s'", cmon_types_name(_r->types, a));
+        }
         return cmon_true;
     }
 
@@ -383,12 +379,28 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
 
 cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
 {
+
 }
 
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
+
 }
 
 cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report * _out_errs, size_t * _out_count)
 {
+    size_t i, j;
+    for(i=0; i<cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        _file_resolver * fr = &_r->file_resolvers[i];
+        for(j=0; j<cmon_dyn_arr_count(&fr->errs); ++j)
+        {
+            cmon_dyn_arr_append(&_r->errs, fr->errs[j]);
+        }
+    }
+
+    _out_errs = _r->errs;
+    *_out_count = cmon_dyn_arr_count(&_r->errs);
+
+    return cmon_dyn_arr_count(&_r->errs) > 0;
 }
