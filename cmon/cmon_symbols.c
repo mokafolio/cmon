@@ -278,3 +278,25 @@ cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym)
 {
     return _get_symbol(_s, _sym)->ast_idx;
 }
+
+size_t cmon_symbols_scope_symbol_count(cmon_symbols * _s, cmon_idx _scope)
+{
+    return cmon_dyn_arr_count(&_get_scope(_s, _scope)->symbols);
+}
+
+cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx)
+{
+    assert(_idx < cmon_symbols_scope_symbol_count(_s, _scope));
+    return _get_scope(_s, _scope)->symbols[_idx];
+}
+
+size_t cmon_symbols_scope_child_count(cmon_symbols * _s, cmon_idx _scope)
+{
+    return cmon_dyn_arr_count(&_get_scope(_s, _scope)->children);
+}
+
+cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx)
+{
+    assert(_idx < cmon_symbols_scope_child_count(_s, _scope));
+    return _get_scope(_s, _scope)->children[_idx];
+}

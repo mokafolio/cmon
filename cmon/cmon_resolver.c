@@ -76,20 +76,6 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   ##__VA_ARGS__);                                                                  \
     } while (0)
 
-#define _r_err(_r, _src_idx, _tok, _fmt, ...)                                                      \
-    do                                                                                             \
-    {                                                                                              \
-        _emit_err(_r->str_builder,                                                                 \
-                  &_r->errs,                                                                       \
-                  cmon_modules_src(_r->mods),                                                      \
-                  _src_idx,                                                                        \
-                  _tok,                                                                            \
-                  _r->max_errors,                                                                  \
-                  &_r->err_jmp,                                                                    \
-                  _fmt,                                                                            \
-                  ##__VA_ARGS__);                                                                  \
-    } while (0)
-
 cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors)
 {
     cmon_resolver * ret;

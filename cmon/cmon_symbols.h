@@ -69,4 +69,10 @@ CMON_API cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym);
 
+//get scope info
+CMON_API size_t cmon_symbols_scope_symbol_count(cmon_symbols * _s, cmon_idx _scope);
+CMON_API cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx);
+CMON_API size_t cmon_symbols_scope_child_count(cmon_symbols * _s, cmon_idx _scope);
+CMON_API cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx);
+
 #endif // CMON_CMON_SYMBOLS_H
