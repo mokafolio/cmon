@@ -187,6 +187,7 @@ static inline const char * _fn_name(cmon_types * _t,
         if (i < _param_count - 1)
             cmon_str_builder_append(_t->str_builder, ", ");
     }
+    cmon_str_builder_append_fmt(_t->str_builder, ")->%s", _name_fn(_t, _ret_type));
     return cmon_str_builder_c_str(_t->str_builder);
 }
 

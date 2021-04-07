@@ -71,6 +71,7 @@ CMON_API cmon_idx cmon_types_struct_field_def_expr(cmon_types * _tr,
                                                    cmon_idx _field_idx);
 
 // fn specific getters
+CMON_API cmon_idx cmon_types_fn_return_type(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param(cmon_types * _tr, cmon_idx _fn_idx, cmon_idx _param_idx);
 
