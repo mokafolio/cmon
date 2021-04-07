@@ -18,6 +18,12 @@ typedef struct
 
 typedef struct
 {
+    cmon_dyn_arr(cmon_idx) params;
+    cmon_idx return_type;
+} _fn_sig;
+
+typedef struct
+{
     cmon_typek kind;
     // if it's a none builtin type, src_file_idx and name_tok will be set.
     cmon_idx src_file_idx;
@@ -35,6 +41,7 @@ typedef struct cmon_types
     cmon_allocator * alloc;
     cmon_modules * mods;
     cmon_dyn_arr(_struct) structs;
+    cmon_dyn_arr(_fn_sig) fns;
     cmon_dyn_arr(_type) types;
     cmon_hashmap(const char *, cmon_idx) name_map;
     cmon_str_builder * str_builder;
@@ -47,6 +54,7 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     ret->alloc = _alloc;
     ret->mods = _mods;
     cmon_dyn_arr_init(&ret->structs, _alloc, 32);
+    cmon_dyn_arr_init(&ret->fns, _alloc, 16);
     cmon_dyn_arr_init(&ret->types, _alloc, 64);
     cmon_hashmap_str_key_init(&ret->name_map, _alloc);
     ret->str_builder = cmon_str_builder_create(_alloc, 256);
@@ -61,6 +69,11 @@ void cmon_types_destroy(cmon_types * _t)
     cmon_str_builder_destroy(_t->str_builder);
     cmon_hashmap_dealloc(&_t->name_map);
     cmon_dyn_arr_dealloc(&_t->types);
+    for (i = 0; i < cmon_dyn_arr_count(&_t->fns); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_t->fns[i].params);
+    }
+    cmon_dyn_arr_dealloc(&_t->fns);
     for (i = 0; i < cmon_dyn_arr_count(&_t->structs); ++i)
     {
         cmon_dyn_arr_dealloc(&_t->structs[i].fields);
@@ -157,6 +170,51 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         (cmon_idx)_is_mut);
+}
+
+static inline const char * _fn_name(cmon_types * _t,
+                                    cmon_idx _ret_type,
+                                    cmon_idx * _params,
+                                    size_t _param_count,
+                                    const char * (*_name_fn)(cmon_types *, cmon_idx))
+{
+    size_t i;
+    cmon_str_builder_clear(_t->str_builder);
+    cmon_str_builder_append(_t->str_builder, "fn(");
+    for (i = 0; i < _param_count; ++i)
+    {
+        cmon_str_builder_append(_t->str_builder, _name_fn(_t, _params[i]));
+        if (i < _param_count - 1)
+            cmon_str_builder_append(_t->str_builder, ", ");
+    }
+    return cmon_str_builder_c_str(_t->str_builder);
+}
+
+cmon_idx cmon_types_find_fn(cmon_types * _t,
+                            cmon_idx _ret_type,
+                            cmon_idx * _params,
+                            size_t _param_count)
+{
+    _fn_sig sig;
+    const char * unique_name;
+
+    unique_name = _fn_name(_t, _ret_type, _params, _param_count, cmon_types_unique_name);
+    _return_if_found(_t, unique_name);
+
+    cmon_dyn_arr_init(&sig.params, _t->alloc, 8);
+    cmon_dyn_arr_append(&_t->fns, sig);
+
+    return _add_type(
+        _t,
+        cmon_typek_fn,
+        cmon_str_buf_append(_t->str_buf,
+                            _fn_name(_t, _ret_type, _params, _param_count, cmon_types_name)),
+        cmon_str_buf_append(_t->str_buf, unique_name),
+        cmon_str_buf_append(_t->str_buf,
+                            _fn_name(_t, _ret_type, _params, _param_count, cmon_types_full_name)),
+        CMON_INVALID_IDX,
+        CMON_INVALID_IDX,
+        cmon_dyn_arr_count(&_t->fns) - 1);
 }
 
 cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name)

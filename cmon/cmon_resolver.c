@@ -438,7 +438,9 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         else
         {
             lookup_scope = cmon_modules_global_scope(_fr->resolver->mods, mod_idx);
+            //sanity checks
             assert(cmon_is_valid_idx(lookup_scope));
+            assert(cmon_symbols_scope_is_global(_fr->resolver->symbols, lookup_scope));
         }
 
         type_sym = cmon_symbols_find(_fr->resolver->symbols, lookup_scope, name_str_view);
@@ -475,9 +477,10 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
     else if (kind == cmon_astk_type_ptr)
     {
         cmon_idx pt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_ptr_type(ast, _ast_idx));
-        if(!cmon_is_valid_idx(pt))
+        if (!cmon_is_valid_idx(pt))
             return CMON_INVALID_IDX;
-        ret = cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
+        ret =
+            cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
     }
 
     return ret;
