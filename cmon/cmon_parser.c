@@ -251,8 +251,9 @@ static cmon_idx _parse_stmt(cmon_parser * _p);
 
 static cmon_idx _parse_type(cmon_parser * _p)
 {
-    cmon_idx tok, tmp, mod;
+    cmon_idx tok, tmp, mod, ret_type;
     cmon_bool is_mut;
+    _idx_buf * param_buf;
 
     if (_accept(_p, &tok, cmon_tokk_mult))
     {
@@ -261,12 +262,27 @@ static cmon_idx _parse_type(cmon_parser * _p)
     }
     else if (_accept(_p, &tok, cmon_tokk_fn))
     {
-        
+        _tok_check(_p, cmon_true, cmon_tokk_paran_open);
+        param_buf = _idx_buf_mng_get(_p->idx_buf_mng);
+        while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close, cmon_tokk_eof))
+        {
+            cmon_dyn_arr_append(&param_buf->buf, _parse_type(_p));
+            if (_accept(_p, &tmp, cmon_tokk_comma))
+            {
+                if (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close))
+                    _err(_p, tmp, "unexpected comma");
+            }
+            else
+                break;
+        }
+
+        ret_type = _accept(_p, &tmp, cmon_tokk_arrow) ? _parse_type(_p) : CMON_INVALID_IDX;
+        return cmon_astb_add_type_fn(_p->ast_builder, tok, ret_type, param_buf->buf, cmon_dyn_arr_count(&param_buf->buf));
     }
     else if (_accept(_p, &tok, cmon_tokk_ident))
     {
         mod = CMON_INVALID_IDX;
-        if(_accept(_p, &tmp, cmon_tokk_dot))
+        if (_accept(_p, &tmp, cmon_tokk_dot))
         {
             mod = tok;
             tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
