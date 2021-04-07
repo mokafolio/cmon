@@ -251,7 +251,7 @@ static cmon_idx _parse_stmt(cmon_parser * _p);
 
 static cmon_idx _parse_type(cmon_parser * _p)
 {
-    cmon_idx tok, tmp;
+    cmon_idx tok, tmp, mod;
     cmon_bool is_mut;
 
     if (_accept(_p, &tok, cmon_tokk_mult))
@@ -261,7 +261,13 @@ static cmon_idx _parse_type(cmon_parser * _p)
     }
     else if (_accept(_p, &tok, cmon_tokk_ident))
     {
-        return cmon_astb_add_type_named(_p->ast_builder, tok);
+        mod = CMON_INVALID_IDX;
+        if(_accept(_p, &tmp, cmon_tokk_dot))
+        {
+            mod = tok;
+            tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+        }
+        return cmon_astb_add_type_named(_p->ast_builder, mod, tok);
     }
 
     //@TODO: error, unexpected token

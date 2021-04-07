@@ -378,6 +378,11 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
     return cmon_false;
 }
 
+static inline void _resolve_parsed_type(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    
+}
+
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
 }

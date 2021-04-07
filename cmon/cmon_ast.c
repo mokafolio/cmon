@@ -291,9 +291,13 @@ void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 // }
 
 // adding parsed types
-cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx)
+cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _mod_tok_idx, cmon_idx _tok_idx)
 {
-    return _add_node(_b, cmon_astk_type_named, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
+    return _add_node(_b,
+                     cmon_astk_type_named,
+                     cmon_is_valid_idx(_mod_tok_idx) ? _mod_tok_idx : _tok_idx,
+                     _mod_tok_idx,
+                     _tok_idx);
 }
 
 cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
@@ -361,6 +365,12 @@ static inline cmon_astk _get_kind(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
     return _ast->kinds[_idx];
+}
+
+static inline cmon_idx _get_token(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_idx < _ast->count);
+    return _ast->tokens[_idx];
 }
 
 static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
@@ -465,6 +475,30 @@ cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
 {
     assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
+}
+
+cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);
+    return _ast->left_right[_tidx].left;
+}
+
+cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);
+    return _ast->left_right[_tidx].right;
+}
+
+cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
+    return _ast->left_right[_tidx].right;
+}
+
+cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
+    return (cmon_bool)_ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx)

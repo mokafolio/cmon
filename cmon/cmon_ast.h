@@ -145,11 +145,10 @@ CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
                                          cmon_idx _type);
 CMON_API cmon_idx cmon_astb_add_fn_param_list(
     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type);
-
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
 // adding parsed types
-CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _tok_idx);
+CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _mod_tok_idx, cmon_idx _name_tok_idx);
 CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
                                          cmon_idx _tok_idx,
                                          cmon_bool _is_mut,
@@ -202,6 +201,12 @@ CMON_API cmon_idx cmon_ast_import_pair_path_begin(cmon_ast * _ast, cmon_idx _imp
 CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
+
+//parsed type specific getters (i.e. foo.Bar or *mut Foo)
+CMON_API cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx);
 
 //var decl specific getters
 CMON_API cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx);
