@@ -213,6 +213,10 @@ CMON_API cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx
 CMON_API cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx);
 
 //var decl specific getters
 CMON_API cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx);

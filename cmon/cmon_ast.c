@@ -314,7 +314,7 @@ cmon_idx cmon_astb_add_type_fn(
     assert(_count);
     cmon_idx left;
     //@NOTE: see note in cmon_astb_add_block
-    left = _add_extra_data_m(_b, _ret_type, _params, _count);
+    left = _add_extra_data_m(_b, _params, _count, _ret_type);
     return _add_node(_b, cmon_astk_type_fn, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
@@ -509,6 +509,30 @@ cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
     return (cmon_bool)_ast->left_right[_tidx].left;
+}
+
+cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
+    return _get_extra_data(_ast, _ast->left_right[_tidx].left);
+}
+
+cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
+    return _get_extra_data(_ast, _ast->left_right[_tidx].left + 1);
+}
+
+cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
+    return _get_extra_data(_ast, _ast->left_right[_tidx].right);
+}
+
+cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx)
+{
+    return (cmon_ast_iter){ cmon_ast_type_fn_params_begin(_ast, _tidx),
+                            cmon_ast_type_fn_params_end(_ast, _tidx) };
 }
 
 cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx)
