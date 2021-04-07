@@ -69,7 +69,7 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
     {                                                                                              \
         _emit_err(_fr->str_builder,                                                                \
                   &_fr->errs,                                                                      \
-                  cmon_modules_src(_fr->resolver->mods),                                                     \
+                  cmon_modules_src(_fr->resolver->mods),                                           \
                   _fr->src_file_idx,                                                               \
                   _tok,                                                                            \
                   _fr->max_errors,                                                                 \
@@ -378,9 +378,109 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
     return cmon_false;
 }
 
-static inline void _resolve_parsed_type(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
+                                            cmon_idx _scope,
+                                            cmon_idx _ast_idx)
 {
-    
+    cmon_astk kind;
+    cmon_symk symk;
+    cmon_idx ret, mod_tok, mod_sym, mod_idx, name_tok, type_sym, lookup_scope;
+    cmon_str_view mod_str_view, name_str_view;
+    cmon_ast * ast;
+
+    ast = _fr_ast(_fr);
+    kind = cmon_ast_kind(ast, _ast_idx);
+    if (kind == cmon_astk_type_named)
+    {
+        mod_tok = cmon_ast_type_named_module_tok(ast, _ast_idx);
+        if (cmon_is_valid_idx(mod_tok))
+        {
+            mod_str_view = cmon_tokens_str_view(_fr_tokens(_fr), mod_tok);
+            mod_sym = cmon_symbols_find(_fr->resolver->symbols, _scope, mod_str_view);
+            if (cmon_is_valid_idx(mod_sym))
+            {
+                symk = cmon_symbols_kind(_fr->resolver->symbols, mod_sym);
+                if (symk == cmon_symk_import)
+                {
+                    mod_idx = cmon_symbols_import_module(_fr->resolver->symbols, mod_sym);
+                }
+                else
+                {
+                    _fr_err(_fr,
+                            mod_tok,
+                            "'%s' is not a module",
+                            cmon_symbols_name(_fr->resolver->symbols, mod_sym));
+                }
+            }
+            else
+            {
+                _fr_err(_fr,
+                        mod_tok,
+                        "module '%.*s' is not defined",
+                        mod_str_view.end - mod_str_view.begin,
+                        mod_str_view.begin);
+                return CMON_INVALID_IDX;
+            }
+        }
+        else
+        {
+            mod_idx = _fr->resolver->mod_idx;
+        }
+
+        name_tok = cmon_ast_type_named_name_tok(ast, _ast_idx);
+        name_str_view = cmon_tokens_str_view(_fr_tokens(_fr), name_tok);
+        // if the type has no module specified, look in the current scope for the type
+        if (mod_idx == _fr->resolver->mod_idx)
+        {
+            lookup_scope = _scope;
+        }
+        // otherwise look in the global scope of the specified module
+        else
+        {
+            lookup_scope = cmon_modules_global_scope(_fr->resolver->mods, mod_idx);
+            assert(cmon_is_valid_idx(lookup_scope));
+        }
+
+        type_sym = cmon_symbols_find(_fr->resolver->symbols, lookup_scope, name_str_view);
+        if (cmon_is_valid_idx(type_sym))
+        {
+            if (cmon_symbols_kind(_fr->resolver->symbols, type_sym) == cmon_symk_type &&
+                (cmon_symbols_is_pub(_fr->resolver->symbols, type_sym) ||
+                 mod_idx == _fr->resolver->mod_idx))
+            {
+                ret = cmon_symbols_type(_fr->resolver->symbols, type_sym);
+            }
+            else
+            {
+                //@TODO: separate error if it is defined but not pub?
+                //@TODO: print what it is?
+                _fr_err(_fr,
+                        name_tok,
+                        "'%s' is not a type",
+                        cmon_symbols_name(_fr->resolver->symbols, type_sym));
+                return CMON_INVALID_IDX;
+            }
+        }
+        else
+        {
+            _fr_err(_fr,
+                    name_tok,
+                    "'%.*s' is not defined in module %s",
+                    name_str_view.end - name_str_view.begin,
+                    name_str_view.begin,
+                    cmon_modules_name(_fr->resolver->mods, mod_idx));
+            return CMON_INVALID_IDX;
+        }
+    }
+    else if (kind == cmon_astk_type_ptr)
+    {
+        cmon_idx pt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_ptr_type(ast, _ast_idx));
+        if(!cmon_is_valid_idx(pt))
+            return CMON_INVALID_IDX;
+        ret = cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
+    }
+
+    return ret;
 }
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -403,9 +503,8 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
             cmon_idx ast_idx, parsed_type_idx;
             ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
             parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
-            if(cmon_is_valid_idx(parsed_type_idx))
+            if (cmon_is_valid_idx(parsed_type_idx))
             {
-
             }
             // _resolve_var_decl(fr, fr->file_scope, ast_idx);
         }

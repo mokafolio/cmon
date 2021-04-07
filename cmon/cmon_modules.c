@@ -7,6 +7,7 @@ typedef struct
     size_t name_str_off, path_str_off, prefix_str_off;
     cmon_dyn_arr(cmon_idx) src_files;
     cmon_dyn_arr(cmon_idx) deps; // module indices that this module depends on
+    cmon_idx global_scope;
 } _module;
 
 typedef struct cmon_modules
@@ -61,6 +62,7 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
     ret = cmon_dyn_arr_count(&_m->mods);
     mod.path_str_off = cmon_str_buf_append(_m->str_buf, _path);
     mod.name_str_off = cmon_str_buf_append(_m->str_buf, _name);
+    mod.global_scope = CMON_INVALID_IDX;
 
     cmon_str_builder_clear(_m->str_builder);
     cmon_str_builder_append_fmt(_m->str_builder, "%s%lu", _name, ret);
@@ -86,6 +88,12 @@ void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_de
 void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file)
 {
     cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->src_files, _src_file);
+}
+
+void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _scope)
+{
+    assert(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
+    _get_module(_m, _mod_idx)->global_scope = _scope;
 }
 
 cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
@@ -117,4 +125,9 @@ cmon_idx cmon_modules_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _s
 size_t cmon_modules_src_file_count(cmon_modules * _m, cmon_idx _mod_idx)
 {
     return cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files);
+}
+
+cmon_idx cmon_modules_global_scope(cmon_modules * _m, cmon_idx _mod_idx)
+{
+    return _get_module(_m, _mod_idx)->global_scope;
 }
