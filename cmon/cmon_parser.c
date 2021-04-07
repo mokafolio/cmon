@@ -259,6 +259,10 @@ static cmon_idx _parse_type(cmon_parser * _p)
         is_mut = _accept(_p, &tmp, cmon_tokk_mut);
         return cmon_astb_add_type_ptr(_p->ast_builder, tok, is_mut, _parse_type(_p));
     }
+    else if (_accept(_p, &tok, cmon_tokk_fn))
+    {
+        
+    }
     else if (_accept(_p, &tok, cmon_tokk_ident))
     {
         mod = CMON_INVALID_IDX;

@@ -308,6 +308,16 @@ cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
     return _add_node(_b, cmon_astk_type_ptr, _tok_idx, (cmon_idx)_is_mut, _type_idx);
 }
 
+cmon_idx cmon_astb_add_type_fn(
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _ret_type, cmon_idx * _params, size_t _count)
+{
+    assert(_count);
+    cmon_idx left;
+    //@NOTE: see note in cmon_astb_add_block
+    left = _add_extra_data_m(_b, _ret_type, _params, _count);
+    return _add_node(_b, cmon_astk_type_fn, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
+}
+
 // adding type declarations
 cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
                                     cmon_idx _name_tok,

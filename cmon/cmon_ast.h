@@ -12,6 +12,7 @@ typedef enum
     cmon_astk_bool_literal,
     cmon_astk_type_named,
     cmon_astk_type_ptr,
+    cmon_astk_type_fn,
     cmon_astk_type_tuple,
     cmon_astk_call,
     cmon_astk_index,
@@ -153,6 +154,11 @@ CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
                                          cmon_idx _tok_idx,
                                          cmon_bool _is_mut,
                                          cmon_idx _type_idx);
+CMON_API cmon_idx cmon_astb_add_type_fn(cmon_astb * _b,
+                                        cmon_idx _tok_idx,
+                                        cmon_idx _ret_type,
+                                        cmon_idx * _params,
+                                        size_t _count);
 
 // adding type declarations
 CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,

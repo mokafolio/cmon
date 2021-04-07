@@ -482,6 +482,10 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         ret =
             cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
     }
+    else if(kind == cmon_astk_type_fn)
+    {
+        
+    }
 
     return ret;
 }
