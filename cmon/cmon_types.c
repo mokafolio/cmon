@@ -296,3 +296,18 @@ cmon_idx cmon_types_struct_field_def_expr(cmon_types * _t,
 {
     return _get_struct_field(_t, _struct_idx, _field_idx)->def_expr;
 }
+
+cmon_idx cmon_types_fn_param_count(cmon_types * _t, cmon_idx _fn_idx)
+{
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    return cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params);
+}
+
+cmon_idx cmon_types_fn_param(cmon_types * _t, cmon_idx _fn_idx, cmon_idx _param_idx)
+{
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    assert(_param_idx < cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params));
+    return _t->fns[_t->types[_fn_idx].data_idx].params[_param_idx];
+}

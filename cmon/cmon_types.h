@@ -45,7 +45,10 @@ CMON_API cmon_idx cmon_types_struct_add_field(cmon_types * _tr,
                                               cmon_idx _type,
                                               cmon_idx _def_expr_ast);
 CMON_API cmon_idx cmon_types_find_ptr(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut);
-CMON_API cmon_idx cmon_types_find_fn(cmon_types * _tr, cmon_idx _ret_type, cmon_idx * _params, size_t _param_count);
+CMON_API cmon_idx cmon_types_find_fn(cmon_types * _tr,
+                                     cmon_idx _ret_type,
+                                     cmon_idx * _params,
+                                     size_t _param_count);
 CMON_API cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name);
 
 CMON_API const char * cmon_types_unique_name(cmon_types * _tr, cmon_idx _type_idx);
@@ -66,5 +69,9 @@ CMON_API cmon_idx cmon_types_struct_field_type(cmon_types * _tr,
 CMON_API cmon_idx cmon_types_struct_field_def_expr(cmon_types * _tr,
                                                    cmon_idx _struct_idx,
                                                    cmon_idx _field_idx);
+
+// fn specific getters
+CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
+CMON_API cmon_idx cmon_types_fn_param(cmon_types * _tr, cmon_idx _fn_idx, cmon_idx _param_idx);
 
 #endif // CMON_CMON_TYPES_H
