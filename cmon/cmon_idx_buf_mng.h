@@ -12,5 +12,7 @@ CMON_API void cmon_idx_buf_mng_return(cmon_idx_buf_mng * _m, cmon_idx _buf_idx);
 CMON_API void cmon_idx_buf_append(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _val);
 CMON_API cmon_idx * cmon_idx_buf_ptr(cmon_idx_buf_mng * _m, cmon_idx _buf_idx);
 CMON_API size_t cmon_idx_buf_count(cmon_idx_buf_mng * _m, cmon_idx _buf_idx);
+CMON_API cmon_idx cmon_idx_buf_at(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _at);
+CMON_API void cmon_idx_buf_clear(cmon_idx_buf_mng * _m, cmon_idx _buf_idx);
 
 #endif //CMON_CMON_IDX_BUF_MNG_H

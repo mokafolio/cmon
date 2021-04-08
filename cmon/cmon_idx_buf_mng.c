@@ -65,3 +65,14 @@ size_t cmon_idx_buf_count(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 {
     return cmon_dyn_arr_count(&_m->bufs[_buf_idx]);
 }
+
+cmon_idx cmon_idx_buf_at(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _at)
+{
+    assert(_at < cmon_idx_buf_count(_m, _buf_idx));
+    return _m->bufs[_buf_idx][_at];
+}
+
+void cmon_idx_buf_clear(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
+{
+    cmon_dyn_arr_clear(&_m->bufs[_buf_idx]);
+}
