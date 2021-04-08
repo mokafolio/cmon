@@ -1,5 +1,6 @@
 #include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_idx_buf_mng.h>
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_tokens.h>
@@ -12,6 +13,7 @@ typedef struct
     cmon_idx file_scope;
     cmon_idx src_file_idx;
     cmon_str_builder * str_builder;
+    cmon_idx_buf_mng * idx_buf_mng;
     cmon_dyn_arr(cmon_idx) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
@@ -438,7 +440,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         else
         {
             lookup_scope = cmon_modules_global_scope(_fr->resolver->mods, mod_idx);
-            //sanity checks
+            // sanity checks
             assert(cmon_is_valid_idx(lookup_scope));
             assert(cmon_symbols_scope_is_global(_fr->resolver->symbols, lookup_scope));
         }
@@ -482,18 +484,22 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         ret =
             cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
     }
-    else if(kind == cmon_astk_type_fn)
+    else if (kind == cmon_astk_type_fn)
     {
         cmon_ast_iter param_it;
-        cmon_idx ret_type, idx;
+        cmon_idx ret_type, idx, idx_buf;
 
         ret_type = _resolve_parsed_type(_fr, _scope, cmon_ast_type_fn_return_type(ast, _ast_idx));
         param_it = cmon_ast_type_fn_params_iter(ast, _ast_idx);
+        idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
 
-        while(cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &param_it)))
+        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &param_it)))
         {
-            
+            //@TODO: Check if resolve_parsed_type returns a valid idx and early out if not?
+            cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _resolve_parsed_type(_fr, _scope, idx));
         }
+        cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
+        ret = cmon_types_find_fn(_fr->resolver->types, ret_type, cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf), cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
     }
 
     return ret;
