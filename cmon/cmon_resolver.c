@@ -484,7 +484,16 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
     }
     else if(kind == cmon_astk_type_fn)
     {
-        
+        cmon_ast_iter param_it;
+        cmon_idx ret_type, idx;
+
+        ret_type = _resolve_parsed_type(_fr, _scope, cmon_ast_type_fn_return_type(ast, _ast_idx));
+        param_it = cmon_ast_type_fn_params_iter(ast, _ast_idx);
+
+        while(cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &param_it)))
+        {
+            
+        }
     }
 
     return ret;
