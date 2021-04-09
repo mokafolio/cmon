@@ -499,10 +499,20 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _resolve_parsed_type(_fr, _scope, idx));
         }
         cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
-        ret = cmon_types_find_fn(_fr->resolver->types, ret_type, cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf), cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+        ret = cmon_types_find_fn(_fr->resolver->types,
+                                 ret_type,
+                                 cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
+                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
     }
 
     return ret;
+}
+
+static inline cmon_idx _resolve_expr(_file_resolver * _fr,
+                                     cmon_idx _scope,
+                                     cmon_idx _ast_idx,
+                                     cmon_idx _lh_type)
+{
 }
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -522,13 +532,21 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
         ast = _fr_ast(fr);
         for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
         {
-            cmon_idx ast_idx, parsed_type_idx;
+            cmon_idx ast_idx, parsed_type_idx, expr_idx, type_idx;
             ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
             parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
             if (cmon_is_valid_idx(parsed_type_idx))
             {
+                type_idx = _resolve_parsed_type(fr, fr->file_scope, parsed_type_idx);
             }
-            // _resolve_var_decl(fr, fr->file_scope, ast_idx);
+            else
+            {
+                expr_idx = cmon_ast_var_decl_expr(ast, ast_idx);
+                assert(cmon_is_valid_idx(expr_idx));
+                type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, CMON_INVALID_IDX);
+            }
+
+            cmon_symbols_var_set_type(_r->symbols, fr->global_var_decls[j], type_idx);
         }
     }
     _r->global_type_pass = cmon_false;
@@ -538,9 +556,22 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
 }
 
+cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
+{
+    size_t i;
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        _file_resolver * fr = &_r->file_resolvers[i];
+        if (cmon_dyn_arr_count(&fr->errs))
+            return cmon_true;
+    }
+    return cmon_false;
+}
+
 cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report * _out_errs, size_t * _out_count)
 {
     size_t i, j;
+    cmon_dyn_arr_clear(&_r->errs);
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr = &_r->file_resolvers[i];
@@ -548,6 +579,7 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report * _out_errs, 
         {
             cmon_dyn_arr_append(&_r->errs, fr->errs[j]);
         }
+        cmon_dyn_arr_clear(&fr->errs);
     }
 
     _out_errs = _r->errs;

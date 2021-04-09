@@ -20,6 +20,7 @@ CMON_API cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file
 CMON_API cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx);
+CMON_API cmon_bool cmon_resolver_has_errors(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_errors(cmon_resolver * _r,
                                         cmon_err_report * _out_errs,
                                         size_t * _out_count);

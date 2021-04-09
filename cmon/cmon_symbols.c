@@ -178,6 +178,12 @@ cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
     return ret;
 }
 
+void cmon_symbols_var_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type)
+{   
+    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    _get_symbol(_s, _sym)->data.var.type_idx = _type;
+}
+
 cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
                                      cmon_idx _scope,
                                      cmon_str_view _name,

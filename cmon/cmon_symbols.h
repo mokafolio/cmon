@@ -32,6 +32,7 @@ CMON_API cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
                                              cmon_bool _is_mut,
                                              cmon_idx _src_file_idx,
                                              cmon_idx _ast_idx);
+CMON_API void cmon_symbols_var_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type);
 
 CMON_API cmon_idx cmon_symbols_scope_add_type(cmon_symbols * _s,
                                               cmon_idx _scope,
