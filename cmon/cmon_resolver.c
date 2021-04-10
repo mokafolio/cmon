@@ -4,6 +4,9 @@
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_tokens.h>
+#include <errno.h>
+#include <float.h>
+#include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
 
@@ -509,19 +512,49 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
 }
 
 static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
-                                     cmon_idx _scope,
-                                     cmon_idx _ast_idx,
-                                     cmon_idx _lh_type)
+                                            cmon_idx _scope,
+                                            cmon_idx _ast_idx,
+                                            cmon_idx _lh_type)
 {
-
 }
 
 static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
-                                     cmon_idx _scope,
-                                     cmon_idx _ast_idx,
-                                     cmon_idx _lh_type)
+                                              cmon_idx _scope,
+                                              cmon_idx _ast_idx,
+                                              cmon_idx _lh_type)
 {
-    
+    cmon_idx ret;
+    char * endptr;
+    double v;
+
+    if (cmon_is_valid_idx(_lh_type) &&
+        (cmon_types_kind(_fr->resolver->types, _lh_type) == cmon_typek_f32 ||
+         cmon_types_kind(_fr->resolver->types, _lh_type) == cmon_typek_f64))
+    {
+        ret = _lh_type;
+    }
+    else
+    {
+        ret = cmon_types_builtin_f64(_fr->resolver->types);
+    }
+
+    v = strtod(cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx)).begin,
+               &endptr);
+    // _expr->data.float_lit.value = v;
+
+    // NOTE: We only check for f32 because if the literal is out of range for f64, strtod must have
+    // failed already.
+    if ((/*v == HUGE_VAL && */ errno == ERANGE) ||
+        (cmon_types_kind(_fr->resolver->types, ret) == cmon_typek_f32 &&
+         (v > FLT_MAX || v < FLT_MIN)))
+    {
+        //@TODO: print the literal too?
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                "float literal out of range for '%s'",
+                cmon_types_name(_fr->resolver->types, ret));
+    }
+    return ret;
 }
 
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
@@ -545,10 +578,11 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     }
     else if (kind == cmon_astk_bool_literal)
     {
-        
+        return cmon_types_builtin_bool(_fr->resolver->types);
     }
     else if (kind == cmon_astk_string_literal)
     {
+        return cmon_types_builtin_u8_view(_fr->resolver->types);
     }
 }
 
