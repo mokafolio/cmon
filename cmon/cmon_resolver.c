@@ -650,7 +650,7 @@ static inline cmon_bool _resolve_mutability(_file_resolver * _fr, cmon_idx _ast_
 static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
     cmon_idx expr, type;
-    
+
     expr = cmon_ast_add_expr(_fr_ast(_fr), _ast_idx);
 
     //@TODO: check that the expression is not a literal/temporary value (i.e. &3.5 should not
@@ -663,7 +663,27 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
             _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of function");
             return CMON_INVALID_IDX;
         }
-        return cmon_types_find_ptr(_fr->resolver->types, type, _resolve_mutability(_r, e));
+        return cmon_types_find_ptr(_fr->resolver->types, type, _resolve_mutability(_fr, expr));
+    }
+    return CMON_INVALID_IDX;
+}
+
+
+static inline cmon_idx _resolve_deref(_file_resolver * _fr,
+                                       cmon_idx _scope,
+                                       cmon_idx _ast_idx)
+{
+    cmon_idx type, expr;
+    expr = cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx);
+    type = _resolve_expr(_fr, _scope, expr, CMON_INVALID_IDX);
+    if (cmon_is_valid_idx(type))
+    {
+        if (cmon_type_kind(_fr->resolver->types, type) != cmon_typek_ptr)
+        {
+            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), expr), "can't dereference non-pointer type");
+            return CMON_INVALID_IDX;
+        }
+        return cmon_types_ptr_type(_fr->resolver->types, type);
     }
     return CMON_INVALID_IDX;
 }

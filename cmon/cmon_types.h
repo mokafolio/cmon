@@ -87,6 +87,10 @@ CMON_API cmon_idx cmon_types_builtin_u8_view(cmon_types * _tr); //used for strin
 // CMON_API cmon_idx cmon_types_noinit(cmon_types * _tr); //---
 // CMON_API cmon_idx cmon_types_module_ident(cmon_types * _tr); //
 
+//ptr specific getters
+CMON_API cmon_bool cmon_types_ptr_is_mut(cmon_types * _tr, cmon_idx _ptr_idx);
+CMON_API cmon_idx cmon_types_ptr_type(cmon_types * _tr, cmon_idx _ptr_idx);
+
 // fn specific getters
 CMON_API cmon_idx cmon_types_fn_return_type(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
