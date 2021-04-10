@@ -46,47 +46,30 @@ typedef struct cmon_types
     cmon_hashmap(const char *, cmon_idx) name_map;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
+
+    // builtin type indices
+    cmon_idx builtin_s8;
+    cmon_idx builtin_s16;
+    cmon_idx builtin_s32;
+    cmon_idx builtin_s64;
+    cmon_idx builtin_u8;
+    cmon_idx builtin_u16;
+    cmon_idx builtin_u32;
+    cmon_idx builtin_u64;
+    cmon_idx builtin_f32;
+    cmon_idx builtin_f64;
+    cmon_idx builtin_void;
+    cmon_idx builtin_bool;
+    cmon_idx builtin_u8_view;
 } cmon_types;
-
-cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
-{
-    cmon_types * ret = CMON_CREATE(_alloc, cmon_types);
-    ret->alloc = _alloc;
-    ret->mods = _mods;
-    cmon_dyn_arr_init(&ret->structs, _alloc, 32);
-    cmon_dyn_arr_init(&ret->fns, _alloc, 16);
-    cmon_dyn_arr_init(&ret->types, _alloc, 64);
-    cmon_hashmap_str_key_init(&ret->name_map, _alloc);
-    ret->str_builder = cmon_str_builder_create(_alloc, 256);
-    ret->str_buf = cmon_str_buf_create(_alloc, 256);
-    return ret;
-}
-
-void cmon_types_destroy(cmon_types * _t)
-{
-    size_t i;
-    cmon_str_buf_destroy(_t->str_buf);
-    cmon_str_builder_destroy(_t->str_builder);
-    cmon_hashmap_dealloc(&_t->name_map);
-    cmon_dyn_arr_dealloc(&_t->types);
-    for (i = 0; i < cmon_dyn_arr_count(&_t->fns); ++i)
-    {
-        cmon_dyn_arr_dealloc(&_t->fns[i].params);
-    }
-    cmon_dyn_arr_dealloc(&_t->fns);
-    for (i = 0; i < cmon_dyn_arr_count(&_t->structs); ++i)
-    {
-        cmon_dyn_arr_dealloc(&_t->structs[i].fields);
-    }
-    cmon_dyn_arr_dealloc(&_t->structs);
-}
 
 #define _tmp_str(_t, _fmt, ...)                                                                    \
     (cmon_str_builder_clear(_t->str_builder),                                                      \
-     cmon_str_builder_append_fmt(_t->str_builder, _fmt, __VA_ARGS__),                              \
+     cmon_str_builder_append_fmt(_t->str_builder, _fmt, ##__VA_ARGS__),                            \
      cmon_str_builder_c_str(_t->str_builder))
 
-#define _intern_str(_t, _fmt, ...) cmon_str_buf_append(_t->str_buf, _tmp_str(_t, _fmt, __VA_ARGS__))
+#define _intern_str(_t, _fmt, ...)                                                                 \
+    cmon_str_buf_append(_t->str_buf, _tmp_str(_t, _fmt, ##__VA_ARGS__))
 
 #define _get_type(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->types)), _t->types[_idx])
 
@@ -121,6 +104,67 @@ static inline cmon_idx _add_type(cmon_types * _t,
     cmon_hashmap_set(
         &_t->name_map, cmon_str_buf_get(_t->str_buf, _unique_off), cmon_dyn_arr_count(&_t->types));
     return cmon_dyn_arr_count(&_t->types) - 1;
+}
+
+static inline cmon_idx _add_builtin(cmon_types * _t, cmon_typek _kind, const char * _name)
+{
+    size_t name_off = _intern_str(_t, _name);
+    return _add_type(_t,
+                     _kind,
+                     name_off,
+                     name_off,
+                     name_off,
+                     CMON_INVALID_IDX,
+                     CMON_INVALID_IDX,
+                     CMON_INVALID_IDX);
+}
+
+cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
+{
+    cmon_types * ret = CMON_CREATE(_alloc, cmon_types);
+    ret->alloc = _alloc;
+    ret->mods = _mods;
+    cmon_dyn_arr_init(&ret->structs, _alloc, 32);
+    cmon_dyn_arr_init(&ret->fns, _alloc, 16);
+    cmon_dyn_arr_init(&ret->types, _alloc, 64);
+    cmon_hashmap_str_key_init(&ret->name_map, _alloc);
+    ret->str_builder = cmon_str_builder_create(_alloc, 256);
+    ret->str_buf = cmon_str_buf_create(_alloc, 256);
+
+    ret->builtin_s8 = _add_builtin(ret, cmon_typek_s8, "s8");
+    ret->builtin_s16 = _add_builtin(ret, cmon_typek_s16, "s16");
+    ret->builtin_s32 = _add_builtin(ret, cmon_typek_s32, "s32");
+    ret->builtin_s64 = _add_builtin(ret, cmon_typek_s64, "s64");
+    ret->builtin_u8 = _add_builtin(ret, cmon_typek_u8, "u8");
+    ret->builtin_u16 = _add_builtin(ret, cmon_typek_u16, "u16");
+    ret->builtin_u32 = _add_builtin(ret, cmon_typek_u32, "u32");
+    ret->builtin_u64 = _add_builtin(ret, cmon_typek_u64, "u64");
+    ret->builtin_f32 = _add_builtin(ret, cmon_typek_f32, "f32");
+    ret->builtin_f64 = _add_builtin(ret, cmon_typek_f64, "f64");
+    ret->builtin_void = _add_builtin(ret, cmon_typek_void, "void");
+    ret->builtin_bool = _add_builtin(ret, cmon_typek_bool, "bool");
+    // ret->builtin_u8_view;
+
+    return ret;
+}
+
+void cmon_types_destroy(cmon_types * _t)
+{
+    size_t i;
+    cmon_str_buf_destroy(_t->str_buf);
+    cmon_str_builder_destroy(_t->str_builder);
+    cmon_hashmap_dealloc(&_t->name_map);
+    cmon_dyn_arr_dealloc(&_t->types);
+    for (i = 0; i < cmon_dyn_arr_count(&_t->fns); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_t->fns[i].params);
+    }
+    cmon_dyn_arr_dealloc(&_t->fns);
+    for (i = 0; i < cmon_dyn_arr_count(&_t->structs); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_t->structs[i].fields);
+    }
+    cmon_dyn_arr_dealloc(&_t->structs);
 }
 
 cmon_idx cmon_types_add_struct(
@@ -311,4 +355,69 @@ cmon_idx cmon_types_fn_param(cmon_types * _t, cmon_idx _fn_idx, cmon_idx _param_
     assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
     assert(_param_idx < cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params));
     return _t->fns[_t->types[_fn_idx].data_idx].params[_param_idx];
+}
+
+cmon_idx cmon_types_builtin_s8(cmon_types * _t)
+{
+    return _t->builtin_s8;
+}
+
+cmon_idx cmon_types_builtin_s16(cmon_types * _t)
+{
+    return _t->builtin_s16;
+}
+
+cmon_idx cmon_types_builtin_s32(cmon_types * _t)
+{
+    return _t->builtin_s32;
+}
+
+cmon_idx cmon_types_builtin_s64(cmon_types * _t)
+{
+    return _t->builtin_s64;
+}
+
+cmon_idx cmon_types_builtin_u8(cmon_types * _t)
+{
+    return _t->builtin_u8;
+}
+
+cmon_idx cmon_types_builtin_u16(cmon_types * _t)
+{
+    return _t->builtin_u16;
+}
+
+cmon_idx cmon_types_builtin_u32(cmon_types * _t)
+{
+    return _t->builtin_u32;
+}
+
+cmon_idx cmon_types_builtin_u64(cmon_types * _t)
+{
+    return _t->builtin_u64;
+}
+
+cmon_idx cmon_types_builtin_f32(cmon_types * _t)
+{
+    return _t->builtin_f32;
+}
+
+cmon_idx cmon_types_builtin_f64(cmon_types * _t)
+{
+    return _t->builtin_f64;
+}
+
+cmon_idx cmon_types_builtin_void(cmon_types * _t)
+{
+    return _t->builtin_void;
+}
+
+cmon_idx cmon_types_builtin_bool(cmon_types * _t)
+{
+    return _t->builtin_bool;
+}
+
+cmon_idx cmon_types_builtin_u8_view(cmon_types * _t)
+{
+    return _t->builtin_u8_view;
 }

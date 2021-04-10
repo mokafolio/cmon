@@ -508,11 +508,48 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
     return ret;
 }
 
+static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
+                                     cmon_idx _scope,
+                                     cmon_idx _ast_idx,
+                                     cmon_idx _lh_type)
+{
+
+}
+
+static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
+                                     cmon_idx _scope,
+                                     cmon_idx _ast_idx,
+                                     cmon_idx _lh_type)
+{
+    
+}
+
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _scope,
                                      cmon_idx _ast_idx,
                                      cmon_idx _lh_type)
 {
+    cmon_ast * ast;
+    cmon_astk kind;
+
+    ast = _fr_ast(_fr);
+    kind = cmon_ast_kind(ast, _ast_idx);
+
+    if (kind == cmon_astk_int_literal)
+    {
+        return _resolve_int_literal(_fr, _scope, _ast_idx, _lh_type);
+    }
+    else if (kind == cmon_astk_float_literal)
+    {
+        return _resolve_float_literal(_fr, _scope, _ast_idx, _lh_type);
+    }
+    else if (kind == cmon_astk_bool_literal)
+    {
+        
+    }
+    else if (kind == cmon_astk_string_literal)
+    {
+    }
 }
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
