@@ -87,6 +87,8 @@ CMON_API cmon_idx cmon_astb_add_bool_lit(cmon_astb * _b, cmon_idx _tok_idx);
 CMON_API cmon_idx cmon_astb_add_float_lit(cmon_astb * _b, cmon_idx _tok_idx);
 CMON_API cmon_idx cmon_astb_add_int_lit(cmon_astb * _b, cmon_idx _tok_idx);
 CMON_API cmon_idx cmon_astb_add_string_lit(cmon_astb * _b, cmon_idx _tok_idx);
+CMON_API cmon_idx cmon_astb_add_addr(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr);
+CMON_API cmon_idx cmon_astb_add_deref(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_binary(cmon_astb * _b,
                                        cmon_idx _op_tok_idx,
                                        cmon_idx _left,
@@ -252,6 +254,10 @@ CMON_API cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_i
 CMON_API cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx);
+
+// addr/deref expr specific getters
+CMON_API cmon_idx cmon_ast_addr_expr(cmon_ast * _ast, cmon_idx _addr_idx);
+CMON_API cmon_idx cmon_ast_deref_expr(cmon_ast * _ast, cmon_idx _deref_idx);
 
 // prefix expr specific getters
 CMON_API cmon_idx cmon_ast_prefix_op_tok(cmon_ast * _ast, cmon_idx _pref_idx);

@@ -658,15 +658,20 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
     //     {
     //         lh_kind = cmon_types_kind(_fr->resolver->types, _lh_type);
 
-
     //     }
     // }
     // cmon_idx lht = _lh_type;
-    // if(!cmon_is_valid_idx(_lh_type) && cmon_tokens_kind(_fr_tokens(_fr), cmon_ast_prefix_op_tok()))
+    // if(!cmon_is_valid_idx(_lh_type) && cmon_tokens_kind(_fr_tokens(_fr),
+    // cmon_ast_prefix_op_tok()))
     // {
     //     lht = cmon_types_builtin_s32()
     // }
     return _resolve_expr(_fr, _scope, _ast_idx, _lh_type);
+}
+
+static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr, cmon_idx _expr_idx)
+{
+    
 }
 
 static inline cmon_idx _resolve_binary(_file_resolver * _fr,
@@ -674,6 +679,29 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
                                        cmon_idx _ast_idx,
                                        cmon_idx _lh_type)
 {
+    cmon_idx left_expr, right_expr;
+    cmon_idx left_type, right_type;
+
+    left_expr = cmon_ast_binary_left(_fr_ast(_fr), _ast_idx);
+    right_expr = cmon_ast_binary_right(_fr_ast(_fr), _ast_idx);
+
+    left_type = _resolve_expr(_fr, _scope, left_expr, _lh_type);
+    right_type = _resolve_expr(_fr, _scope, right_expr, _lh_type);
+
+    if (!cmon_is_valid_idx(left_type) || !cmon_is_valid_idx(right_type))
+        return CMON_INVALID_IDX;
+
+    if (left_type != right_type)
+    {
+        _fr_err(_fr,
+                cmon_ast_token(_fr_tokens(_fr), right_expr),
+                "cannot convert '%s' to '%s'",
+                cmon_types_name(_fr->resolver->types, left_type),
+                cmon_types_name(_fr->resolver->types, right_type));
+        return CMON_INVALID_IDX;
+    }
+
+    return left_type;
 }
 
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,

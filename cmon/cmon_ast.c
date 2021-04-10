@@ -129,6 +129,16 @@ cmon_idx cmon_astb_add_string_lit(cmon_astb * _b, cmon_idx _tok_idx)
     return _add_node(_b, cmon_astk_string_literal, _tok_idx, CMON_INVALID_IDX, CMON_INVALID_IDX);
 }
 
+cmon_idx cmon_astb_add_addr(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr)
+{
+    return _add_node(_b, cmon_astk_addr, _tok_idx, CMON_INVALID_IDX, _expr);
+}
+
+cmon_idx cmon_astb_add_deref(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr)
+{
+    return _add_node(_b, cmon_astk_deref, _tok_idx, CMON_INVALID_IDX, _expr);
+}
+
 cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _left, cmon_idx _right)
 {
     return _add_node(_b, cmon_astk_binary, _op_tok_idx, _left, _right);
@@ -683,6 +693,18 @@ cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx)
 {
     assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return cmon_ast_token(_ast, _struct_idx);
+}
+
+cmon_idx cmon_ast_addr_expr(cmon_ast * _ast, cmon_idx _addr_idx)
+{
+    assert(_get_kind(_ast, _addr_idx) == cmon_astk_addr);
+    return _ast->left_right[_addr_idx].right;
+}
+
+cmon_idx cmon_ast_deref_expr(cmon_ast * _ast, cmon_idx _deref_idx)
+{
+    assert(_get_kind(_ast, _deref_idx) == cmon_astk_deref);
+    return _ast->left_right[_deref_idx].right;
 }
 
 cmon_idx cmon_ast_prefix_op_tok(cmon_ast * _ast, cmon_idx _pref_idx)
