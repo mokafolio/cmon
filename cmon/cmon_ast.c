@@ -684,3 +684,15 @@ cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx)
     assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return cmon_ast_token(_ast, _struct_idx);
 }
+
+cmon_idx cmon_ast_prefix_op_tok(cmon_ast * _ast, cmon_idx _pref_idx)
+{
+    assert(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
+    return cmon_ast_token(_ast, _pref_idx);
+}
+
+cmon_idx cmon_ast_prefix_expr(cmon_ast * _ast, cmon_idx _pref_idx)
+{
+    assert(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
+    return _ast->left_right[_pref_idx].right;
+}
