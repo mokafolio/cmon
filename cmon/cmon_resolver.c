@@ -643,6 +643,31 @@ static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
     return ret;
 }
 
+static inline cmon_bool _resolve_mutability(_file_resolver * _fr, cmon_idx _ast_idx)
+{
+}
+
+static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    cmon_idx expr, type;
+    
+    expr = cmon_ast_add_expr(_fr_ast(_fr), _ast_idx);
+
+    //@TODO: check that the expression is not a literal/temporary value (i.e. &3.5 should not
+    // compile)
+    type = _resolve_expr(_fr, _scope, expr, CMON_INVALID_IDX);
+    if (cmon_is_valid_idx(type))
+    {
+        if (cmon_types_kind(_fr->resolver->types, type) == cmon_typek_fn)
+        {
+            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of function");
+            return CMON_INVALID_IDX;
+        }
+        return cmon_types_find_ptr(_fr->resolver->types, type, _resolve_mutability(_r, e));
+    }
+    return CMON_INVALID_IDX;
+}
+
 static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
                                        cmon_idx _scope,
                                        cmon_idx _ast_idx,
@@ -671,7 +696,6 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
 
 static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr, cmon_idx _expr_idx)
 {
-    
 }
 
 static inline cmon_idx _resolve_binary(_file_resolver * _fr,
@@ -730,6 +754,12 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_string_literal)
     {
         return cmon_types_builtin_u8_view(_fr->resolver->types);
+    }
+    else if (kind == cmon_astk_addr)
+    {
+    }
+    else if (kind == cmon_astk_deref)
+    {
     }
     else if (kind == cmon_astk_prefix)
     {
