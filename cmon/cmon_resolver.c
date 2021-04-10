@@ -648,12 +648,25 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
                                        cmon_idx _ast_idx,
                                        cmon_idx _lh_type)
 {
-    cmon_typek lh_kind;
+    // cmon_typek lh_kind;
+    // cmon_idx op_tok;
 
-    if (cmon_is_valid_idx(_lh_type))
-    {
-        lh_kind = cmon_types_kind(_fr->resolver->types, _lh_type);
-    }
+    //@TODO: Add overflow error if an unsigned int constant expression is negated
+    // if (cmon_is_valid_idx(_lh_type))
+    // {
+    //     if(cmon_types_is_unsigned_int(_fr->resolver->types, _lh_type))
+    //     {
+    //         lh_kind = cmon_types_kind(_fr->resolver->types, _lh_type);
+
+
+    //     }
+    // }
+    // cmon_idx lht = _lh_type;
+    // if(!cmon_is_valid_idx(_lh_type) && cmon_tokens_kind(_fr_tokens(_fr), cmon_ast_prefix_op_tok()))
+    // {
+    //     lht = cmon_types_builtin_s32()
+    // }
+    return _resolve_expr(_fr, _scope, _ast_idx, _lh_type);
 }
 
 static inline cmon_idx _resolve_binary(_file_resolver * _fr,
