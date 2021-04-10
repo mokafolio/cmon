@@ -696,3 +696,21 @@ cmon_idx cmon_ast_prefix_expr(cmon_ast * _ast, cmon_idx _pref_idx)
     assert(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
     return _ast->left_right[_pref_idx].right;
 }
+
+cmon_idx cmon_ast_binary_op_tok(cmon_ast * _ast, cmon_idx _bin_idx)
+{
+    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    return cmon_ast_token(_ast, _bin_idx);
+}
+
+cmon_idx cmon_ast_binary_left(cmon_ast * _ast, cmon_idx _bin_idx)
+{
+    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    return _ast->left_right[_bin_idx].left;
+}
+
+cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx)
+{
+    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    return _ast->left_right[_bin_idx].right;
+}

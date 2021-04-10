@@ -257,6 +257,11 @@ CMON_API cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_idx cmon_ast_prefix_op_tok(cmon_ast * _ast, cmon_idx _pref_idx);
 CMON_API cmon_idx cmon_ast_prefix_expr(cmon_ast * _ast, cmon_idx _pref_idx);
 
+// binary expr specific getters
+CMON_API cmon_idx cmon_ast_binary_op_tok(cmon_ast * _ast, cmon_idx _bin_idx);
+CMON_API cmon_idx cmon_ast_binary_left(cmon_ast * _ast, cmon_idx _bin_idx);
+CMON_API cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx);
+
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API double cmon_ast_float(cmon_ast * _ast, cmon_idx _idx);
