@@ -6,6 +6,7 @@
 #include <cmon/cmon_tokens.h>
 #include <errno.h>
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
@@ -517,74 +518,86 @@ static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
                                             cmon_idx _lh_type,
                                             cmon_bool _is_negated)
 {
-    // cmon_idx ret;
-    // uintmax_t v;
-    // char * endptr;
-    // cmon_typek kind;
+    cmon_idx ret, tok;
+    uintmax_t v;
+    char * endptr;
+    cmon_typek kind;
 
-    // if (cmon_is_valid_idx(_lh_type))
-    // {
-    //     kind = cmon_types_kind(_fr->resolver->types, _lh_type);
-    //     if (kind == cmon_typek_u8 || kind == cmon_type_s8 ||
-    //         kind == cmon_typek_u16 || kind == cmon_type_s16 ||
-    //         kind == cmon_typek_u32 || kind == cmon_type_s32 ||
-    //         kind == cmon_typek_u64 || kind == cmon_type_s64)
-    //     {
-    //         ret = _lh_type;
-    //     }
-    // }
-    // else
-    // {
-    //     ret = cmon_types_builtin_s32(_fr->resolver->types);
-    // }
+    tok = cmon_ast_token(_fr_ast(_fr), _ast_idx);
+    if (cmon_is_valid_idx(_lh_type))
+    {
+        kind = cmon_types_kind(_fr->resolver->types, _lh_type);
+        if (kind == cmon_typek_u8 || kind == cmon_typek_s8 || kind == cmon_typek_u16 ||
+            kind == cmon_typek_s16 || kind == cmon_typek_u32 || kind == cmon_typek_s32 ||
+            kind == cmon_typek_u64 || kind == cmon_typek_s64)
+        {
+            ret = _lh_type;
+        }
+    }
+    else
+    {
+        ret = cmon_types_builtin_s32(_fr->resolver->types);
+    }
 
-    // errno = 0;
-    // if (cmon_type_is_unsigned_integer(ret))
-    // {
-    //     if (_is_negated)
-    //     {
-    //         _fr_err(_r, _expr->tok, "negated integer literal overflows %s", cmon_types_name(_fr->resolver->types, ret));
-    //         return ret;
-    //     }
-    // }
+    errno = 0;
+    if (cmon_types_is_unsigned_int(_fr->resolver->types, ret))
+    {
+        if (_is_negated)
+        {
+            _fr_err(_fr,
+                    tok,
+                    "negated int literal overflows %s",
+                    cmon_types_name(_fr->resolver->types, ret));
+            return ret;
+        }
+    }
 
-    // v = strtoumax(_expr->tok->str_view.begin, &endptr, 0);
-    // if (errno == ERANGE)
-    // {
-    //     _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
-    // }
-    // else
-    // {
-    //     printf("DA FOCKING NUMBER %lu", v);
-    //     _expr->data.int_lit.value = v;
+    v = strtoumax(cmon_tokens_str_view(_fr_tokens(_fr), tok).begin, &endptr, 0);
+    if (errno == ERANGE)
+    {
+        _fr_err(_fr,
+                tok,
+                "int literal out of range for '%s'",
+                cmon_types_name(_fr->resolver->types, ret));
+    }
+    else
+    {
+        // _expr->data.int_lit.value = v;
+        kind = cmon_types_kind(_fr->resolver->types, ret);
 
-    //     //@TODO: Better (more portable) way to get the max/min values for each of these??
-    //     if (_prefix_expr)
-    //     {
-    //         if ((ret->kind == cmon_type_s8 && -(int64_t)v < SCHAR_MIN) ||
-    //             (ret->kind == cmon_type_s16 && -(int64_t)v < SHRT_MIN) ||
-    //             (ret->kind == cmon_type_s32 && -(int64_t)v < INT_MIN) ||
-    //             (ret->kind == cmon_type_s64 && v > -(uint64_t)LONG_MIN))
-    //         {
-    //             _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
-    //         }
-    //     }
-    //     else
-    //     {
-    //         if ((ret->kind == cmon_type_u8 && v > UCHAR_MAX) ||
-    //             (ret->kind == cmon_type_s8 && v > SCHAR_MAX) ||
-    //             (ret->kind == cmon_type_u16 && v > USHRT_MAX) ||
-    //             (ret->kind == cmon_type_s16 && v > SHRT_MAX) ||
-    //             (ret->kind == cmon_type_u32 && v > UINT_MAX) ||
-    //             (ret->kind == cmon_type_s32 && v > INT_MAX) ||
-    //             (ret->kind == cmon_type_u64 && v > ULONG_MAX) ||
-    //             (ret->kind == cmon_type_s64 && v > LONG_MAX))
-    //         {
-    //             _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
-    //         }
-    //     }
-    // }
-    // return ret;
+        //@TODO: Better (more portable) way to get the max/min values for each of these??
+        if (_is_negated)
+        {
+            if ((kind == cmon_typek_s8 && -(int64_t)v < SCHAR_MIN) ||
+                (kind == cmon_typek_s16 && -(int64_t)v < SHRT_MIN) ||
+                (kind == cmon_typek_s32 && -(int64_t)v < INT_MIN) ||
+                (kind == cmon_typek_s64 && v > -(uint64_t)LONG_MIN))
+            {
+                _fr_err(_fr,
+                        tok,
+                        "int literal out of range for '%s'",
+                        cmon_types_name(_fr->resolver->types, ret));
+            }
+        }
+        else
+        {
+            if ((kind == cmon_typek_u8 && v > UCHAR_MAX) ||
+                (kind == cmon_typek_s8 && v > SCHAR_MAX) ||
+                (kind == cmon_typek_u16 && v > USHRT_MAX) ||
+                (kind == cmon_typek_s16 && v > SHRT_MAX) ||
+                (kind == cmon_typek_u32 && v > UINT_MAX) ||
+                (kind == cmon_typek_s32 && v > INT_MAX) ||
+                (kind == cmon_typek_u64 && v > ULONG_MAX) ||
+                (kind == cmon_typek_s64 && v > LONG_MAX))
+            {
+                _fr_err(_fr,
+                        tok,
+                        "int literal out of range for '%s'",
+                        cmon_types_name(_fr->resolver->types, ret));
+            }
+        }
+    }
+    return ret;
 }
 
 static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
