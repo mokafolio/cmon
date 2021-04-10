@@ -92,4 +92,9 @@ CMON_API cmon_idx cmon_types_fn_return_type(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param(cmon_types * _tr, cmon_idx _fn_idx, cmon_idx _param_idx);
 
+//utilities
+CMON_API cmon_bool cmon_types_is_unsigned_int(cmon_types * _tr, cmon_idx _idx);
+CMON_API cmon_bool cmon_types_is_signed_int(cmon_types * _tr, cmon_idx _idx);
+CMON_API cmon_bool cmon_types_is_int(cmon_types * _tr, cmon_idx _idx);
+
 #endif // CMON_CMON_TYPES_H

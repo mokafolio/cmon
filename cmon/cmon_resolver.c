@@ -514,8 +514,77 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
 static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx,
-                                            cmon_idx _lh_type)
+                                            cmon_idx _lh_type,
+                                            cmon_bool _is_negated)
 {
+    // cmon_idx ret;
+    // uintmax_t v;
+    // char * endptr;
+    // cmon_typek kind;
+
+    // if (cmon_is_valid_idx(_lh_type))
+    // {
+    //     kind = cmon_types_kind(_fr->resolver->types, _lh_type);
+    //     if (kind == cmon_typek_u8 || kind == cmon_type_s8 ||
+    //         kind == cmon_typek_u16 || kind == cmon_type_s16 ||
+    //         kind == cmon_typek_u32 || kind == cmon_type_s32 ||
+    //         kind == cmon_typek_u64 || kind == cmon_type_s64)
+    //     {
+    //         ret = _lh_type;
+    //     }
+    // }
+    // else
+    // {
+    //     ret = cmon_types_builtin_s32(_fr->resolver->types);
+    // }
+
+    // errno = 0;
+    // if (cmon_type_is_unsigned_integer(ret))
+    // {
+    //     if (_is_negated)
+    //     {
+    //         _fr_err(_r, _expr->tok, "negated integer literal overflows %s", cmon_types_name(_fr->resolver->types, ret));
+    //         return ret;
+    //     }
+    // }
+
+    // v = strtoumax(_expr->tok->str_view.begin, &endptr, 0);
+    // if (errno == ERANGE)
+    // {
+    //     _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
+    // }
+    // else
+    // {
+    //     printf("DA FOCKING NUMBER %lu", v);
+    //     _expr->data.int_lit.value = v;
+
+    //     //@TODO: Better (more portable) way to get the max/min values for each of these??
+    //     if (_prefix_expr)
+    //     {
+    //         if ((ret->kind == cmon_type_s8 && -(int64_t)v < SCHAR_MIN) ||
+    //             (ret->kind == cmon_type_s16 && -(int64_t)v < SHRT_MIN) ||
+    //             (ret->kind == cmon_type_s32 && -(int64_t)v < INT_MIN) ||
+    //             (ret->kind == cmon_type_s64 && v > -(uint64_t)LONG_MIN))
+    //         {
+    //             _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         if ((ret->kind == cmon_type_u8 && v > UCHAR_MAX) ||
+    //             (ret->kind == cmon_type_s8 && v > SCHAR_MAX) ||
+    //             (ret->kind == cmon_type_u16 && v > USHRT_MAX) ||
+    //             (ret->kind == cmon_type_s16 && v > SHRT_MAX) ||
+    //             (ret->kind == cmon_type_u32 && v > UINT_MAX) ||
+    //             (ret->kind == cmon_type_s32 && v > INT_MAX) ||
+    //             (ret->kind == cmon_type_u64 && v > ULONG_MAX) ||
+    //             (ret->kind == cmon_type_s64 && v > LONG_MAX))
+    //         {
+    //             _fr_err(_r, _expr->tok, "int literal out of range for '%s'", ret->name);
+    //         }
+    //     }
+    // }
+    // return ret;
 }
 
 static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
@@ -570,7 +639,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
 
     if (kind == cmon_astk_int_literal)
     {
-        return _resolve_int_literal(_fr, _scope, _ast_idx, _lh_type);
+        return _resolve_int_literal(_fr, _scope, _ast_idx, _lh_type, cmon_false);
     }
     else if (kind == cmon_astk_float_literal)
     {

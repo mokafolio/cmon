@@ -421,3 +421,22 @@ cmon_idx cmon_types_builtin_u8_view(cmon_types * _t)
 {
     return _t->builtin_u8_view;
 }
+
+cmon_bool cmon_types_is_unsigned_int(cmon_types * _t, cmon_idx _idx)
+{
+    cmon_typek kind = cmon_types_kind(_t, _idx);
+    return kind == cmon_typek_u8 || kind == cmon_typek_u16 || kind == cmon_typek_u32 ||
+           kind == cmon_typek_u64;
+}
+
+cmon_bool cmon_types_is_signed_int(cmon_types * _t, cmon_idx _idx)
+{
+    cmon_typek kind = cmon_types_kind(_t, _idx);
+    return kind == cmon_typek_s8 || kind == cmon_typek_s16 || kind == cmon_typek_s32 ||
+           kind == cmon_typek_s64;
+}
+
+cmon_bool cmon_types_is_int(cmon_types * _t, cmon_idx _idx)
+{
+    return cmon_types_is_unsigned_int(_t, _idx) || cmon_types_is_signed_int(_t, _idx);
+}
