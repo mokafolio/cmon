@@ -649,10 +649,8 @@ static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
 
     kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
 
-    if (kind == cmon_astk_float_literal ||
-        kind == cmon_astk_string_literal ||
-        kind == cmon_astk_int_literal ||
-        kind == cmon_astk_bool_literal)
+    if (kind == cmon_astk_float_literal || kind == cmon_astk_string_literal ||
+        kind == cmon_astk_int_literal || kind == cmon_astk_bool_literal)
     {
         return cmon_true;
     }
@@ -662,7 +660,7 @@ static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
                _is_literal(_fr, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx));
     else if (kind == cmon_astk_prefix)
         return _is_literal(_fr, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx));
-    else if(kind == cmon_astk_paran_expr)
+    else if (kind == cmon_astk_paran_expr)
         return _is_literal(_fr, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx));
 
     return cmon_false;
@@ -693,10 +691,7 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
     return CMON_INVALID_IDX;
 }
 
-
-static inline cmon_idx _resolve_deref(_file_resolver * _fr,
-                                       cmon_idx _scope,
-                                       cmon_idx _ast_idx)
+static inline cmon_idx _resolve_deref(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
     cmon_idx type, expr;
     expr = cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx);
@@ -820,6 +815,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_binary)
     {
         return _resolve_binary(_fr, _scope, _ast_idx, _lh_type);
+    }
+    else if (kind == cmon_astk_paran_expr)
+    {
+        return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
     }
 }
 
