@@ -1,8 +1,9 @@
 #ifndef CMON_CMON_SRC_H
 #define CMON_CMON_SRC_H
 
-#include <cmon/cmon_ast.h>
+#include <cmon/cmon_allocator.h>
 
+typedef struct cmon_ast cmon_ast;
 typedef struct cmon_tokens cmon_tokens;
 typedef struct cmon_src cmon_src;
 

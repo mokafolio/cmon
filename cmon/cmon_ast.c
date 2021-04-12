@@ -1,6 +1,5 @@
 #include <cmon/cmon_ast.h>
 #include <cmon/cmon_dyn_arr.h>
-#include <cmon/cmon_tokens.h>
 #include <cmon/cmon_util.h>
 #include <stdarg.h>
 
@@ -13,8 +12,9 @@ typedef struct
 typedef struct cmon_ast
 {
     cmon_allocator * alloc;
+    cmon_tokens * tokens;
     cmon_astk * kinds;
-    cmon_idx * tokens;
+    cmon_idx * primary_tokens;
     _left_right * left_right;
     size_t count;
     cmon_idx root_block_idx;
@@ -25,8 +25,9 @@ typedef struct cmon_ast
 typedef struct cmon_astb
 {
     cmon_allocator * alloc;
+    cmon_tokens * tokens;
     cmon_dyn_arr(cmon_astk) kinds;
-    cmon_dyn_arr(cmon_idx) tokens;
+    cmon_dyn_arr(cmon_idx) primary_tokens;
     cmon_dyn_arr(_left_right) left_right;
     cmon_dyn_arr(cmon_idx) extra_data;
     cmon_dyn_arr(cmon_idx) imports; // we put all imports in one additional list for easy dependency
@@ -35,12 +36,13 @@ typedef struct cmon_astb
     cmon_ast ast; // filled in in cmon_astb_ast
 } cmon_astb;
 
-cmon_astb * cmon_astb_create(cmon_allocator * _alloc)
+cmon_astb * cmon_astb_create(cmon_allocator * _alloc, cmon_tokens * _tokens)
 {
     cmon_astb * ret = CMON_CREATE(_alloc, cmon_astb);
     ret->alloc = _alloc;
+    ret->tokens = _tokens;
     cmon_dyn_arr_init(&ret->kinds, _alloc, 256);
-    cmon_dyn_arr_init(&ret->tokens, _alloc, 256);
+    cmon_dyn_arr_init(&ret->primary_tokens, _alloc, 256);
     cmon_dyn_arr_init(&ret->left_right, _alloc, 256);
     cmon_dyn_arr_init(&ret->extra_data, _alloc, 256);
     cmon_dyn_arr_init(&ret->imports, _alloc, 8);
@@ -50,10 +52,13 @@ cmon_astb * cmon_astb_create(cmon_allocator * _alloc)
 
 void cmon_astb_destroy(cmon_astb * _b)
 {
+    if(!_b)
+        return;
+
     cmon_dyn_arr_dealloc(&_b->imports);
     cmon_dyn_arr_dealloc(&_b->extra_data);
     cmon_dyn_arr_dealloc(&_b->left_right);
-    cmon_dyn_arr_dealloc(&_b->tokens);
+    cmon_dyn_arr_dealloc(&_b->primary_tokens);
     cmon_dyn_arr_dealloc(&_b->kinds);
     CMON_DESTROY(_b->alloc, _b);
 }
@@ -92,7 +97,7 @@ static inline cmon_idx _add_node(
     cmon_astb * _b, cmon_astk _kind, cmon_idx _tok_idx, cmon_idx _left, cmon_idx _right)
 {
     cmon_dyn_arr_append(&_b->kinds, _kind);
-    cmon_dyn_arr_append(&_b->tokens, _tok_idx);
+    cmon_dyn_arr_append(&_b->primary_tokens, _tok_idx);
     printf("adding node %lu %lu %lu\n", _left, _right, cmon_dyn_arr_count(&_b->extra_data));
     cmon_dyn_arr_append(&_b->left_right, ((_left_right){ _left, _right }));
     return cmon_dyn_arr_count(&_b->kinds) - 1;
@@ -364,6 +369,7 @@ cmon_ast * cmon_astb_ast(cmon_astb * _b)
     _b->ast.alloc = NULL;
     _b->ast.kinds = _b->kinds;
     _b->ast.tokens = _b->tokens;
+    _b->ast.primary_tokens = _b->primary_tokens;
     _b->ast.left_right = _b->left_right;
     _b->ast.count = cmon_dyn_arr_count(&_b->kinds);
     _b->ast.root_block_idx = _b->root_block_idx;
@@ -390,7 +396,7 @@ static inline cmon_astk _get_kind(cmon_ast * _ast, cmon_idx _idx)
 static inline cmon_idx _get_token(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
-    return _ast->tokens[_idx];
+    return _ast->primary_tokens[_idx];
 }
 
 static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
@@ -412,7 +418,7 @@ cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx)
 cmon_idx cmon_ast_token(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_idx < _ast->count);
-    return _ast->tokens[_idx];
+    return _ast->primary_tokens[_idx];
 }
 
 cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx)
@@ -735,4 +741,10 @@ cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx)
 {
     assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return _ast->left_right[_bin_idx].right;
+}
+
+cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_idx)
+{
+    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    return cmon_tokens_is(_ast->tokens, cmon_ast_binary_op_tok(_ast, _bin_idx), CMON_ASSIGN_TOKS);
 }

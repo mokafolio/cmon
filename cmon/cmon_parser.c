@@ -698,7 +698,7 @@ cmon_parser * cmon_parser_create(cmon_allocator * _alloc)
 {
     cmon_parser * ret = CMON_CREATE(_alloc, cmon_parser);
     ret->alloc = _alloc;
-    ret->ast_builder = cmon_astb_create(_alloc);
+    ret->ast_builder = NULL;
     ret->err_str_builder = cmon_str_builder_create(_alloc, 256);
     ret->tk_str_builder = cmon_str_builder_create(_alloc, 64);
     ret->idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
@@ -733,9 +733,14 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
     cmon_idx b;
 
     ast = NULL;
+
+    //for now a parser can't be reset, this is just a sanity check to make sure cmon_parser_parse is only called once for every instance
+    assert(_p->ast_builder == NULL);
+
     _p->src = _src;
     _p->src_file_idx = _src_file_idx;
     _p->tokens = _tokens;
+    _p->ast_builder = cmon_astb_create(_p->alloc, _tokens);
 
     first_tok = cmon_tokens_count(_p->tokens) ? 0 : CMON_INVALID_IDX;
 

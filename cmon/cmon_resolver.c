@@ -304,13 +304,13 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 cmon_idx name_tok_idx, tidx;
                 cmon_str_view name;
                 name_tok_idx = cmon_ast_struct_name(ast, idx);
-                if (!_check_redec(_r, _r->global_scope, name_tok_idx))
+                if (!_check_redec(fr, fr->file_scope, name_tok_idx))
                 {
                     name = cmon_tokens_str_view(tokens, name_tok_idx);
                     tidx = cmon_types_add_struct(
                         _r->types, _r->mod_idx, name, src_file_idx, name_tok_idx);
                     cmon_dyn_arr_append(&fr->type_decls, tidx);
-                    cmon_symbols_scope_add_type(_r,
+                    cmon_symbols_scope_add_type(_r->symbols,
                                                 _r->global_scope,
                                                 name,
                                                 tidx,
@@ -643,6 +643,29 @@ static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
     return ret;
 }
 
+static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
+{
+    cmon_astk kind;
+
+    kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
+
+    if (kind == cmon_astk_float_literal ||
+        kind == cmon_astk_string_literal ||
+        kind == cmon_astk_int_literal ||
+        kind == cmon_astk_bool_literal)
+    {
+        return cmon_true;
+    }
+
+    if (kind == cmon_astk_binary)
+        return _is_literal(_fr, cmon_ast_binary_left(_fr_ast(_fr), _ast_idx)) &&
+               _is_literal(_fr, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx));
+    else if (kind == cmon_astk_prefix)
+        return _is_literal(_fr, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx));
+
+    return cmon_false;
+}
+
 static inline cmon_bool _resolve_mutability(_file_resolver * _fr, cmon_idx _ast_idx)
 {
 }
@@ -651,7 +674,7 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
 {
     cmon_idx expr, type;
 
-    expr = cmon_ast_add_expr(_fr_ast(_fr), _ast_idx);
+    expr = cmon_ast_addr_expr(_fr_ast(_fr), _ast_idx);
 
     //@TODO: check that the expression is not a literal/temporary value (i.e. &3.5 should not
     // compile)
@@ -678,7 +701,7 @@ static inline cmon_idx _resolve_deref(_file_resolver * _fr,
     type = _resolve_expr(_fr, _scope, expr, CMON_INVALID_IDX);
     if (cmon_is_valid_idx(type))
     {
-        if (cmon_type_kind(_fr->resolver->types, type) != cmon_typek_ptr)
+        if (cmon_types_kind(_fr->resolver->types, type) != cmon_typek_ptr)
         {
             _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), expr), "can't dereference non-pointer type");
             return CMON_INVALID_IDX;
@@ -735,10 +758,15 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
     if (!cmon_is_valid_idx(left_type) || !cmon_is_valid_idx(right_type))
         return CMON_INVALID_IDX;
 
+    if (cmon_ast_binary_is_assignment(_fr_ast(_fr), _ast_idx))
+    {
+        _validate_lvalue_expr(_fr, left_expr);
+    }
+
     if (left_type != right_type)
     {
         _fr_err(_fr,
-                cmon_ast_token(_fr_tokens(_fr), right_expr),
+                cmon_ast_token(_fr_ast(_fr), right_expr),
                 "cannot convert '%s' to '%s'",
                 cmon_types_name(_fr->resolver->types, left_type),
                 cmon_types_name(_fr->resolver->types, right_type));
@@ -777,9 +805,11 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     }
     else if (kind == cmon_astk_addr)
     {
+        return _resolve_addr(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_deref)
     {
+        return _resolve_deref(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_prefix)
     {

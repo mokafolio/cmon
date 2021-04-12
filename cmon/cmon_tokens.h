@@ -138,12 +138,15 @@ CMON_API const char * cmon_tokk_to_str(cmon_tokk _kind);
 
 // helper so we don't need to manually write out all binary expression tokens evey time we want to
 // check for that
+#define CMON_ASSIGN_TOKS                                                                           \
+    cmon_tokk_assign, cmon_tokk_plus_assign, cmon_tokk_minus_assign, cmon_tokk_mult_assign,        \
+        cmon_tokk_div_assign, cmon_tokk_mod_assign, cmon_tokk_bw_left_assign,                      \
+        cmon_tokk_bw_right_assign, cmon_tokk_bw_and_assign, cmon_tokk_bw_xor_assign,               \
+        cmon_tokk_bw_or_assign
+
 #define CMON_BIN_TOKS                                                                              \
-    cmon_tokk_equals, cmon_tokk_not_equals, cmon_tokk_assign, cmon_tokk_plus_assign, cmon_tokk_minus_assign, \
-        cmon_tokk_mult_assign, cmon_tokk_div_assign, cmon_tokk_mod_assign, cmon_tokk_bw_left_assign,       \
-        cmon_tokk_bw_right_assign, cmon_tokk_bw_and_assign, cmon_tokk_bw_xor_assign,                     \
-        cmon_tokk_bw_or_assign, cmon_tokk_plus, cmon_tokk_minus, cmon_tokk_inc, cmon_tokk_dec, cmon_tokk_mult, \
-        cmon_tokk_div, cmon_tokk_mod, cmon_tokk_bw_left, cmon_tokk_bw_right, cmon_tokk_bw_and,               \
-        cmon_tokk_bw_xor, cmon_tokk_bw_or
+    CMON_ASSIGN_TOKS, cmon_tokk_plus, cmon_tokk_minus, cmon_tokk_inc, cmon_tokk_dec,               \
+        cmon_tokk_mult, cmon_tokk_div, cmon_tokk_mod, cmon_tokk_bw_left, cmon_tokk_bw_right,       \
+        cmon_tokk_bw_and, cmon_tokk_bw_xor, cmon_tokk_bw_or
 
 #endif // CMON_CMON_TOKENS_H

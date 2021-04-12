@@ -1,7 +1,7 @@
 #ifndef CMON_CMON_AST_H
 #define CMON_CMON_AST_H
 
-#include <cmon/cmon_allocator.h>
+#include <cmon/cmon_tokens.h>
 
 typedef enum
 {
@@ -75,7 +75,7 @@ typedef struct cmon_ast cmon_ast;
 // ast builder
 typedef struct cmon_astb cmon_astb;
 
-CMON_API cmon_astb * cmon_astb_create(cmon_allocator * _alloc);
+CMON_API cmon_astb * cmon_astb_create(cmon_allocator * _alloc, cmon_tokens * _tokens);
 CMON_API void cmon_astb_destroy(cmon_astb * _b);
 
 // buffering extra data (i.e. all the statement indices of a block)
@@ -151,16 +151,15 @@ CMON_API cmon_idx cmon_astb_add_fn_param_list(
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
 // adding parsed types
-CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b, cmon_idx _mod_tok_idx, cmon_idx _name_tok_idx);
+CMON_API cmon_idx cmon_astb_add_type_named(cmon_astb * _b,
+                                           cmon_idx _mod_tok_idx,
+                                           cmon_idx _name_tok_idx);
 CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
                                          cmon_idx _tok_idx,
                                          cmon_bool _is_mut,
                                          cmon_idx _type_idx);
-CMON_API cmon_idx cmon_astb_add_type_fn(cmon_astb * _b,
-                                        cmon_idx _tok_idx,
-                                        cmon_idx _ret_type,
-                                        cmon_idx * _params,
-                                        size_t _count);
+CMON_API cmon_idx cmon_astb_add_type_fn(
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _ret_type, cmon_idx * _params, size_t _count);
 
 // adding type declarations
 CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
@@ -197,10 +196,10 @@ typedef struct cmon_ast_iter
 
 CMON_API cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it);
 
-//module stmt specific getters
+// module stmt specific getters
 CMON_API cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx);
 
-//import specific getters
+// import specific getters
 CMON_API cmon_idx cmon_ast_import_begin(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_end(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_idx);
@@ -210,7 +209,7 @@ CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _impor
 CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
 
-//parsed type specific getters (i.e. foo.Bar or *mut Foo)
+// parsed type specific getters (i.e. foo.Bar or *mut Foo)
 CMON_API cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx);
@@ -220,14 +219,14 @@ CMON_API cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx)
 CMON_API cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx);
 
-//var decl specific getters
+// var decl specific getters
 CMON_API cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_bool cmon_ast_var_decl_is_pub(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx);
 
-//var decl list specific getters
+// var decl list specific getters
 CMON_API cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx);
@@ -267,6 +266,7 @@ CMON_API cmon_idx cmon_ast_prefix_expr(cmon_ast * _ast, cmon_idx _pref_idx);
 CMON_API cmon_idx cmon_ast_binary_op_tok(cmon_ast * _ast, cmon_idx _bin_idx);
 CMON_API cmon_idx cmon_ast_binary_left(cmon_ast * _ast, cmon_idx _bin_idx);
 CMON_API cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx);
+CMON_API cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);
