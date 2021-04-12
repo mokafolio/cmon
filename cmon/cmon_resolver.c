@@ -6,6 +6,7 @@
 #include <cmon/cmon_tokens.h>
 #include <errno.h>
 #include <float.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <math.h>
 #include <setjmp.h>
@@ -558,18 +559,19 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
     if (cmon_is_valid_idx(sym))
     {
         skind = cmon_symbols_kind(_fr->resolver->symbols, sym);
-        if(skind == cmon_symk_type)
+        if (skind == cmon_symk_type)
         {
             return cmon_types_builtin_typeident(_fr->resolver->types);
         }
-        else if(skind == cmon_symk_import)
+        else if (skind == cmon_symk_import)
         {
             return cmon_types_builtin_modident(_fr->resolver->types);
         }
-        else if(skind == cmon_symk_var)
+        else if (skind == cmon_symk_var)
         {
             return cmon_symbols_var_type(_fr->resolver->symbols, sym);
         }
+        cmon_ast_ident_set_sym(_fr_ast(_fr), _ast_idx, sym);
     }
 
     _fr_err(_fr,
@@ -778,15 +780,54 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
 static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr, cmon_idx _expr_idx)
 {
     cmon_astk kind;
+    cmon_symk skind;
+    cmon_idx sym;
+    cmon_str_view name;
 
     _expr_idx = _remove_paran(_fr, _expr_idx);
     kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
 
     if (kind == cmon_astk_ident)
     {
+        sym = cmon_ast_ident_sym(_fr_ast(_fr), _expr_idx);
+        // the expression must have been resolved and the symbol hence set
+        assert(cmon_is_valid_idx(sym));
+        skind = cmon_symbols_kind(_fr->resolver->symbols, sym);
+        if (skind == cmon_symk_var)
+        {
+            if (!cmon_symbols_var_is_mut(_fr->resolver->symbols, sym))
+            {
+                name = cmon_ast_ident_name(_fr_ast(_fr), _expr_idx);
+                _fr_err(_fr,
+                        cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                        "variable '%*.s' is not mutable",
+                        name.end - name.begin,
+                        name.begin);
+                return cmon_true;
+            }
+        }
+        else
+        {
+            const char * kind;
+            if (skind == cmon_symk_type)
+            {
+                kind = "type identifier";
+            }
+            else if (skind == cmon_symk_import)
+            {
+                kind = "module identifier";
+            }
+            else
+            {
+                assert(cmon_false);
+            }
+
+            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected, got %s", kind);
+            return cmon_true;
+        }
     }
 
-    return cmon_true;
+    return cmon_false;
 }
 
 static inline cmon_idx _resolve_binary(_file_resolver * _fr,
@@ -832,6 +873,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     cmon_ast * ast;
     cmon_astk kind;
 
+    _ast_idx = _remove_paran(_fr, _ast_idx);
     ast = _fr_ast(_fr);
     kind = cmon_ast_kind(ast, _ast_idx);
 
@@ -851,6 +893,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     {
         return cmon_types_builtin_u8_view(_fr->resolver->types);
     }
+    else if (kind == cmon_astk_ident)
+    {
+        return _resolve_ident(_fr, _scope, _ast_idx);
+    }
     else if (kind == cmon_astk_addr)
     {
         return _resolve_addr(_fr, _scope, _ast_idx);
@@ -867,10 +913,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     {
         return _resolve_binary(_fr, _scope, _ast_idx, _lh_type);
     }
-    else if (kind == cmon_astk_paran_expr)
-    {
-        return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
-    }
+    // else if (kind == cmon_astk_paran_expr)
+    // {
+    //     return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
+    // }
 }
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)

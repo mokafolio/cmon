@@ -509,6 +509,18 @@ cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx)
     return cmon_tokens_str_view(_ast->tokens, cmon_ast_token(_ast, _tidx));
 }
 
+void cmon_ast_ident_set_sym(cmon_ast * _ast, cmon_idx _tidx, cmon_idx _sym)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    _ast->left_right[_tidx].left = _sym;
+}
+
+cmon_idx cmon_ast_ident_sym(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    return _ast->left_right[_tidx].left;
+}
+
 cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);
