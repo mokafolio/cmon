@@ -662,6 +662,8 @@ static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
                _is_literal(_fr, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx));
     else if (kind == cmon_astk_prefix)
         return _is_literal(_fr, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx));
+    else if(kind == cmon_astk_paran_expr)
+        return _is_literal(_fr, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx));
 
     return cmon_false;
 }

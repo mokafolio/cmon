@@ -748,3 +748,9 @@ cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_idx)
     assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return cmon_tokens_is(_ast->tokens, cmon_ast_binary_op_tok(_ast, _bin_idx), CMON_ASSIGN_TOKS);
 }
+
+cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx)
+{
+    assert(_get_kind(_ast, _paran_idx) == cmon_astk_paran_expr);
+    return _ast->left_right[_paran_idx].left;
+}
