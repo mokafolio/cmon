@@ -68,6 +68,8 @@ typedef struct cmon_types
     cmon_idx builtin_void;
     cmon_idx builtin_bool;
     cmon_idx builtin_u8_view;
+    cmon_idx builtin_modident;
+    cmon_idx builtin_typeident;
 } cmon_types;
 
 #define _tmp_str(_t, _fmt, ...)                                                                    \
@@ -152,6 +154,8 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     ret->builtin_void = _add_builtin(ret, cmon_typek_void, "void");
     ret->builtin_bool = _add_builtin(ret, cmon_typek_bool, "bool");
     // ret->builtin_u8_view;
+    ret->builtin_modident = _add_builtin(ret, cmon_typek_modident, "modident");
+    ret->builtin_typeident = _add_builtin(ret, cmon_typek_typeident, "typeident");
 
     return ret;
 }
@@ -447,6 +451,16 @@ cmon_idx cmon_types_builtin_bool(cmon_types * _t)
 cmon_idx cmon_types_builtin_u8_view(cmon_types * _t)
 {
     return _t->builtin_u8_view;
+}
+
+cmon_idx cmon_types_builtin_modident(cmon_types * _t)
+{
+    return _t->builtin_modident;
+}
+
+cmon_idx cmon_types_builtin_typeident(cmon_types * _t)
+{
+    return _t->builtin_typeident;
 }
 
 cmon_bool cmon_types_is_unsigned_int(cmon_types * _t, cmon_idx _idx)

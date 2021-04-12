@@ -29,7 +29,8 @@ typedef enum
     // cmon_typek_typealias,
     // cmon_typek_typedef,
     // cmon_typek_range,
-    cmon_typek_module // type specifier for module identifiers
+    cmon_typek_modident,
+    cmon_typek_typeident
 } cmon_typek;
 
 typedef struct cmon_modules cmon_modules;
@@ -85,7 +86,8 @@ CMON_API cmon_idx cmon_types_builtin_void(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_bool(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_u8_view(cmon_types * _tr); //used for strings
 // CMON_API cmon_idx cmon_types_noinit(cmon_types * _tr); //---
-// CMON_API cmon_idx cmon_types_module_ident(cmon_types * _tr); //
+CMON_API cmon_idx cmon_types_builtin_modident(cmon_types * _tr);
+CMON_API cmon_idx cmon_types_builtin_typeident(cmon_types * _tr);
 
 //ptr specific getters
 CMON_API cmon_bool cmon_types_ptr_is_mut(cmon_types * _tr, cmon_idx _ptr_idx);

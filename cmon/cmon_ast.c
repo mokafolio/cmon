@@ -503,6 +503,12 @@ cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
     return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
 }
 
+cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    return cmon_tokens_str_view(_ast->tokens, cmon_ast_token(_ast, _tidx));
+}
+
 cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);

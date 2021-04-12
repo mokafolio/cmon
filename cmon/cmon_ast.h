@@ -209,6 +209,9 @@ CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _impor
 CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
 
+//identifier specific getters
+CMON_API cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx);
+
 // parsed type specific getters (i.e. foo.Bar or *mut Foo)
 CMON_API cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx);

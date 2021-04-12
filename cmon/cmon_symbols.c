@@ -297,6 +297,18 @@ cmon_idx cmon_symbols_type(cmon_symbols * _s, cmon_idx _sym)
     return _get_symbol(_s, _sym)->data.idx;
 }
 
+cmon_idx cmon_symbols_var_type(cmon_symbols * _s, cmon_idx _sym)
+{
+    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    return _get_symbol(_s, _sym)->data.var.type_idx;
+}
+
+cmon_bool cmon_symbols_var_is_mut(cmon_symbols * _s, cmon_idx _sym)
+{
+    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    return _get_symbol(_s, _sym)->data.var.is_mut;
+}
+
 size_t cmon_symbols_scope_symbol_count(cmon_symbols * _s, cmon_idx _scope)
 {
     return cmon_dyn_arr_count(&_get_scope(_s, _scope)->symbols);
