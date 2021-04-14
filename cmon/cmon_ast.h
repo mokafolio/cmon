@@ -111,6 +111,10 @@ CMON_API cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
                                             cmon_idx _tok_idx,
                                             cmon_idx * _fields,
                                             size_t _count);
+CMON_API cmon_idx cmon_astb_add_selector(cmon_astb * _b,
+                                         cmon_idx _tok_idx,
+                                         cmon_idx _left,
+                                         cmon_idx _name_tok);
 
 // adding statements
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
@@ -210,7 +214,7 @@ CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _impor
 CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
 
-//identifier specific getters/setters
+// identifier specific getters/setters
 CMON_API cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API void cmon_ast_ident_set_sym(cmon_ast * _ast, cmon_idx _tidx, cmon_idx _sym);
 CMON_API cmon_idx cmon_ast_ident_sym(cmon_ast * _ast, cmon_idx _tidx);
@@ -274,8 +278,12 @@ CMON_API cmon_idx cmon_ast_binary_left(cmon_ast * _ast, cmon_idx _bin_idx);
 CMON_API cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx);
 CMON_API cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_idx);
 
-//paran expression specific getters
+// paran expression specific getters
 CMON_API cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx);
+
+// selector specific getters
+CMON_API cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx);
+CMON_API cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);

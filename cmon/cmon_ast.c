@@ -52,7 +52,7 @@ cmon_astb * cmon_astb_create(cmon_allocator * _alloc, cmon_tokens * _tokens)
 
 void cmon_astb_destroy(cmon_astb * _b)
 {
-    if(!_b)
+    if (!_b)
         return;
 
     cmon_dyn_arr_dealloc(&_b->imports);
@@ -231,6 +231,14 @@ cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
     left = _add_extra_data_m(_b, _name_toks, _count, _is_pub, _is_mut, _type, _expr);
     return _add_node(
         _b, cmon_astk_var_decl_list, _name_toks[0], left, cmon_dyn_arr_count(&_b->extra_data));
+}
+
+cmon_idx cmon_astb_add_selector(cmon_astb * _b,
+                                cmon_idx _tok_idx,
+                                cmon_idx _left,
+                                cmon_idx _name_tok)
+{
+    return _add_node(_b, cmon_astk_selector, _tok_idx, _left, _name_tok);
 }
 
 cmon_idx cmon_astb_add_block(cmon_astb * _b,
@@ -776,4 +784,16 @@ cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx)
 {
     assert(_get_kind(_ast, _paran_idx) == cmon_astk_paran_expr);
     return _ast->left_right[_paran_idx].left;
+}
+
+cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx)
+{
+    assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
+    return _ast->left_right[_sel_idx].left;
+}
+
+cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
+{
+    assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
+    return _ast->left_right[_sel_idx].right;
 }

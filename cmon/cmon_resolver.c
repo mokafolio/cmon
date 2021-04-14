@@ -449,6 +449,136 @@ static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
     return cmon_false;
 }
 
+static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
+                                              cmon_idx _expr_idx,
+                                              cmon_idx _type_idx,
+                                              cmon_bool _needs_to_be_mut,
+                                              cmon_bool * _out_is_mut)
+{
+    cmon_astk kind;
+    cmon_symk skind;
+    cmon_idx sym;
+    cmon_str_view name;
+
+    _expr_idx = _remove_paran(_fr, _expr_idx);
+    kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
+
+    if (kind == cmon_astk_ident)
+    {
+        sym = cmon_ast_ident_sym(_fr_ast(_fr), _expr_idx);
+        // the expression must have been resolved and the symbol hence set
+        assert(cmon_is_valid_idx(sym));
+        skind = cmon_symbols_kind(_fr->resolver->symbols, sym);
+        if (skind == cmon_symk_var)
+        {
+            if (_out_is_mut || _needs_to_be_mut)
+            {
+                cmon_bool is_mut;
+
+                is_mut = cmon_symbols_var_is_mut(_fr->resolver->symbols, sym);
+                if (_out_is_mut)
+                    *_out_is_mut = is_mut;
+
+                if (_needs_to_be_mut && !is_mut)
+                {
+                    name = cmon_ast_ident_name(_fr_ast(_fr), _expr_idx);
+                    _fr_err(_fr,
+                            cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                            "variable '%*.s' is not mutable",
+                            name.end - name.begin,
+                            name.begin);
+                    return cmon_true;
+                }
+            }
+        }
+        else
+        {
+            const char * kind;
+            if (skind == cmon_symk_type)
+            {
+                kind = "type identifier";
+            }
+            else if (skind == cmon_symk_import)
+            {
+                kind = "module identifier";
+            }
+            else
+            {
+                assert(cmon_false);
+            }
+
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                    "lvalue expression expected, got %s",
+                    kind);
+            return cmon_true;
+        }
+    }
+    else if (kind == cmon_astk_deref)
+    {
+        if (_needs_to_be_mut || _out_is_mut)
+        {
+            cmon_idx type;
+            cmon_typek tkind;
+            cmon_bool is_mut;
+
+            // do
+            // {
+            // _expr_idx = cmon_ast_deref_expr(_fr_ast(_fr), _expr_idx);
+            // type = _fr->resolved_types[_expr_idx];
+            // assert(cmon_is_valid_idx(type));
+            // tkind = cmon_types_kind(_fr->resolver->types, type);
+            // assert(tkind == cmon_typek_ptr);
+            // if (!cmon_types_ptr_is_mut(_fr->resolver->types, type))
+            // {
+            //     _fr_err(_fr,
+            //             cmon_ast_token(_fr_ast(_fr), _expr_idx),
+            //             "dereferenced pointer in lvalue expression is not mutable");
+            //     return cmon_true;
+            // }
+            //     kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
+            // } while (kind == cmon_astk_deref);
+
+            // mut a := 1
+            // b := &a
+            // c := &b //* *mut a
+            // **c = 2; //resolved type for **c should be
+
+            // get the innermost deref and check that the final deref dereferences a mutable ptr
+            do
+            {
+                _expr_idx = cmon_ast_deref_expr(_fr_ast(_fr), _expr_idx);
+                type = _fr->resolved_types[_expr_idx];
+                assert(cmon_is_valid_idx(type));
+                tkind = cmon_types_kind(_fr->resolver->types, type);
+                assert(tkind == cmon_typek_ptr);
+                kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
+            } while (kind == cmon_astk_deref);
+
+            is_mut = cmon_types_ptr_is_mut(_fr->resolver->types, type);
+
+            if (_out_is_mut)
+                *_out_is_mut = is_mut;
+
+            if (_needs_to_be_mut && !is_mut)
+            {
+                _fr_err(_fr,
+                        cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                        "dereferenced pointer in lvalue expression is not mutable");
+                return cmon_true;
+            }
+        }
+    }
+    else
+    {
+        //@TODO: add more context to error...
+        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected");
+        return cmon_true;
+    }
+
+    return cmon_false;
+}
+
 static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx)
@@ -738,95 +868,6 @@ static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
     return ret;
 }
 
-static inline cmon_bool _is_mutable(_file_resolver * _fr, cmon_idx _ast_idx)
-{
-    cmon_idx cur;
-
-    cur = _remove_paran(_fr, _ast_idx);
-
-    while (cmon_is_valid_idx(cur))
-    {
-        // mutability for literals does not really make sense, but we gotta do something. The code
-        // calling _resolve_mutability should properly deal with literals/temporary values.
-        if (_is_literal(cur))
-            return cmon_false;
-    }
-
-    //     cmon_ast_expr * cur = _expr;
-    // while (cur)
-    // {
-    //     // mutability for literals does not really make sense, but we gotta do something. The
-    //     code
-    //     // calling _resolve_mutability should properly deal with literals/temporary values.
-    //     // if (_is_literal(cur))
-    //     //     return cmon_false;
-
-    //     // if the resolved type is a reference type, grab mutablity from there
-    //     if (cur->resolved_ti->kind == cmon_type_ptr)
-    //     {
-    //         cmon_type_info_ptr * pti = cur->resolved_ti->data;
-    //         return pti->is_mut;
-    //     }
-    //     else if (cur->resolved_ti->kind == cmon_type_view)
-    //     {
-    //         cmon_type_info_view * vti = cur->resolved_ti->data;
-    //         return vti->is_mut;
-    //     }
-
-    //     // otherwise go down the expression chain until we find something useful
-    //     if (cur->kind == cmon_ast_expr_kind_selector)
-    //     {
-    //         cur = cur->data.selector.left;
-    //     }
-    //     else if (cur->kind == cmon_ast_expr_kind_index)
-    //     {
-    //         cur = cur->data.index.left;
-    //     }
-    //     else if (cur->kind == cmon_ast_expr_kind_view)
-    //     {
-    //         cur = cur->data.view.left;
-    //     }
-    //     else if (cur->kind == cmon_ast_expr_kind_call)
-    //     {
-    //         // // if the call expression returns a non reference type (no view or pointer), it
-    //         has
-    //         // to
-    //         // // be mut
-    //         // if (cur->resolved_ti->type != cmon_type_ptr && cur->resolved_ti->type !=
-    //         // cmon_type_view)
-    //         // {
-    //         //     return cmon_true;
-    //         // }
-    //         cur = cur->data.call.left;
-    //     }
-    //     //@TODO: What is the right course of action here for deref/addr??
-    //     else if (cur->kind == cmon_ast_expr_kind_deref)
-    //     {
-    //         cur = cur->data.deref.expr;
-    //     }
-    //     else if (cur->kind == cmon_ast_expr_kind_addr)
-    //     {
-    //         cur = cur->data.addr.expr;
-    //     }
-    //     else if (cur->kind == cmon_ast_expr_kind_ident)
-    //     {
-    //         cmon_sym * s = cur->data.ident.sym;
-    //         if (s->kind == cmon_sym_kind_var)
-    //         {
-    //             // return symbols mutability
-    //             return s->data.var.is_mut;
-    //         }
-    //         cur = NULL;
-    //     }
-    //     else
-    //     {
-    //         assert(cmon_false);
-    //     }
-    // }
-
-    // return cmon_false;
-}
-
 static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
     cmon_idx expr, type;
@@ -838,17 +879,19 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
     type = _resolve_expr(_fr, _scope, expr, CMON_INVALID_IDX);
     if (cmon_is_valid_idx(type))
     {
-        if (cmon_types_kind(_fr->resolver->types, type) == cmon_typek_fn)
-        {
-            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of function");
-            return CMON_INVALID_IDX;
-        }
-        else if (_is_literal(_fr, _remove_paran(_fr, expr)))
-        {
-            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of literal");
-            return CMON_INVALID_IDX;
-        }
-        return cmon_types_find_ptr(_fr->resolver->types, type, _resolve_mutability(_fr, expr));
+        // if (cmon_types_kind(_fr->resolver->types, type) == cmon_typek_fn)
+        // {
+        //     _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of
+        //     function"); return CMON_INVALID_IDX;
+        // }
+        // else if (_is_literal(_fr, _remove_paran(_fr, expr)))
+        // {
+        //     _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of
+        //     literal"); return CMON_INVALID_IDX;
+        // }
+        cmon_bool is_mut;
+        if (!_validate_lvalue_expr(_fr, _ast_idx, type, cmon_false, &is_mut))
+            return cmon_types_find_ptr(_fr->resolver->types, type, is_mut);
     }
     return CMON_INVALID_IDX;
 }
@@ -896,91 +939,6 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
     return _resolve_expr(_fr, _scope, _ast_idx, _lh_type);
 }
 
-static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
-                                              cmon_idx _expr_idx,
-                                              cmon_idx _type_idx)
-{
-    cmon_astk kind;
-    cmon_symk skind;
-    cmon_idx sym;
-    cmon_str_view name;
-
-    _expr_idx = _remove_paran(_fr, _expr_idx);
-    kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
-
-    if (kind == cmon_astk_ident)
-    {
-        sym = cmon_ast_ident_sym(_fr_ast(_fr), _expr_idx);
-        // the expression must have been resolved and the symbol hence set
-        assert(cmon_is_valid_idx(sym));
-        skind = cmon_symbols_kind(_fr->resolver->symbols, sym);
-        if (skind == cmon_symk_var)
-        {
-            if (!cmon_symbols_var_is_mut(_fr->resolver->symbols, sym))
-            {
-                name = cmon_ast_ident_name(_fr_ast(_fr), _expr_idx);
-                _fr_err(_fr,
-                        cmon_ast_token(_fr_ast(_fr), _expr_idx),
-                        "variable '%*.s' is not mutable",
-                        name.end - name.begin,
-                        name.begin);
-                return cmon_true;
-            }
-        }
-        else
-        {
-            const char * kind;
-            if (skind == cmon_symk_type)
-            {
-                kind = "type identifier";
-            }
-            else if (skind == cmon_symk_import)
-            {
-                kind = "module identifier";
-            }
-            else
-            {
-                assert(cmon_false);
-            }
-
-            _fr_err(_fr,
-                    cmon_ast_token(_fr_ast(_fr), _expr_idx),
-                    "lvalue expression expected, got %s",
-                    kind);
-            return cmon_true;
-        }
-    }
-    else if (kind == cmon_astk_deref)
-    {
-        cmon_idx type;
-        cmon_typek tkind;
-        do
-        {
-            _expr_idx = cmon_ast_deref_expr(_fr_ast(_fr), _expr_idx);
-            type = _fr->resolved_types[_expr_idx];
-            assert(cmon_is_valid_idx(type));
-            tkind = cmon_types_kind(_fr->resolver->types, type);
-            assert(tkind == cmon_typek_ptr);
-            if (!cmon_types_ptr_is_mut(_fr->resolver->types, type))
-            {
-                _fr_err(_fr,
-                        cmon_ast_token(_fr_ast(_fr), _expr_idx),
-                        "dereferenced pointer in lvalue expression is not mutable");
-                return cmon_true;
-            }
-            kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
-        } while (kind == cmon_astk_deref);
-    }
-    else
-    {
-        //@TODO: add more context to error...
-        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected");
-        return cmon_true;
-    }
-
-    return cmon_false;
-}
-
 static inline cmon_idx _resolve_binary(_file_resolver * _fr,
                                        cmon_idx _scope,
                                        cmon_idx _ast_idx,
@@ -1000,7 +958,7 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
 
     if (cmon_ast_binary_is_assignment(_fr_ast(_fr), _ast_idx))
     {
-        _validate_lvalue_expr(_fr, left_expr, left_type);
+        _validate_lvalue_expr(_fr, left_expr, left_type, cmon_true, NULL);
     }
 
     if (left_type != right_type)
