@@ -12,6 +12,7 @@ typedef struct cmon_resolver cmon_resolver;
 CMON_API cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors);
 CMON_API void cmon_resolver_destroy(cmon_resolver * _r);
 CMON_API void cmon_resolver_set_input(cmon_resolver * _r,
+                                    cmon_src * _src,
                                       cmon_types * _types,
                                       cmon_symbols * symbols,
                                       cmon_modules * _mods,

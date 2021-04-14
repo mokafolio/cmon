@@ -22,6 +22,7 @@ typedef struct
     cmon_dyn_arr(cmon_idx) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
+    cmon_idx * resolved_types; // maps ast expr idx to type
     size_t max_errors;
     jmp_buf err_jmp;
 } _file_resolver;
@@ -29,6 +30,7 @@ typedef struct
 typedef struct cmon_resolver
 {
     cmon_allocator * alloc;
+    cmon_src * src;
     cmon_symbols * symbols;
     cmon_idx global_scope;
     cmon_types * types;
@@ -76,7 +78,7 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
     {                                                                                              \
         _emit_err(_fr->str_builder,                                                                \
                   &_fr->errs,                                                                      \
-                  cmon_modules_src(_fr->resolver->mods),                                           \
+                  _fr->resolver->src,                                                              \
                   _fr->src_file_idx,                                                               \
                   _tok,                                                                            \
                   _fr->max_errors,                                                                 \
@@ -84,6 +86,16 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   _fmt,                                                                            \
                   ##__VA_ARGS__);                                                                  \
     } while (0)
+
+static inline cmon_tokens * _fr_tokens(_file_resolver * _fr)
+{
+    return cmon_src_tokens(_fr->resolver->src, _fr->src_file_idx);
+}
+
+static inline cmon_ast * _fr_ast(_file_resolver * _fr)
+{
+    return cmon_src_ast(_fr->resolver->src, _fr->src_file_idx);
+}
 
 cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors)
 {
@@ -111,6 +123,15 @@ void cmon_resolver_destroy(cmon_resolver * _r)
 
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
+        _file_resolver * fr = &_r->file_resolvers[i];
+        cmon_allocator_free(
+            _r->alloc,
+            (cmon_mem_blk){ fr->resolved_types, sizeof(cmon_idx) * cmon_ast_count(_fr_ast(fr)) });
+        cmon_dyn_arr_dealloc(&fr->global_var_decls);
+        cmon_dyn_arr_dealloc(&fr->errs);
+        cmon_dyn_arr_dealloc(&fr->type_decls);
+        cmon_idx_buf_mng_destroy(&fr->idx_buf_mng);
+        cmon_str_builder_destroy(&fr->str_builder);
     }
     cmon_dyn_arr_dealloc(&_r->global_var_stack);
     cmon_dyn_arr_dealloc(&_r->errs);
@@ -121,32 +142,40 @@ void cmon_resolver_destroy(cmon_resolver * _r)
 }
 
 void cmon_resolver_set_input(cmon_resolver * _r,
+                             cmon_src * _src,
                              cmon_types * _types,
                              cmon_symbols * _symbols,
                              cmon_modules * _mods,
                              cmon_idx _mod_idx)
 {
+    size_t i;
     assert(!cmon_is_valid_idx(_r->global_scope));
+    _r->src = _src;
     _r->types = _types;
     _r->symbols = _symbols;
     _r->mods = _mods;
     _r->mod_idx = _mod_idx;
     _r->global_scope = cmon_symbols_scope_begin(_r->symbols, CMON_INVALID_IDX);
-}
 
-static inline cmon_src * _fr_src(_file_resolver * _fr)
-{
-    return cmon_modules_src(_fr->resolver->mods);
-}
+    for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
+    {
+        _file_resolver fr;
+        cmon_ast * ast;
+        cmon_idx src_file_idx;
 
-static inline cmon_tokens * _fr_tokens(_file_resolver * _fr)
-{
-    return cmon_src_tokens(_fr_src(_fr), _fr->src_file_idx);
-}
+        src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, i);
+        ast = cmon_src_ast(_r->src, src_file_idx);
 
-static inline cmon_ast * _fr_ast(_file_resolver * _fr)
-{
-    return cmon_src_ast(_fr_src(_fr), _fr->src_file_idx);
+        fr.str_builder = cmon_str_builder_create(_r->alloc, 1024);
+        fr.idx_buf_mng = cmon_idx_buf_mng_create(_r->alloc);
+        cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
+        cmon_dyn_arr_init(&fr.errs, _r->alloc, _r->max_errors);
+        cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
+        fr.resolved_types =
+            cmon_allocator_alloc(_r->alloc, sizeof(cmon_idx) * cmon_ast_count(ast)).ptr;
+
+        cmon_dyn_arr_append(&_r->file_resolvers, fr);
+    }
 }
 
 static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon_idx _name_tok)
@@ -201,7 +230,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     cmon_bool is_first_stmt;
     _file_resolver * fr;
 
-    src = cmon_modules_src(_r->mods);
+    src = _r->src;
     src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
     ast = cmon_src_ast(src, src_file_idx);
     tokens = cmon_src_tokens(src, src_file_idx);
@@ -709,8 +738,93 @@ static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
     return ret;
 }
 
-static inline cmon_bool _resolve_mutability(_file_resolver * _fr, cmon_idx _ast_idx)
+static inline cmon_bool _is_mutable(_file_resolver * _fr, cmon_idx _ast_idx)
 {
+    cmon_idx cur;
+
+    cur = _remove_paran(_fr, _ast_idx);
+
+    while (cmon_is_valid_idx(cur))
+    {
+        // mutability for literals does not really make sense, but we gotta do something. The code
+        // calling _resolve_mutability should properly deal with literals/temporary values.
+        if (_is_literal(cur))
+            return cmon_false;
+    }
+
+    //     cmon_ast_expr * cur = _expr;
+    // while (cur)
+    // {
+    //     // mutability for literals does not really make sense, but we gotta do something. The
+    //     code
+    //     // calling _resolve_mutability should properly deal with literals/temporary values.
+    //     // if (_is_literal(cur))
+    //     //     return cmon_false;
+
+    //     // if the resolved type is a reference type, grab mutablity from there
+    //     if (cur->resolved_ti->kind == cmon_type_ptr)
+    //     {
+    //         cmon_type_info_ptr * pti = cur->resolved_ti->data;
+    //         return pti->is_mut;
+    //     }
+    //     else if (cur->resolved_ti->kind == cmon_type_view)
+    //     {
+    //         cmon_type_info_view * vti = cur->resolved_ti->data;
+    //         return vti->is_mut;
+    //     }
+
+    //     // otherwise go down the expression chain until we find something useful
+    //     if (cur->kind == cmon_ast_expr_kind_selector)
+    //     {
+    //         cur = cur->data.selector.left;
+    //     }
+    //     else if (cur->kind == cmon_ast_expr_kind_index)
+    //     {
+    //         cur = cur->data.index.left;
+    //     }
+    //     else if (cur->kind == cmon_ast_expr_kind_view)
+    //     {
+    //         cur = cur->data.view.left;
+    //     }
+    //     else if (cur->kind == cmon_ast_expr_kind_call)
+    //     {
+    //         // // if the call expression returns a non reference type (no view or pointer), it
+    //         has
+    //         // to
+    //         // // be mut
+    //         // if (cur->resolved_ti->type != cmon_type_ptr && cur->resolved_ti->type !=
+    //         // cmon_type_view)
+    //         // {
+    //         //     return cmon_true;
+    //         // }
+    //         cur = cur->data.call.left;
+    //     }
+    //     //@TODO: What is the right course of action here for deref/addr??
+    //     else if (cur->kind == cmon_ast_expr_kind_deref)
+    //     {
+    //         cur = cur->data.deref.expr;
+    //     }
+    //     else if (cur->kind == cmon_ast_expr_kind_addr)
+    //     {
+    //         cur = cur->data.addr.expr;
+    //     }
+    //     else if (cur->kind == cmon_ast_expr_kind_ident)
+    //     {
+    //         cmon_sym * s = cur->data.ident.sym;
+    //         if (s->kind == cmon_sym_kind_var)
+    //         {
+    //             // return symbols mutability
+    //             return s->data.var.is_mut;
+    //         }
+    //         cur = NULL;
+    //     }
+    //     else
+    //     {
+    //         assert(cmon_false);
+    //     }
+    // }
+
+    // return cmon_false;
 }
 
 static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -727,6 +841,11 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
         if (cmon_types_kind(_fr->resolver->types, type) == cmon_typek_fn)
         {
             _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of function");
+            return CMON_INVALID_IDX;
+        }
+        else if (_is_literal(_fr, _remove_paran(_fr, expr)))
+        {
+            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "can't take address of literal");
             return CMON_INVALID_IDX;
         }
         return cmon_types_find_ptr(_fr->resolver->types, type, _resolve_mutability(_fr, expr));
@@ -777,7 +896,9 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
     return _resolve_expr(_fr, _scope, _ast_idx, _lh_type);
 }
 
-static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr, cmon_idx _expr_idx)
+static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
+                                              cmon_idx _expr_idx,
+                                              cmon_idx _type_idx)
 {
     cmon_astk kind;
     cmon_symk skind;
@@ -822,9 +943,39 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr, cmon_idx _ex
                 assert(cmon_false);
             }
 
-            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected, got %s", kind);
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                    "lvalue expression expected, got %s",
+                    kind);
             return cmon_true;
         }
+    }
+    else if (kind == cmon_astk_deref)
+    {
+        cmon_idx type;
+        cmon_typek tkind;
+        do
+        {
+            _expr_idx = cmon_ast_deref_expr(_fr_ast(_fr), _expr_idx);
+            type = _fr->resolved_types[_expr_idx];
+            assert(cmon_is_valid_idx(type));
+            tkind = cmon_types_kind(_fr->resolver->types, type);
+            assert(tkind == cmon_typek_ptr);
+            if (!cmon_types_ptr_is_mut(_fr->resolver->types, type))
+            {
+                _fr_err(_fr,
+                        cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                        "dereferenced pointer in lvalue expression is not mutable");
+                return cmon_true;
+            }
+            kind = cmon_ast_kind(_fr_ast(_fr), _expr_idx);
+        } while (kind == cmon_astk_deref);
+    }
+    else
+    {
+        //@TODO: add more context to error...
+        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected");
+        return cmon_true;
     }
 
     return cmon_false;
@@ -849,7 +1000,7 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
 
     if (cmon_ast_binary_is_assignment(_fr_ast(_fr), _ast_idx))
     {
-        _validate_lvalue_expr(_fr, left_expr);
+        _validate_lvalue_expr(_fr, left_expr, left_type);
     }
 
     if (left_type != right_type)
@@ -872,6 +1023,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
 {
     cmon_ast * ast;
     cmon_astk kind;
+    cmon_idx ret;
 
     _ast_idx = _remove_paran(_fr, _ast_idx);
     ast = _fr_ast(_fr);
@@ -879,44 +1031,51 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
 
     if (kind == cmon_astk_int_literal)
     {
-        return _resolve_int_literal(_fr, _scope, _ast_idx, _lh_type);
+        ret = _resolve_int_literal(_fr, _scope, _ast_idx, _lh_type);
     }
     else if (kind == cmon_astk_float_literal)
     {
-        return _resolve_float_literal(_fr, _scope, _ast_idx, _lh_type);
+        ret = _resolve_float_literal(_fr, _scope, _ast_idx, _lh_type);
     }
     else if (kind == cmon_astk_bool_literal)
     {
-        return cmon_types_builtin_bool(_fr->resolver->types);
+        ret = cmon_types_builtin_bool(_fr->resolver->types);
     }
     else if (kind == cmon_astk_string_literal)
     {
-        return cmon_types_builtin_u8_view(_fr->resolver->types);
+        ret = cmon_types_builtin_u8_view(_fr->resolver->types);
     }
     else if (kind == cmon_astk_ident)
     {
-        return _resolve_ident(_fr, _scope, _ast_idx);
+        ret = _resolve_ident(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_addr)
     {
-        return _resolve_addr(_fr, _scope, _ast_idx);
+        ret = _resolve_addr(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_deref)
     {
-        return _resolve_deref(_fr, _scope, _ast_idx);
+        ret = _resolve_deref(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_prefix)
     {
-        return _resolve_prefix(_fr, _scope, _ast_idx, _lh_type);
+        ret = _resolve_prefix(_fr, _scope, _ast_idx, _lh_type);
     }
     else if (kind == cmon_astk_binary)
     {
-        return _resolve_binary(_fr, _scope, _ast_idx, _lh_type);
+        ret = _resolve_binary(_fr, _scope, _ast_idx, _lh_type);
     }
     // else if (kind == cmon_astk_paran_expr)
     // {
     //     return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
     // }
+    else
+    {
+        ret = CMON_INVALID_IDX;
+    }
+
+    _fr->resolved_types[_ast_idx] = ret;
+    return ret;
 }
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)

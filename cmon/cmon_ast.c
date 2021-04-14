@@ -410,6 +410,11 @@ cmon_idx cmon_ast_root_block(cmon_ast * _ast)
     return _ast->root_block_idx;
 }
 
+size_t cmon_ast_count(cmon_ast * _ast)
+{
+    return _ast->count;
+}
+
 cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx)
 {
     return _get_kind(_ast, _idx);

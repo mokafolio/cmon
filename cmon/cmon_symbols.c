@@ -2,6 +2,7 @@
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_util.h>
+#include <cmon/cmon_src.h>
 
 typedef struct
 {
@@ -36,6 +37,7 @@ typedef struct
 typedef struct cmon_symbols
 {
     cmon_allocator * alloc;
+    cmon_src * src;
     cmon_modules * mods;
     cmon_dyn_arr(_symbol) symbols;
     cmon_dyn_arr(_scope) scopes;
@@ -65,11 +67,9 @@ static inline _symbol * _get_symbol(cmon_symbols * _s, cmon_idx _sym)
 
 static inline cmon_idx _get_sym_tok_idx(cmon_symbols * _s, cmon_idx _sym)
 {
-    cmon_src * src;
     _symbol * sym;
-    src = cmon_modules_src(_s->mods);
     sym = _get_symbol(_s, _sym);
-    return cmon_ast_token(cmon_src_ast(src, sym->src_file_idx), sym->ast_idx);
+    return cmon_ast_token(cmon_src_ast(_s->src, sym->src_file_idx), sym->ast_idx);
 }
 
 static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmon_str_view _name)
@@ -113,10 +113,11 @@ static inline cmon_idx _add_symbol(cmon_symbols * _s,
     return cmon_dyn_arr_count(&_s->symbols) - 1;
 }
 
-cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_modules * _mods)
+cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_src * _src, cmon_modules * _mods)
 {
     cmon_symbols * ret = CMON_CREATE(_alloc, cmon_symbols);
     ret->alloc = _alloc;
+    ret->src = _src;
     ret->mods = _mods;
     cmon_dyn_arr_init(&ret->symbols, _alloc, 256);
     cmon_dyn_arr_init(&ret->scopes, _alloc, 256);

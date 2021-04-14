@@ -2,7 +2,7 @@
 #define CMON_CMON_SYMBOLS_H
 
 #include <cmon/cmon_modules.h>
-#include <cmon/cmon_types.h>
+#include <cmon/cmon_src.h>
 
 typedef enum
 {
@@ -13,7 +13,7 @@ typedef enum
 
 typedef struct cmon_symbols cmon_symbols;
 
-CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_modules * _mods);
+CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_src * _src, cmon_modules * _mods);
 CMON_API void cmon_symbols_destroy(cmon_symbols * _s);
 CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);

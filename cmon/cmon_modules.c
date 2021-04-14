@@ -13,17 +13,17 @@ typedef struct
 typedef struct cmon_modules
 {
     cmon_allocator * alloc;
-    cmon_src * src;
+    // cmon_src * src;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
     cmon_dyn_arr(_module) mods;
 } cmon_modules;
 
-cmon_modules * cmon_modules_create(cmon_allocator * _a, cmon_src * _src)
+cmon_modules * cmon_modules_create(cmon_allocator * _a)
 {
     cmon_modules * ret = CMON_CREATE(_a, cmon_modules);
     ret->alloc = _a;
-    ret->src = _src;
+    // ret->src = _src;
     ret->str_builder = cmon_str_builder_create(_a, 256);
     ret->str_buf = cmon_str_buf_create(_a, 256);
     cmon_dyn_arr_init(&ret->mods, _a, 16);
@@ -49,10 +49,10 @@ void cmon_modules_destroy(cmon_modules * _m)
     CMON_DESTROY(_m->alloc, _m);
 }
 
-cmon_src * cmon_modules_src(cmon_modules * _m)
-{
-    return _m->src;
-}
+// cmon_src * cmon_modules_src(cmon_modules * _m)
+// {
+//     return _m->src;
+// }
 
 cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _name)
 {

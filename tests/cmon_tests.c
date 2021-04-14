@@ -428,8 +428,8 @@ UTEST(cmon, basic_symbols_test)
 
     a = cmon_mallocator_make();
     src = cmon_src_create(&a);
-    mods = cmon_modules_create(&a, src);
-    s = cmon_symbols_create(&a, mods);
+    mods = cmon_modules_create(&a);
+    s = cmon_symbols_create(&a, src, mods);
 
     global_scope = cmon_symbols_scope_begin(s, CMON_INVALID_IDX);
     file_scope = cmon_symbols_scope_begin(s, global_scope);
