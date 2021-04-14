@@ -976,15 +976,12 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
 
 static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
-    cmon_idx left_expr, tlhs, name_tok, import_sym;
+    cmon_idx left_expr, tlhs, name_tok, import_sym, mod, selected_sym;
     cmon_typek tkind;
     cmon_str_view name_str_view;
 
     left_expr = _remove_paran(_fr, cmon_ast_selector_left(_fr_ast(_fr), _ast_idx));
-    tlhs = _resolve_expr(_fr,
-                         _scope,
-                         left_expr,
-                         CMON_INVALID_IDX);
+    tlhs = _resolve_expr(_fr, _scope, left_expr, CMON_INVALID_IDX);
 
     name_tok = cmon_ast_selector_name_tok(_fr_ast(_fr), _ast_idx);
     name_str_view = cmon_tokens_str_view(_fr_tokens(_fr), name_tok);
@@ -994,7 +991,25 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
         tkind = cmon_types_kind(_fr->resolver->types, tlhs);
         if (tkind == cmon_typek_modident)
         {
-            
+            assert(cmon_ast_kind(_fr_ast(_fr), left_expr) == cmon_astk_ident);
+            import_sym = cmon_ast_ident_sym(_fr_ast(_fr), left_expr);
+            assert(cmon_is_valid_idx(import_sym));
+            mod = cmon_symbols_import_module(_fr->resolver->symbols, import_sym);
+            selected_sym = cmon_symbols_find(_fr->resolver->symbols,
+                                             cmon_modules_global_scope(_fr->resolver->mods, mod),
+                                             name_str_view);
+            if (cmon_is_valid_idx(selected_sym))
+            {
+            }
+            else
+            {
+                _fr_err(_fr,
+                        name_tok,
+                        "could not find '%.*s' in module %s",
+                        name_str_view.end - name_str_view.begin,
+                        name_str_view.begin,
+                        cmon_modules_path(_fr->resolver->mods, mod));
+            }
         }
     }
 
