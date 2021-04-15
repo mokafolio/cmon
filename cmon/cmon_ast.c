@@ -241,6 +241,19 @@ cmon_idx cmon_astb_add_selector(cmon_astb * _b,
     return _add_node(_b, cmon_astk_selector, _tok_idx, _left, _name_tok);
 }
 
+cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
+                                  cmon_idx _tok_idx,
+                                  cmon_idx * _exprs,
+                                  size_t _count)
+{
+    assert(_count);
+    cmon_idx left;
+    //@NOTE: see note in cmon_astb_add_block
+    left = _add_extra_data(_b, _exprs, _count);
+    return _add_node(
+        _b, cmon_astk_var_decl_list, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
+}
+
 cmon_idx cmon_astb_add_block(cmon_astb * _b,
                              cmon_idx _tok_idx,
                              cmon_idx * _stmt_indices,

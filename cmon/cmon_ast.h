@@ -115,6 +115,10 @@ CMON_API cmon_idx cmon_astb_add_selector(cmon_astb * _b,
                                          cmon_idx _tok_idx,
                                          cmon_idx _left,
                                          cmon_idx _name_tok);
+CMON_API cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
+                                         cmon_idx _tok_idx,
+                                         cmon_idx * _exprs,
+                                         size_t _count);
 
 // adding statements
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
