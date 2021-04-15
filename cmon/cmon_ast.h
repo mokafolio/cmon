@@ -116,9 +116,13 @@ CMON_API cmon_idx cmon_astb_add_selector(cmon_astb * _b,
                                          cmon_idx _left,
                                          cmon_idx _name_tok);
 CMON_API cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
-                                         cmon_idx _tok_idx,
-                                         cmon_idx * _exprs,
-                                         size_t _count);
+                                           cmon_idx _tok_idx,
+                                           cmon_idx * _exprs,
+                                           size_t _count);
+CMON_API cmon_idx cmon_astb_add_index(cmon_astb * _b,
+                                      cmon_idx _tok_idx,
+                                      cmon_idx _lhs,
+                                      cmon_idx _index_expr);
 
 // adding statements
 CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
@@ -288,6 +292,15 @@ CMON_API cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx);
 // selector specific getters
 CMON_API cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx);
 CMON_API cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx);
+
+// array init getters
+CMON_API cmon_idx cmon_ast_array_init_exprs_begin(cmon_ast * _ast, cmon_idx _ai_idx);
+CMON_API cmon_idx cmon_ast_array_init_exprs_end(cmon_ast * _ast, cmon_idx _ai_idx);
+CMON_API cmon_ast_iter cmon_ast_array_init_exprs_iter(cmon_ast * _ast, cmon_idx _ai_idx);
+
+// index specific getters
+CMON_API cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);

@@ -250,8 +250,12 @@ cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
     cmon_idx left;
     //@NOTE: see note in cmon_astb_add_block
     left = _add_extra_data(_b, _exprs, _count);
-    return _add_node(
-        _b, cmon_astk_var_decl_list, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
+    return _add_node(_b, cmon_astk_array_init, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
+}
+
+cmon_idx cmon_astb_add_index(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _lhs, cmon_idx _index_expr)
+{
+    return _add_node(_b, cmon_astk_index, _tok_idx, _lhs, _index_expr);
 }
 
 cmon_idx cmon_astb_add_block(cmon_astb * _b,
@@ -809,4 +813,34 @@ cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
 {
     assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
     return _ast->left_right[_sel_idx].right;
+}
+
+cmon_idx cmon_ast_array_init_exprs_begin(cmon_ast * _ast, cmon_idx _ai_idx)
+{
+    assert(_get_kind(_ast, _ai_idx) == cmon_astk_array_init);
+    return _ast->left_right[_ai_idx].left;
+}
+
+cmon_idx cmon_ast_array_init_exprs_end(cmon_ast * _ast, cmon_idx _ai_idx)
+{
+    assert(_get_kind(_ast, _ai_idx) == cmon_astk_array_init);
+    return _ast->left_right[_ai_idx].right;
+}
+
+cmon_ast_iter cmon_ast_array_init_exprs_iter(cmon_ast * _ast, cmon_idx _ai_idx)
+{
+    return (cmon_ast_iter){ cmon_ast_array_init_exprs_begin(_ast, _ai_idx),
+                            cmon_ast_array_init_exprs_end(_ast, _ai_idx) };
+}
+
+cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_index);
+    return _ast->left_right[_idx].left;
+}
+
+cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_index);
+    return _ast->left_right[_idx].right;
 }
