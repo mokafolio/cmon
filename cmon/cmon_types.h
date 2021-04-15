@@ -46,6 +46,8 @@ CMON_API cmon_idx cmon_types_struct_add_field(cmon_types * _tr,
                                               cmon_idx _type,
                                               cmon_idx _def_expr_ast);
 CMON_API cmon_idx cmon_types_find_ptr(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut);
+CMON_API cmon_idx cmon_types_find_view(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut);
+CMON_API cmon_idx cmon_types_find_array(cmon_types * _tr, cmon_idx _type, size_t _size);
 CMON_API cmon_idx cmon_types_find_fn(cmon_types * _tr,
                                      cmon_idx _ret_type,
                                      cmon_idx * _params,

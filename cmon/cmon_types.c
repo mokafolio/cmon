@@ -30,6 +30,18 @@ typedef struct
 
 typedef struct
 {
+    cmon_bool is_mut;
+    cmon_idx type;
+} _view;
+
+typedef struct
+{
+    cmon_idx type;
+    size_t count;
+} _array;
+
+typedef struct
+{
     cmon_typek kind;
     // if it's a none builtin type, src_file_idx and name_tok will be set.
     cmon_idx src_file_idx;
@@ -49,6 +61,8 @@ typedef struct cmon_types
     cmon_dyn_arr(_struct) structs;
     cmon_dyn_arr(_fn_sig) fns;
     cmon_dyn_arr(_ptr) ptrs;
+    cmon_dyn_arr(_view) views;
+    cmon_dyn_arr(_array) arrays;
     cmon_dyn_arr(_type) types;
     cmon_hashmap(const char *, cmon_idx) name_map;
     cmon_str_builder * str_builder;
@@ -136,6 +150,8 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     cmon_dyn_arr_init(&ret->structs, _alloc, 32);
     cmon_dyn_arr_init(&ret->fns, _alloc, 16);
     cmon_dyn_arr_init(&ret->ptrs, _alloc, 16);
+    cmon_dyn_arr_init(&ret->views, _alloc, 16);
+    cmon_dyn_arr_init(&ret->arrays, _alloc, 16);
     cmon_dyn_arr_init(&ret->types, _alloc, 64);
     cmon_hashmap_str_key_init(&ret->name_map, _alloc);
     ret->str_builder = cmon_str_builder_create(_alloc, 256);
@@ -167,6 +183,8 @@ void cmon_types_destroy(cmon_types * _t)
     cmon_str_builder_destroy(_t->str_builder);
     cmon_hashmap_dealloc(&_t->name_map);
     cmon_dyn_arr_dealloc(&_t->types);
+    cmon_dyn_arr_dealloc(&_t->arrays);
+    cmon_dyn_arr_dealloc(&_t->views);
     cmon_dyn_arr_dealloc(&_t->ptrs);
     for (i = 0; i < cmon_dyn_arr_count(&_t->fns); ++i)
     {
@@ -233,6 +251,49 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         cmon_dyn_arr_count(&_t->ptrs) - 1);
+}
+
+cmon_idx cmon_types_find_view(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
+{
+    _view view;
+    const char * unique_name;
+    unique_name =
+        _tmp_str(_t, "View%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
+    _return_if_found(_t, unique_name);
+
+    view.is_mut = _is_mut;
+    view.type = _type;
+    cmon_dyn_arr_append(&_t->views, view);
+    return _add_type(
+        _t,
+        cmon_typek_view,
+        _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
+        cmon_str_buf_append(_t->str_buf, unique_name),
+        _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
+        CMON_INVALID_IDX,
+        CMON_INVALID_IDX,
+        cmon_dyn_arr_count(&_t->views) - 1);
+}
+
+cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size)
+{
+    _array arr;
+    const char * unique_name;
+    unique_name = _tmp_str(_t, "Array%lu_%s", _size, cmon_types_unique_name(_t, _type));
+    _return_if_found(_t, unique_name);
+
+    arr.count = _size;
+    arr.type = _type;
+    cmon_dyn_arr_append(&_t->arrays, arr);
+
+    return _add_type(_t,
+                     cmon_typek_array,
+                     _intern_str(_t, "[%lu]%s", _size, cmon_types_name(_t, _type)),
+                     cmon_str_buf_append(_t->str_buf, unique_name),
+                     _intern_str(_t, "[%lu]%s", _size, cmon_types_full_name(_t, _type)),
+                     CMON_INVALID_IDX,
+                     CMON_INVALID_IDX,
+                     cmon_dyn_arr_count(&_t->arrays) - 1);
 }
 
 static inline const char * _fn_name(cmon_types * _t,
@@ -370,7 +431,7 @@ cmon_bool cmon_types_ptr_is_mut(cmon_types * _t, cmon_idx _ptr_idx)
 cmon_idx cmon_types_ptr_type(cmon_types * _t, cmon_idx _ptr_idx)
 {
     assert(_get_type(_t, _ptr_idx).kind == cmon_typek_ptr);
-    return _t->ptrs[_t->types[_ptr_idx].data_idx].type; 
+    return _t->ptrs[_t->types[_ptr_idx].data_idx].type;
 }
 
 cmon_idx cmon_types_fn_param_count(cmon_types * _t, cmon_idx _fn_idx)
