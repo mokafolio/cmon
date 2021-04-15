@@ -434,6 +434,30 @@ cmon_idx cmon_types_ptr_type(cmon_types * _t, cmon_idx _ptr_idx)
     return _t->ptrs[_t->types[_ptr_idx].data_idx].type;
 }
 
+cmon_bool cmon_types_view_is_mut(cmon_types * _t, cmon_idx _v_idx)
+{
+    assert(_get_type(_t, _v_idx).kind == cmon_typek_view);
+    return _t->views[_t->types[_v_idx].data_idx].is_mut;
+}
+
+cmon_idx cmon_types_view_type(cmon_types * _t, cmon_idx _v_idx)
+{
+    assert(_get_type(_t, _v_idx).kind == cmon_typek_view);
+    return _t->views[_t->types[_v_idx].data_idx].type;
+}
+
+size_t cmon_types_array_count(cmon_types * _t, cmon_idx _arr_idx)
+{
+    assert(_get_type(_t, _arr_idx).kind == cmon_typek_array);
+    return _t->arrays[_t->types[_arr_idx].data_idx].count;
+}
+
+cmon_idx cmon_types_array_type(cmon_types * _t, cmon_idx _arr_idx)
+{
+    assert(_get_type(_t, _arr_idx).kind == cmon_typek_array);
+    return _t->arrays[_t->types[_arr_idx].data_idx].type;
+}
+
 cmon_idx cmon_types_fn_param_count(cmon_types * _t, cmon_idx _fn_idx)
 {
     assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);

@@ -95,6 +95,14 @@ CMON_API cmon_idx cmon_types_builtin_typeident(cmon_types * _tr);
 CMON_API cmon_bool cmon_types_ptr_is_mut(cmon_types * _tr, cmon_idx _ptr_idx);
 CMON_API cmon_idx cmon_types_ptr_type(cmon_types * _tr, cmon_idx _ptr_idx);
 
+//view specific getters
+CMON_API cmon_bool cmon_types_view_is_mut(cmon_types * _tr, cmon_idx _v_idx);
+CMON_API cmon_idx cmon_types_view_type(cmon_types * _tr, cmon_idx _v_idx);
+
+//array specific getters
+CMON_API size_t cmon_types_array_count(cmon_types * _tr, cmon_idx _arr_idx);
+CMON_API cmon_idx cmon_types_array_type(cmon_types * _tr, cmon_idx _arr_idx);
+
 // fn specific getters
 CMON_API cmon_idx cmon_types_fn_return_type(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
