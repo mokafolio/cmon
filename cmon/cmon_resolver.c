@@ -1000,16 +1000,23 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
                                              name_str_view);
             if (cmon_is_valid_idx(selected_sym))
             {
+                // we are only interested in global variables here, types from other modules are
+                // resolved in resolve_parsed_type
+                cmon_symk skind;
+
+                skind = cmon_symbols_kind(_fr->resolver->symbols, selected_sym);
+                if (skind == cmon_symk_var)
+                {
+                    return cmon_symbols_var_type(_fr->resolver->symbols, selected_sym);
+                }
             }
-            else
-            {
-                _fr_err(_fr,
-                        name_tok,
-                        "could not find '%.*s' in module %s",
-                        name_str_view.end - name_str_view.begin,
-                        name_str_view.begin,
-                        cmon_modules_path(_fr->resolver->mods, mod));
-            }
+            _fr_err(_fr,
+                    name_tok,
+                    "could not find '%.*s' in module %s",
+                    name_str_view.end - name_str_view.begin,
+                    name_str_view.begin,
+                    cmon_modules_path(_fr->resolver->mods, mod));
+            return CMON_INVALID_IDX;
         }
     }
 
