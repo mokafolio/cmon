@@ -72,8 +72,14 @@ CMON_API cmon_idx cmon_types_struct_field_type(cmon_types * _tr,
 CMON_API cmon_idx cmon_types_struct_field_def_expr(cmon_types * _tr,
                                                    cmon_idx _struct_idx,
                                                    cmon_idx _field_idx);
+CMON_API cmon_idx cmon_types_struct_find_field(cmon_types * _tr,
+                                               cmon_idx _struct_idx,
+                                               const char * _name);
+CMON_API cmon_idx cmon_types_struct_findv_field(cmon_types * _tr,
+                                               cmon_idx _struct_idx,
+                                               cmon_str_view _name);
 
-//builtin type idx getters
+// builtin type idx getters
 CMON_API cmon_idx cmon_types_builtin_s8(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_s16(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_s32(cmon_types * _tr);
@@ -86,20 +92,20 @@ CMON_API cmon_idx cmon_types_builtin_f32(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_f64(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_void(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_bool(cmon_types * _tr);
-CMON_API cmon_idx cmon_types_builtin_u8_view(cmon_types * _tr); //used for strings
+CMON_API cmon_idx cmon_types_builtin_u8_view(cmon_types * _tr); // used for strings
 // CMON_API cmon_idx cmon_types_noinit(cmon_types * _tr); //---
 CMON_API cmon_idx cmon_types_builtin_modident(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_typeident(cmon_types * _tr);
 
-//ptr specific getters
+// ptr specific getters
 CMON_API cmon_bool cmon_types_ptr_is_mut(cmon_types * _tr, cmon_idx _ptr_idx);
 CMON_API cmon_idx cmon_types_ptr_type(cmon_types * _tr, cmon_idx _ptr_idx);
 
-//view specific getters
+// view specific getters
 CMON_API cmon_bool cmon_types_view_is_mut(cmon_types * _tr, cmon_idx _v_idx);
 CMON_API cmon_idx cmon_types_view_type(cmon_types * _tr, cmon_idx _v_idx);
 
-//array specific getters
+// array specific getters
 CMON_API size_t cmon_types_array_count(cmon_types * _tr, cmon_idx _arr_idx);
 CMON_API cmon_idx cmon_types_array_type(cmon_types * _tr, cmon_idx _arr_idx);
 
@@ -108,7 +114,7 @@ CMON_API cmon_idx cmon_types_fn_return_type(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param(cmon_types * _tr, cmon_idx _fn_idx, cmon_idx _param_idx);
 
-//utilities
+// utilities
 CMON_API cmon_bool cmon_types_is_unsigned_int(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_signed_int(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_int(cmon_types * _tr, cmon_idx _idx);

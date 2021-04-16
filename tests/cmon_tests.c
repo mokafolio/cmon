@@ -415,6 +415,9 @@ PARSE_TEST(parse_struct_init02, "a := Foo{1}", cmon_true);
 PARSE_TEST(parse_struct_init03, "a := Foo{1, 2, 3}", cmon_true);
 PARSE_TEST(parse_struct_init04, "a := Foo{1,}", cmon_false);
 PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
+PARSE_TEST(parse_selector01, "a := foo.bar", cmon_true);
+PARSE_TEST(parse_selector02, "a := foo.bar.bat", cmon_true);
+PARSE_TEST(parse_selector03, "a := foo.bar().bat", cmon_true);
 
 UTEST(cmon, basic_symbols_test)
 {   

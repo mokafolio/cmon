@@ -1018,11 +1018,31 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
                     cmon_modules_path(_fr->resolver->mods, mod));
             return CMON_INVALID_IDX;
         }
+        else if (tkind == cmon_typek_struct)
+        {
+            cmon_idx sym, type_idx, field_idx;
+
+            sym = cmon_ast_ident_sym(_fr_ast(_fr), left_expr);
+            assert(cmon_is_valid_idx(sym) &&
+                   cmon_symbols_kind(_fr->resolver->symbols, sym) == cmon_symk_var);
+            type_idx = cmon_symbols_var_type(_fr->resolver->symbols, sym);
+            field_idx =
+                cmon_types_struct_findv_field(_fr->resolver->types, type_idx, name_str_view);
+            if (cmon_is_valid_idx(field_idx))
+            {
+                return cmon_types_struct_field_type(_fr->resolver->types, type_idx, field_idx);
+            }
+            else
+            {
+                //@TODO: Errr
+                return CMON_INVALID_IDX;
+            }
+        }
     }
 
     _fr_err(_fr,
             name_tok,
-            "selector '%*.s' requested in something not a module identifier",
+            "selector '%*.s' requested in something not an object or module identifier",
             name_str_view.end - name_str_view.begin,
             name_str_view.begin);
 

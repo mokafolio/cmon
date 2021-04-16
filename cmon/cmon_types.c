@@ -3,6 +3,7 @@
 #include <cmon/cmon_modules.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_types.h>
+#include <cmon/cmon_util.h>
 
 typedef struct
 {
@@ -420,6 +421,25 @@ cmon_idx cmon_types_struct_field_def_expr(cmon_types * _t,
                                           cmon_idx _field_idx)
 {
     return _get_struct_field(_t, _struct_idx, _field_idx)->def_expr;
+}
+
+cmon_idx cmon_types_struct_find_field(cmon_types * _t, cmon_idx _struct_idx, const char * _name)
+{
+    return cmon_types_struct_findv_field(_t, _struct_idx, cmon_str_view_make(_name));
+}
+
+cmon_idx cmon_types_struct_findv_field(cmon_types * _t, cmon_idx _struct_idx, cmon_str_view _name)
+{
+    //@NOTE: for now just linear search. maybe use hashmap in the future
+    size_t i;
+    for (i = 0; i < cmon_types_struct_field_count(_t, _struct_idx); ++i)
+    {
+        if (cmon_str_view_c_str_cmp(_name, cmon_types_struct_field_name(_t, _struct_idx, i)) == 0)
+        {
+            return i;
+        }
+    }
+    return CMON_INVALID_IDX;
 }
 
 cmon_bool cmon_types_ptr_is_mut(cmon_types * _t, cmon_idx _ptr_idx)

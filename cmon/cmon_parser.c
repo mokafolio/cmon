@@ -236,7 +236,7 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 static cmon_idx _parse_selector_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 {
     cmon_idx name_tok;
-    name_tok = _tok_check(_p, cmon_tokk_ident, cmon_true);
+    name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
     return cmon_astb_add_selector(_p->ast_builder, _tok, _lhs, name_tok);
 }
 
@@ -371,6 +371,10 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
     cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
     return ret;
 }
+
+// static cmon_idx _parse_selector_expr(cmon_parser * _p)
+// {
+// }
 
 static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 {
