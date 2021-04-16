@@ -1034,7 +1034,12 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             }
             else
             {
-                //@TODO: Errr
+                _fr_err(_fr,
+                        name_tok,
+                        "struct '%s' has no field '%*.s'",
+                        cmon_types_name(_fr->resolver->types, type_idx),
+                        name_str_view.end - name_str_view.begin,
+                        name_str_view.begin);
                 return CMON_INVALID_IDX;
             }
         }
