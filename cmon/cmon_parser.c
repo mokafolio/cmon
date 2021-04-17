@@ -240,6 +240,14 @@ static cmon_idx _parse_selector_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _
     return cmon_astb_add_selector(_p->ast_builder, _tok, _lhs, name_tok);
 }
 
+static cmon_idx _parse_index(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
+{
+    cmon_idx expr;
+    expr = _parse_expr(_p, _precedence_nil);
+    _tok_check(_p, cmon_true, cmon_tokk_square_close);
+    return cmon_astb_add_selector(_p->ast_builder, _tok, _lhs, expr);
+}
+
 static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
 {
     cmon_idx tok, type, ret, ret_type, body;
@@ -417,7 +425,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         ret = cmon_astb_add_prefix(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
     }
 
-    while (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_open, cmon_tokk_dot))
+    while (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_open, cmon_tokk_dot, cmon_tokk_square_open))
     {
         if (_accept(_p, &tok, cmon_tokk_paran_open))
         {
@@ -426,6 +434,10 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         else if(_accept(_p, &tok, cmon_tokk_dot))
         {
             ret = _parse_selector_expr(_p, tok, ret);
+        }
+        else if(_accept(_p, &tok, cmon_tokk_square_open))
+        {
+            ret = _parse_index(_p, tok, ret);
         }
     }
 

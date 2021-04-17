@@ -418,6 +418,8 @@ PARSE_TEST(parse_struct_init05, "a := Foo{foo: 1, bar: 2}", cmon_true);
 PARSE_TEST(parse_selector01, "a := foo.bar", cmon_true);
 PARSE_TEST(parse_selector02, "a := foo.bar.bat", cmon_true);
 PARSE_TEST(parse_selector03, "a := foo.bar().bat", cmon_true);
+PARSE_TEST(parse_index01, "a := foo[0]", cmon_true);
+PARSE_TEST(parse_index02, "a := foo.bar[99]", cmon_true);
 
 UTEST(cmon, basic_symbols_test)
 {   
