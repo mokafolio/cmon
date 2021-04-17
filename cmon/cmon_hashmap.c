@@ -192,7 +192,7 @@ cmon_hashmap_iter_t _cmon_hashmap_iter()
     return (cmon_hashmap_iter_t){ -1, NULL };
 }
 
-const void * _cmon_hashmap_next(cmon_hashmap_base * _m, cmon_hashmap_iter_t * _iter)
+void * _cmon_hashmap_next(cmon_hashmap_base * _m, cmon_hashmap_iter_t * _iter)
 {
     if (_iter->node)
     {

@@ -3,8 +3,8 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_parser.h>
-#include <cmon/cmon_tokens.h>
 #include <cmon/cmon_symbols.h>
+#include <cmon/cmon_tokens.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -70,10 +70,10 @@ UTEST(cmon, hashmap_tests)
     cmon_hashmap_set(&map2, "bar", -3);
     EXPECT_EQ(2, cmon_hashmap_count(&map2));
     EXPECT_EQ(-3, *cmon_hashmap_get(&map2, "bar"));
-    
+
     const char ** key_ref;
     cmon_hashmap_iter_t it = cmon_hashmap_iter(&map2);
-    while(key_ref = cmon_hashmap_next(&map2, &it))
+    while ((key_ref = cmon_hashmap_next(&map2, &it)))
     {
         typeof((*(&map2)).tmp) foo = it.node->value;
         printf("da key %s\n", *key_ref);
@@ -319,11 +319,12 @@ TOKENS_TEST(lexer_invalid_character, "hello#", cmon_false);
 //     cmon_astb_set_root_block(builder, block);
 
 //     ast = cmon_astb_ast(builder);
-    
+
 //     cmon_idx root_block = cmon_ast_root_block(ast);
 //     EXPECT_EQ(cmon_astk_block, cmon_ast_kind(ast, root_block));
-//     // printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block), cmon_ast_block_begin(ast, root_block));
-//     EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) - cmon_ast_block_begin(ast, root_block));
+//     // printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block),
+//     cmon_ast_block_begin(ast, root_block)); EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) -
+//     cmon_ast_block_begin(ast, root_block));
 
 //     size_t count = 0;
 //     cmon_ast_iter it = cmon_ast_block_iter(ast, root_block);
@@ -364,7 +365,7 @@ static cmon_bool _parse_test_fn(const char * _name, const char * _code)
 
     err = cmon_parser_parse(parser, src, src_idx, tokens) == NULL;
 
-    if(err)
+    if (err)
     {
         cmon_err_report err = cmon_parser_err(parser);
         printf("%s:%lu:%lu: %s", err.filename, err.line, err.line_offset, err.msg);
@@ -420,9 +421,12 @@ PARSE_TEST(parse_selector02, "a := foo.bar.bat", cmon_true);
 PARSE_TEST(parse_selector03, "a := foo.bar().bat", cmon_true);
 PARSE_TEST(parse_index01, "a := foo[0]", cmon_true);
 PARSE_TEST(parse_index02, "a := foo.bar[99 + 3]", cmon_true);
+PARSE_TEST(parse_array_init01, "a := [1, 2, 3]", cmon_true);
+PARSE_TEST(parse_array_init02, "a := []", cmon_true);
+PARSE_TEST(parse_array_init03, "a := [\"foo\", \"bar\",]", cmon_false);
 
 UTEST(cmon, basic_symbols_test)
-{   
+{
     cmon_symbols * s;
     cmon_src * src;
     cmon_modules * mods;
@@ -444,8 +448,10 @@ UTEST(cmon, basic_symbols_test)
     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_global(s, file_scope));
     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_file(s, global_scope));
 
-    foo = cmon_symbols_scope_add_var(s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, cmon_false, 99, 33);
-    EXPECT_EQ(CMON_INVALID_IDX, cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
+    foo = cmon_symbols_scope_add_var(
+        s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, cmon_false, 99, 33);
+    EXPECT_EQ(CMON_INVALID_IDX,
+              cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
     EXPECT_EQ(foo, cmon_symbols_find(s, global_scope, cmon_str_view_make("foo")));
     EXPECT_EQ(foo, cmon_symbols_find(s, file_scope, cmon_str_view_make("foo")));
 

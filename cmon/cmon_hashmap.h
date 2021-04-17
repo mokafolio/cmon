@@ -85,7 +85,7 @@ CMON_API cmon_bool _cmon_hashmap_remove(cmon_hashmap_base * _m,
                                         const void * _key_ref,
                                         size_t _ksize);
 CMON_API cmon_hashmap_iter_t _cmon_hashmap_iter();
-CMON_API const void * _cmon_hashmap_next(cmon_hashmap_base * _m, cmon_hashmap_iter_t * _iter);
+CMON_API void * _cmon_hashmap_next(cmon_hashmap_base * _m, cmon_hashmap_iter_t * _iter);
 
 CMON_API uint64_t _cmon_str_range_hash(const char * _begin, const char * _end);
 CMON_API uint64_t _cmon_str_hash(const char * _str);

@@ -130,8 +130,8 @@ void cmon_resolver_destroy(cmon_resolver * _r)
         cmon_dyn_arr_dealloc(&fr->global_var_decls);
         cmon_dyn_arr_dealloc(&fr->errs);
         cmon_dyn_arr_dealloc(&fr->type_decls);
-        cmon_idx_buf_mng_destroy(&fr->idx_buf_mng);
-        cmon_str_builder_destroy(&fr->str_builder);
+        cmon_idx_buf_mng_destroy(fr->idx_buf_mng);
+        cmon_str_builder_destroy(fr->str_builder);
     }
     cmon_dyn_arr_dealloc(&_r->global_var_stack);
     cmon_dyn_arr_dealloc(&_r->errs);
@@ -318,7 +318,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             else if (kind == cmon_astk_var_decl_list)
             {
                 cmon_ast_iter name_it;
-                cmon_idx name_tok_idx, expr_idx;
+                cmon_idx name_tok_idx;
                 cmon_bool is_pub, is_mut;
 
                 name_it = cmon_ast_var_decl_list_names_iter(ast, idx);
@@ -1079,21 +1079,20 @@ static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmo
         return CMON_INVALID_IDX;
     }
 
-    cmon_idx idx_expr_type =
-        _resolve_expr(_fr, _scope, idx_expr, CMON_INVALID_IDX);
+    cmon_idx idx_expr_type = _resolve_expr(_fr, _scope, idx_expr, CMON_INVALID_IDX);
 
     if (!cmon_is_valid_idx(idx_expr_type))
         return CMON_INVALID_IDX;
 
     //@TODO: Evaluate constant expressions and make sure they are valid indices
-    if (!cmon_type_is_integer(_fr->resolver->types, idx_expr_type))
+    if (!cmon_types_is_int(_fr->resolver->types, idx_expr_type))
     {
         _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), idx_expr), "non-integer index");
         return CMON_INVALID_IDX;
     }
 
     cmon_typek lkind = cmon_types_kind(_fr->resolver->types, left_type);
-    if(lkind == cmon_typek_array)
+    if (lkind == cmon_typek_array)
     {
         return cmon_types_array_type(_fr->resolver->types, left_type);
     }
@@ -1151,14 +1150,18 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     {
         ret = _resolve_binary(_fr, _scope, _ast_idx, _lh_type);
     }
-    // else if (kind == cmon_astk_paran_expr)
-    // {
-    //     return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
-    // }
     else if (kind == cmon_astk_selector)
     {
         ret = _resolve_selector(_fr, _scope, _ast_idx);
     }
+    else if (kind == cmon_astk_index)
+    {
+        ret = _resolve_index(_fr, _scope, _ast_idx);
+    }
+    // else if (kind == cmon_astk_paran_expr)
+    // {
+    //     return _resolve_expr(_fr, _scope, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx), _lh_type);
+    // }
     else
     {
         ret = CMON_INVALID_IDX;

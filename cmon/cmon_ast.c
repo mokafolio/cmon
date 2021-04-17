@@ -246,10 +246,8 @@ cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
                                   cmon_idx * _exprs,
                                   size_t _count)
 {
-    assert(_count);
-    cmon_idx left;
     //@NOTE: see note in cmon_astb_add_block
-    left = _add_extra_data(_b, _exprs, _count);
+    cmon_idx left = _add_extra_data(_b, _exprs, _count);
     return _add_node(_b, cmon_astk_array_init, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
