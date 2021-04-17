@@ -449,6 +449,13 @@ static inline cmon_bool _is_literal(_file_resolver * _fr, cmon_idx _ast_idx)
     return cmon_false;
 }
 
+static inline cmon_bool _is_indexable(_file_resolver * _fr, cmon_idx _type)
+{
+    cmon_typek kind =
+        cmon_types_kind(_fr->resolver->types, cmon_types_remove_ptr(_fr->resolver->types, _type));
+    return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_tuple;
+}
+
 static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
                                               cmon_idx _expr_idx,
                                               cmon_idx _type_idx,
@@ -1051,6 +1058,47 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             name_str_view.end - name_str_view.begin,
             name_str_view.begin);
 
+    return CMON_INVALID_IDX;
+}
+
+static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    cmon_idx lexpr = cmon_ast_index_left(_fr_ast(_fr), _ast_idx);
+    cmon_idx idx_expr = cmon_ast_index_expr(_fr_ast(_fr), _ast_idx);
+    cmon_idx left_type = _resolve_expr(_fr, _scope, lexpr, CMON_INVALID_IDX);
+
+    if (!cmon_is_valid_idx(left_type))
+        return CMON_INVALID_IDX;
+
+    if (!_is_indexable(_fr, left_type))
+    {
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), lexpr),
+                "'%s' type is not indexable",
+                cmon_types_name(_fr->resolver->types, left_type));
+        return CMON_INVALID_IDX;
+    }
+
+    cmon_idx idx_expr_type =
+        _resolve_expr(_fr, _scope, idx_expr, CMON_INVALID_IDX);
+
+    if (!cmon_is_valid_idx(idx_expr_type))
+        return CMON_INVALID_IDX;
+
+    //@TODO: Evaluate constant expressions and make sure they are valid indices
+    if (!cmon_type_is_integer(_fr->resolver->types, idx_expr_type))
+    {
+        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), idx_expr), "non-integer index");
+        return CMON_INVALID_IDX;
+    }
+
+    cmon_typek lkind = cmon_types_kind(_fr->resolver->types, left_type);
+    if(lkind == cmon_typek_array)
+    {
+        return cmon_types_array_type(_fr->resolver->types, left_type);
+    }
+    //@TODO: Handle views/tuples once we get there. die for now
+    assert(0);
     return CMON_INVALID_IDX;
 }
 

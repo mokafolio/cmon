@@ -586,3 +586,10 @@ cmon_bool cmon_types_is_int(cmon_types * _t, cmon_idx _idx)
 {
     return cmon_types_is_unsigned_int(_t, _idx) || cmon_types_is_signed_int(_t, _idx);
 }
+
+cmon_idx cmon_types_remove_ptr(cmon_types * _t, cmon_idx _idx)
+{
+    while (cmon_types_kind(_t, _idx) == cmon_typek_ptr)
+        _idx = cmon_types_ptr_type(_t, _idx);
+    return _idx;
+}
