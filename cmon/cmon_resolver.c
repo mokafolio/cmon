@@ -1211,17 +1211,54 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
 
     cmon_bool first = cmon_true;
     cmon_bool expect_field_names;
-    cmon_idx idx;
+    cmon_idx idx, counter;
     while ((idx = cmon_ast_iter_next(_fr_ast(_fr), &field_it)))
     {
         cmon_idx fname_tok = cmon_ast_struct_init_field_name_tok(_fr_ast(_fr), idx);
         cmon_idx expr = cmon_ast_struct_init_field_expr(_fr_ast(_fr), idx);
 
-        if(first)
+        if (first)
         {
             first = cmon_false;
             expect_field_names = cmon_is_valid_idx(fname_tok);
         }
+
+        if ((expect_field_names && !cmon_is_valid_idx(fname_tok)) ||
+            !expect_field_names && cmon_is_valid_idx(fname_tok))
+        {
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), expr),
+                    "mixture of field: value and value initializers");
+            continue;
+        }
+
+        cmon_idx field_idx;
+        if (cmon_is_valid_idx(fname_tok))
+        {
+            cmon_str_view name_str_view = cmon_tokens_str_view(_fr_tokens(_fr), fname_tok);
+            cmon_idx field_idx =
+                cmon_types_struct_findv_field(_fr->resolver->types, type, name_str_view);
+            if (!cmon_is_valid_idx(field_idx))
+            {
+                _fr_err(_fr,
+                        fname_tok,
+                        "no field '%*.s' in '%s'",
+                        name_str_view.end - name_str_view.begin,
+                        name_str_view.begin,
+                        cmon_types_name(_fr->resolver->types, type));
+                continue;
+            }
+        }
+        else
+        {
+            field_idx = counter;
+        }
+
+        cmon_idx field_type = cmon_types_struct_field_type(_fr->resolver->types, type, field_idx);
+        cmon_idx expr_type = _resolve_expr(_fr, _scope, expr, field_type);
+
+        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), expr), expr_type, field_type);
+        ++counter;
     }
 
     return type;
