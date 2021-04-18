@@ -108,7 +108,7 @@ CMON_API cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
                                                   cmon_idx _name_tok,
                                                   cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
-                                            cmon_idx _tok_idx,
+                                            cmon_idx _parsed_type_idx,
                                             cmon_idx * _fields,
                                             size_t _count);
 CMON_API cmon_idx cmon_astb_add_selector(cmon_astb * _b,
@@ -301,6 +301,12 @@ CMON_API cmon_ast_iter cmon_ast_array_init_exprs_iter(cmon_ast * _ast, cmon_idx 
 // index specific getters
 CMON_API cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx);
+
+// struct init specific getters
+CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_struct_init_fields_end(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);

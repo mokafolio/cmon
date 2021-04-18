@@ -1188,6 +1188,13 @@ static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
     return cmon_types_find_array(_fr->resolver->types, type, count);
 }
 
+static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
+                                            cmon_idx _scope,
+                                            cmon_idx _ast_idx)
+{
+    
+}
+
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _scope,
                                      cmon_idx _ast_idx,

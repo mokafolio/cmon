@@ -190,16 +190,13 @@ cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
     return _add_node(_b, cmon_astk_struct_init_field, _first_tok, _name_tok, _expr);
 }
 
-cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
-                                   cmon_idx _tok_idx,
-                                   cmon_idx * _fields,
-                                   size_t _count)
+cmon_idx cmon_astb_add_struct_init(
+    cmon_astb * _b, cmon_idx _parsed_type_idx, cmon_idx * _fields, size_t _count)
 {
-    cmon_idx left;
     //@NOTE: see note in cmon_astb_add_block
-    left = _add_extra_data(_b, _fields, _count);
+    cmon_idx left = _add_extra_data_m(_b, _fields, _count, _parsed_type_idx);
     return _add_node(
-        _b, cmon_astk_struct_init, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
+        _b, cmon_astk_struct_init, _b->primary_tokens[_parsed_type_idx], left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
 cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
@@ -841,4 +838,28 @@ cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_get_kind(_ast, _idx) == cmon_astk_index);
     return _ast->left_right[_idx].right;
+}
+
+cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    return _get_extra_data(_ast, _ast->left_right[_idx].left);
+}
+
+cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    return _ast->left_right[_idx].left + 1;
+}
+
+cmon_idx cmon_ast_struct_init_fields_end(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    return _ast->left_right[_idx].right;
+}
+
+cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx)
+{
+    return (cmon_ast_iter){ cmon_ast_struct_init_fields_begin(_ast, _idx),
+                            cmon_ast_struct_init_fields_end(_ast, _idx) };
 }

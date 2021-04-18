@@ -363,14 +363,22 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
 
 static cmon_idx _parse_struct_init(cmon_parser * _p)
 {
-    cmon_idx struct_name_tok, name_tok, field_idx, ret, tmp;
-    cmon_idx b;
+    cmon_idx tmp;
 
-    b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
-    struct_name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+    cmon_idx b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
+    // cmon_idx struct_name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+    // if(_accept(_p, &tmp, cmon_tokk_dot))
+    // {
+    //     mod_name_tok = struct_name_tok;
+    //     struct_name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+    // }
+
+    cmon_idx ptype = _parse_type(_p);
+
     _tok_check(_p, cmon_true, cmon_tokk_curl_open);
     while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_curl_close, cmon_tokk_eof))
     {
+        cmon_idx name_tok, field_idx;
         if (cmon_tokens_is_current(_p->tokens, cmon_tokk_ident) &&
             cmon_tokens_is_next(_p->tokens, cmon_tokk_colon))
         {
@@ -399,10 +407,10 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
             break;
     }
     _tok_check(_p, cmon_true, cmon_tokk_curl_close);
-    ret = cmon_astb_add_struct_init(_p->ast_builder,
-                                    struct_name_tok,
-                                    cmon_idx_buf_ptr(_p->idx_buf_mng, b),
-                                    cmon_idx_buf_count(_p->idx_buf_mng, b));
+    cmon_idx ret = cmon_astb_add_struct_init(_p->ast_builder,
+                                             ptype,
+                                             cmon_idx_buf_ptr(_p->idx_buf_mng, b),
+                                             cmon_idx_buf_count(_p->idx_buf_mng, b));
     cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
     return ret;
 }
@@ -425,7 +433,11 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 
     if (cmon_tokens_is_current(_p->tokens, cmon_tokk_ident))
     {
-        if (cmon_tokens_is_next(_p->tokens, cmon_tokk_curl_open))
+        cmon_idx ctok = cmon_tokens_current(_p->tokens);
+        if (cmon_tokens_is_next(_p->tokens, cmon_tokk_curl_open) ||
+            (cmon_tokens_is_next(_p->tokens, cmon_tokk_dot) &&
+             cmon_tokens_is(_p->tokens, ctok + 2, cmon_tokk_ident) &&
+             cmon_tokens_is(_p->tokens, ctok + 3, cmon_tokk_curl_open)))
             ret = _parse_struct_init(_p);
         else
             ret = cmon_astb_add_ident(_p->ast_builder, cmon_tokens_advance(_p->tokens, cmon_true));
