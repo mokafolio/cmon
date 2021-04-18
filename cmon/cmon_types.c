@@ -587,6 +587,17 @@ cmon_bool cmon_types_is_int(cmon_types * _t, cmon_idx _idx)
     return cmon_types_is_unsigned_int(_t, _idx) || cmon_types_is_signed_int(_t, _idx);
 }
 
+cmon_bool cmon_types_is_float(cmon_types * _t, cmon_idx _idx)
+{
+    cmon_typek kind = cmon_types_kind(_t, _idx);
+    return kind == cmon_typek_f32 || kind == cmon_typek_f64;
+}
+
+cmon_bool cmon_types_is_numeric(cmon_types * _t, cmon_idx _idx)
+{
+    return cmon_types_is_int(_t, _idx) || cmon_types_is_float(_t, _idx);
+}
+
 cmon_idx cmon_types_remove_ptr(cmon_types * _t, cmon_idx _idx)
 {
     while (cmon_types_kind(_t, _idx) == cmon_typek_ptr)

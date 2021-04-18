@@ -456,6 +456,14 @@ static inline cmon_bool _is_indexable(_file_resolver * _fr, cmon_idx _type)
     return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_tuple;
 }
 
+static inline cmon_bool _validate_conversion(_file_resolver * _fr,
+                                             cmon_idx _tok,
+                                             cmon_idx _from,
+                                             cmon_idx _to)
+{
+    
+}
+
 static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
                                               cmon_idx _expr_idx,
                                               cmon_idx _type_idx,
@@ -1101,6 +1109,19 @@ static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmo
     return CMON_INVALID_IDX;
 }
 
+static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
+                                           cmon_idx _scope,
+                                           cmon_idx _ast_idx,
+                                           cmon_idx _lh_type)
+{
+    cmon_idx type_suggestion = CMON_INVALID_IDX;
+    if (cmon_is_valid_idx(_lh_type) &&
+        cmon_types_kind(_fr->resolver->types, _lh_type) == cmon_typek_array)
+    {
+        type_suggestion = cmon_types_array_type(_fr->resolver->types, _lh_type);
+    }
+}
+
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _scope,
                                      cmon_idx _ast_idx,
@@ -1157,6 +1178,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_index)
     {
         ret = _resolve_index(_fr, _scope, _ast_idx);
+    }
+    else if (kind == cmon_astk_array_init)
+    {
+        ret = _resolve_array_init(_fr, _scope, _ast_idx);
     }
     // else if (kind == cmon_astk_paran_expr)
     // {
