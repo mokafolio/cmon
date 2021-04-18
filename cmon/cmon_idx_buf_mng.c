@@ -1,6 +1,5 @@
-#include <cmon/cmon_idx_buf_mng.h>
 #include <cmon/cmon_dyn_arr.h>
-
+#include <cmon/cmon_idx_buf_mng.h>
 
 typedef struct cmon_idx_buf_mng
 {
@@ -54,6 +53,11 @@ void cmon_idx_buf_mng_return(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 void cmon_idx_buf_append(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _val)
 {
     cmon_dyn_arr_append(&_m->bufs[_buf_idx], _val);
+}
+
+void cmon_idx_buf_set(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _at, cmon_idx _val)
+{
+    _m->bufs[_buf_idx][_at] = _val;
 }
 
 cmon_idx * cmon_idx_buf_ptr(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)

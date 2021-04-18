@@ -1206,9 +1206,15 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
                 cmon_types_name(_fr->resolver->types, type));
         return CMON_INVALID_IDX;
     }
+    cmon_idx field_initialized_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
+    cmon_idx field_count = cmon_types_struct_field_count(_fr->resolver->types, type);
+    size_t i;
+    for (i = 0; i < field_count; ++i)
+    {
+        cmon_idx_buf_append(_fr->idx_buf_mng, field_initialized_buf, CMON_INVALID_IDX);
+    }
 
     cmon_ast_iter field_it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
-
     cmon_bool first = cmon_true;
     cmon_bool expect_field_names;
     cmon_idx idx, counter;
@@ -1221,6 +1227,15 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         {
             first = cmon_false;
             expect_field_names = cmon_is_valid_idx(fname_tok);
+        }
+
+        if (counter >= field_count)
+        {
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), expr),
+                    "too many expressions in '%s' literal",
+                    cmon_types_name(_fr->resolver->types, type));
+            break;
         }
 
         if ((expect_field_names && !cmon_is_valid_idx(fname_tok)) ||
@@ -1258,8 +1273,26 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         cmon_idx expr_type = _resolve_expr(_fr, _scope, expr, field_type);
 
         _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), expr), expr_type, field_type);
+
+        cmon_idx_buf_set(_fr->idx_buf_mng, field_initialized_buf, field_idx, expr_type);
         ++counter;
     }
+
+    for (i = 0; i < cmon_idx_buf_count(_fr->idx_buf_mng, field_initialized_buf); ++i)
+    {
+        if (!cmon_is_valid_idx(cmon_idx_buf_at(_fr->idx_buf_mng, field_initialized_buf, i)))
+        {
+            if (!cmon_is_valid_idx(cmon_types_struct_field_def_expr(_fr->resolver->types, type, i)))
+            {
+                _fr_err(_fr,
+                        cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                        "field '%s' is not initialized",
+                        cmon_types_struct_field_name(_fr->resolver->types, type, i));
+            }
+        }
+    }
+
+    cmon_idx_buf_mng_return(_fr->idx_buf_mng, field_initialized_buf);
 
     return type;
 }
