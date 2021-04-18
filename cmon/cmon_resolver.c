@@ -462,7 +462,7 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
                                              cmon_idx _to)
 {
     cmon_types * t = _fr->resolver->types;
-    if (cmon_type_is_float(t, _from) && cmon_types_is_int(t, _to))
+    if (cmon_types_is_float(t, _from) && cmon_types_is_int(t, _to))
     {
         _fr_err(_fr,
                 _tok,
@@ -484,7 +484,7 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
         cmon_bool fmut = cmon_types_ptr_is_mut(t, _from);
         cmon_bool tmut = cmon_types_ptr_is_mut(t, _to);
 
-        if ((ft == tt || tt == cmon_types_builtins_void(t)) && (fmut || (!fmut && !tmut)))
+        if ((ft == tt || tt == cmon_types_builtin_void(t)) && (fmut || (!fmut && !tmut)))
             return cmon_false;
     }
 
@@ -1155,12 +1155,37 @@ static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
                                            cmon_idx _ast_idx,
                                            cmon_idx _lh_type)
 {
+    // early out if its an empty init, i.e. []
+    if (cmon_ast_array_init_exprs_begin(_fr_ast(_fr), _ast_idx) ==
+        cmon_ast_array_init_exprs_end(_fr_ast(_fr), _ast_idx))
+        return CMON_INVALID_IDX;
+
     cmon_idx type_suggestion = CMON_INVALID_IDX;
     if (cmon_is_valid_idx(_lh_type) &&
         cmon_types_kind(_fr->resolver->types, _lh_type) == cmon_typek_array)
     {
         type_suggestion = cmon_types_array_type(_fr->resolver->types, _lh_type);
     }
+
+    cmon_ast_iter it = cmon_ast_array_init_exprs_iter(_fr_ast(_fr), _ast_idx);
+    cmon_idx idx = cmon_ast_iter_next(_fr_ast(_fr), &it);
+    cmon_idx type = _resolve_expr(_fr, _scope, idx, type_suggestion);
+
+    if (!cmon_is_valid_idx(type))
+        return CMON_INVALID_IDX;
+
+    size_t count = 0;
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+    {
+        ++count;
+        cmon_idx rti = _resolve_expr(_fr, _scope, idx, type);
+        if (!cmon_is_valid_idx(rti))
+            continue;
+
+        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), rti, type);
+    }
+
+    return cmon_types_find_array(_fr->resolver->types, type, count);
 }
 
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
