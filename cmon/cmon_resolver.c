@@ -1192,7 +1192,39 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx)
 {
-    
+    cmon_idx type =
+        _resolve_parsed_type(_fr, _scope, cmon_ast_struct_init_parsed_type(_fr_ast(_fr), _ast_idx));
+
+    if (!cmon_is_valid_idx(type))
+        return CMON_INVALID_IDX;
+
+    if (cmon_types_kind(_fr->resolver->types, type) != cmon_typek_struct)
+    {
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                "'%s' is not a struct type",
+                cmon_types_name(_fr->resolver->types, type));
+        return CMON_INVALID_IDX;
+    }
+
+    cmon_ast_iter field_it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
+
+    cmon_bool first = cmon_true;
+    cmon_bool expect_field_names;
+    cmon_idx idx;
+    while ((idx = cmon_ast_iter_next(_fr_ast(_fr), &field_it)))
+    {
+        cmon_idx fname_tok = cmon_ast_struct_init_field_name_tok(_fr_ast(_fr), idx);
+        cmon_idx expr = cmon_ast_struct_init_field_expr(_fr_ast(_fr), idx);
+
+        if(first)
+        {
+            first = cmon_false;
+            expect_field_names = cmon_is_valid_idx(fname_tok);
+        }
+    }
+
+    return type;
 }
 
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,

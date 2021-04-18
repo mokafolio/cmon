@@ -303,6 +303,8 @@ CMON_API cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx);
 
 // struct init specific getters
+CMON_API cmon_idx cmon_ast_struct_init_field_name_tok(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_struct_init_field_expr(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_fields_end(cmon_ast * _ast, cmon_idx _idx);
