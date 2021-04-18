@@ -461,7 +461,48 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
                                              cmon_idx _from,
                                              cmon_idx _to)
 {
-    
+    cmon_types * t = _fr->resolver->types;
+    if (cmon_type_is_float(t, _from) && cmon_types_is_int(t, _to))
+    {
+        _fr_err(_fr,
+                _tok,
+                "truncating '%s' to '%s'",
+                cmon_types_name(t, _from),
+                cmon_types_name(t, _to));
+        return cmon_true;
+    }
+
+    cmon_typek fkind = cmon_types_kind(t, _from);
+    cmon_typek tkind = cmon_types_kind(t, _to);
+
+    // allow implicit conversion of pointer types that only differ in mutability. i.e. mut to not
+    // mut works implicitly but not the other way around.
+    if (fkind == cmon_typek_ptr && tkind == cmon_typek_ptr)
+    {
+        cmon_idx ft = cmon_types_ptr_type(t, _from);
+        cmon_idx tt = cmon_types_ptr_type(t, _to);
+        cmon_bool fmut = cmon_types_ptr_is_mut(t, _from);
+        cmon_bool tmut = cmon_types_ptr_is_mut(t, _to);
+
+        if ((ft == tt || tt == cmon_types_builtins_void(t)) && (fmut || (!fmut && !tmut)))
+            return cmon_false;
+    }
+
+    //@TODO: do the same we did for ptrs for views once we get there
+    //@TODO: Handle noinit case for pointers? (i.e. should noinit be allowed for ptrs?)
+
+    // otherwise we simply check for equality of the type infos
+    if (_from != _to)
+    {
+        _fr_err(_fr,
+                _tok,
+                "cannot convert '%s' to '%s'",
+                cmon_types_name(t, _from),
+                cmon_types_name(t, _to));
+        return cmon_true;
+    }
+
+    return cmon_false;
 }
 
 static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
@@ -1181,7 +1222,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     }
     else if (kind == cmon_astk_array_init)
     {
-        ret = _resolve_array_init(_fr, _scope, _ast_idx);
+        ret = _resolve_array_init(_fr, _scope, _ast_idx, _lh_type);
     }
     // else if (kind == cmon_astk_paran_expr)
     // {
