@@ -1375,6 +1375,30 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
 {
 }
 
+static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
+
+    if (kind == cmon_astk_block)
+    {
+        cmon_idx scope = cmon_symbols_scope_begin(_fr->resolver->symbols, _scope);
+        cmon_ast_iter it = cmon_ast_block_iter(_fr_ast(_fr), _ast_idx);
+        cmon_idx idx;
+        while(cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        {
+            _resolve_stmt(_fr, scope, idx);
+        }
+    }
+    else if (kind == cmon_astk_var_decl)
+    {
+
+    }
+    else if (kind == cmon_astk_var_decl_list)
+    {
+        
+    }
+}
+
 cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
 {
     size_t i, j;
@@ -1410,6 +1434,9 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
 
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
+    _file_resolver * fr = &_r->file_resolvers[_file_idx];
+
+    return cmon_false;
 }
 
 cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)

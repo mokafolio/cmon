@@ -1,8 +1,8 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
+#include <cmon/cmon_src.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_util.h>
-#include <cmon/cmon_src.h>
 
 typedef struct
 {
@@ -27,6 +27,7 @@ typedef struct
     cmon_idx src_file_idx;
     cmon_idx ast_idx;
     cmon_idx scope_idx;
+    cmon_idx redecl_idx;
     union
     {
         cmon_idx idx;
@@ -98,15 +99,22 @@ static inline cmon_idx _add_symbol(cmon_symbols * _s,
                                    cmon_idx _ast_idx)
 {
     _symbol s;
-    _scope * scope;
     s.name = _name;
     s.kind = _kind;
     s.is_pub = _is_pub;
     s.src_file_idx = _src_file_idx;
     s.ast_idx = _ast_idx;
     s.scope_idx = _scp;
+    s.redecl_idx = 0;
 
-    scope = _get_scope(_s, _scp);
+    //@TODO: right now hashmap does not provide an API to manualy update the value for a found node
+    // causing us to basically find _name twice right now, once below and once in cmon_hashmap_set
+    // at the end
+    cmon_idx existing = cmon_symbols_find_local(_s, _scp, _name);
+    if (cmon_is_valid_idx(existing))
+        s.redecl_idx = _get_symbol(_s, existing)->redecl_idx + 1;
+
+    _scope * scope = _get_scope(_s, _scp);
     cmon_dyn_arr_append(&scope->symbols, cmon_dyn_arr_count(&_s->symbols));
     cmon_dyn_arr_append(&_s->symbols, s);
     cmon_hashmap_set(&scope->name_map, _name, cmon_dyn_arr_count(&_s->symbols) - 1);
@@ -180,7 +188,7 @@ cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
 }
 
 void cmon_symbols_var_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type)
-{   
+{
     assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
     _get_symbol(_s, _sym)->data.var.type_idx = _type;
 }
