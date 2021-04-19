@@ -1297,6 +1297,22 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
     return type;
 }
 
+static inline cmon_idx _resolve_fn(_file_resolver * _fr,
+                                     cmon_idx _scope,
+                                     cmon_idx _ast_idx)
+{
+    cmon_idx ret_type = _resolve_parsed_type(_fr, _scope, cmon_ast_fn_ret_type(_fr_ast(_fr), _ast_idx));
+    cmon_idx idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
+    cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
+    cmon_idx idx;
+    while(cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
+    {
+        
+    }
+
+    cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
+}
+
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _scope,
                                      cmon_idx _ast_idx,
@@ -1436,6 +1452,8 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
     size_t i, j;
     _r->global_type_pass = cmon_true;
 
+    //@NOTE: Global variables have their own, slightly different implementation than regular variables
+    //because symbol creation and the rest is split into multiple separate steps.
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr;
