@@ -173,7 +173,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
         fr.resolved_types =
             cmon_allocator_alloc(_r->alloc, sizeof(cmon_idx) * cmon_ast_count(ast)).ptr;
-
+        memset(fr.resolved_types, (int)CMON_INVALID_IDX, sizeof(cmon_idx) * cmon_ast_count(ast));
         cmon_dyn_arr_append(&_r->file_resolvers, fr);
     }
 }
@@ -1306,6 +1306,13 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     cmon_astk kind;
     cmon_idx ret;
 
+    // an expression might have already been resolved during globals pass (to infer a global
+    // variables type). In that case we early out.
+    //@TODO: Double check if this makes sense?? I have a feeling this should be checked at the level
+    // of the global variable instead.
+    if (cmon_is_valid_idx(_fr->resolved_types[_ast_idx]))
+        return _fr->resolved_types[_ast_idx];
+
     _ast_idx = _remove_paran(_fr, _ast_idx);
     ast = _fr_ast(_fr);
     kind = cmon_ast_kind(ast, _ast_idx);
@@ -1373,6 +1380,32 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
 
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
+    cmon_idx expr_type_idx, ptype_idx;
+    cmon_idx parsed_type_idx = cmon_ast_var_decl_type(_fr_ast(_fr), _ast_idx);
+
+    if (cmon_is_valid_idx(parsed_type_idx))
+    {
+        ptype_idx = _resolve_parsed_type(_fr, _scope, parsed_type_idx);
+    }
+
+    cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx);
+    assert(cmon_is_valid_idx(expr_idx));
+    expr_type_idx = _resolve_expr(_fr, _scope, expr_idx, CMON_INVALID_IDX);
+
+    CMON_UNUSED(cmon_symbols_scope_add_var(
+        _fr->resolver->symbols,
+        _scope,
+        cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_var_decl_name_tok(_fr_ast(_fr), _ast_idx)),
+        cmon_is_valid_idx(ptype_idx) ? ptype_idx : expr_type_idx,
+        cmon_false,
+        cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
+        _fr->src_file_idx,
+        _ast_idx));
+
+    if (cmon_is_valid_idx(ptype_idx))
+    {
+        _validate_conversion(_fr, expr_idx, expr_type_idx, ptype_idx);
+    }
 }
 
 static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -1384,18 +1417,17 @@ static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx
         cmon_idx scope = cmon_symbols_scope_begin(_fr->resolver->symbols, _scope);
         cmon_ast_iter it = cmon_ast_block_iter(_fr_ast(_fr), _ast_idx);
         cmon_idx idx;
-        while(cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
         {
             _resolve_stmt(_fr, scope, idx);
         }
     }
     else if (kind == cmon_astk_var_decl)
     {
-
+        _resolve_var_decl(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_var_decl_list)
     {
-        
     }
 }
 
@@ -1412,16 +1444,16 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
         ast = _fr_ast(fr);
         for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
         {
-            cmon_idx ast_idx, parsed_type_idx, expr_idx, type_idx;
-            ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
-            parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
+            cmon_idx type_idx;
+            cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
+            cmon_idx parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
             if (cmon_is_valid_idx(parsed_type_idx))
             {
                 type_idx = _resolve_parsed_type(fr, fr->file_scope, parsed_type_idx);
             }
             else
             {
-                expr_idx = cmon_ast_var_decl_expr(ast, ast_idx);
+                cmon_idx expr_idx = cmon_ast_var_decl_expr(ast, ast_idx);
                 assert(cmon_is_valid_idx(expr_idx));
                 type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, CMON_INVALID_IDX);
             }
