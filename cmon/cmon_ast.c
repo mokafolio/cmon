@@ -297,26 +297,26 @@ cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pai
     return _add_node(_b, cmon_astk_import, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
-cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
-                                cmon_idx _name_tok_idx,
-                                cmon_bool _is_mut,
-                                cmon_idx _type)
-{
-    return _add_node(_b, cmon_astk_fn_param, _name_tok_idx, _is_mut, _type);
-}
+// cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+//                                 cmon_idx _name_tok_idx,
+//                                 cmon_bool _is_mut,
+//                                 cmon_idx _type)
+// {
+//     return _add_node(_b, cmon_astk_fn_param, _name_tok_idx, _is_mut, _type);
+// }
 
-cmon_idx cmon_astb_add_fn_param_list(
-    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type)
-{
-    cmon_idx left;
-    //@NOTE: see note in cmon_astb_add_block
-    left = _add_extra_data_m(_b, _name_toks, _count, _is_mut, _type);
-    return _add_node(_b,
-                     cmon_astk_fn_param_list,
-                     _name_toks[0],
-                     _add_extra_data_m(_b, _name_toks, _count, _is_mut, _type),
-                     cmon_dyn_arr_count(&_b->extra_data));
-}
+// cmon_idx cmon_astb_add_fn_param_list(
+//     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type)
+// {
+//     cmon_idx left;
+//     //@NOTE: see note in cmon_astb_add_block
+//     left = _add_extra_data_m(_b, _name_toks, _count, _is_mut, _type);
+//     return _add_node(_b,
+//                      cmon_astk_fn_param_list,
+//                      _name_toks[0],
+//                      _add_extra_data_m(_b, _name_toks, _count, _is_mut, _type),
+//                      cmon_dyn_arr_count(&_b->extra_data));
+// }
 
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {

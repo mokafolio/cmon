@@ -228,27 +228,11 @@ static inline void _parse_comma_separated_exprs(cmon_parser * _p,
 
 static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 {
-    cmon_idx ret, tmp;
+    cmon_idx ret;
     cmon_idx b;
 
     b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
-    // while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close, cmon_tokk_eof))
-    // {
-    //     cmon_idx_buf_append(_p->idx_buf_mng, b, _parse_expr(_p, _precedence_nil));
-    //     if (_accept(_p, &tmp, cmon_tokk_comma))
-    //     {
-    //         printf("current %s\n",
-    //                cmon_tokk_to_str(cmon_tokens_kind(_p->tokens,
-    //                cmon_tokens_current(_p->tokens))));
-    //         if (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close))
-    //         {
-    //             _err(_p, tmp, "unexpected comma");
-    //         }
-    //     }
-    //     else
-    //         break;
-    // }
-    // _tok_check(_p, cmon_true, cmon_tokk_paran_close);
+
     _parse_comma_separated_exprs(_p, b, cmon_tokk_paran_close);
 
     ret = cmon_astb_add_call(_p->ast_builder,
@@ -310,24 +294,35 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
         assert(cmon_idx_buf_count(_p->idx_buf_mng, name_tok_buf));
         if (cmon_idx_buf_count(_p->idx_buf_mng, name_tok_buf) == 1)
         {
+            // CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
+            //                              cmon_idx _name_tok_idx,
+            //                              cmon_bool _is_pub,
+            //                              cmon_bool _is_mut,
+            //                              cmon_idx _type,
+            //                              cmon_idx _expr);
+
             cmon_idx_buf_append(
                 _p->idx_buf_mng,
                 param_buf,
-                cmon_astb_add_fn_param(_p->ast_builder,
+                cmon_astb_add_var_decl(_p->ast_builder,
                                        cmon_idx_buf_at(_p->idx_buf_mng, name_tok_buf, 0),
+                                       cmon_false,
                                        is_mut,
-                                       type));
+                                       type,
+                                       CMON_INVALID_IDX));
         }
         else
         {
             cmon_idx_buf_append(
                 _p->idx_buf_mng,
                 param_buf,
-                cmon_astb_add_fn_param_list(_p->ast_builder,
+                cmon_astb_add_var_decl_list(_p->ast_builder,
                                             cmon_idx_buf_ptr(_p->idx_buf_mng, name_tok_buf),
                                             cmon_idx_buf_count(_p->idx_buf_mng, name_tok_buf),
+                                            cmon_false,
                                             is_mut,
-                                            type));
+                                            type,
+                                            CMON_INVALID_IDX));
         }
 
         if (_accept(_p, &tok, cmon_tokk_comma))

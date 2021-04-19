@@ -1307,9 +1307,24 @@ static inline cmon_idx _resolve_fn(_file_resolver * _fr,
     cmon_idx idx;
     while(cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
     {
-        
-    }
+        cmon_astk kind = cmon_astk_kind(_fr_ast(_fr), idx);
+        if(kind == cmon_astk_var_decl)
+        {
 
+        }
+        else if(kind== cmon_astk_var_decl_list)
+        {
+
+        }
+        else
+        {
+            assert(0);
+            cmon_panic("This is a bug: Unexpected ast node");
+        }
+
+        // cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _)
+    }
+         
     cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
 }
 

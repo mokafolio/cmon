@@ -156,3 +156,13 @@ err:
     pclose(pipe);
     return -1;
 }
+
+void cmon_panic(const char * _fmt, ...)
+{
+    va_list args;
+    va_start(args, _fmt);
+    fprintf(stderr, "Panic: ");
+    vfprintf(stderr, _fmt, args);
+    va_end(args);
+    exit(EXIT_FAILURE);
+}

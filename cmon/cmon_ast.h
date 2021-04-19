@@ -30,8 +30,8 @@ typedef enum
     cmon_astk_cast,
     // cmon_astk_view,
     cmon_astk_noinit,
-    cmon_astk_fn_param,      // i.e. mut bar : s32
-    cmon_astk_fn_param_list, // i.e. foo, bar : s32
+    // cmon_astk_fn_param,      // i.e. mut bar : s32
+    // cmon_astk_fn_param_list, // i.e. foo, bar : s32
     cmon_astk_fn_decl,
     // cmon_astk_range,
     // cmon_astk_expl_template_fn_init,
@@ -154,12 +154,12 @@ CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
                                        size_t _count);
 
 // helpers
-CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
-                                         cmon_idx _name_tok_idx,
-                                         cmon_bool _is_mut,
-                                         cmon_idx _type);
-CMON_API cmon_idx cmon_astb_add_fn_param_list(
-    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type);
+// CMON_API cmon_idx cmon_astb_add_fn_param(cmon_astb * _b,
+//                                          cmon_idx _name_tok_idx,
+//                                          cmon_bool _is_mut,
+//                                          cmon_idx _type);
+// CMON_API cmon_idx cmon_astb_add_fn_param_list(
+//     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_bool _is_mut, cmon_idx _type);
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);
 
 // adding parsed types
@@ -259,6 +259,18 @@ CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx);
 
 // fn specific getters
+// CMON_API cmon_idx cmon_ast_fn_param_name_tok(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_idx cmon_ast_fn_param_is_mut(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_idx cmon_ast_fn_param_type(cmon_ast * _ast, cmon_idx _idx);
+
+// CMON_API cmon_idx cmon_ast_fn_param_list_names_begin(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_idx cmon_ast_fn_param_list_names_end(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_ast_iter cmon_ast_fn_param_list_names_iter(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _idx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _idx);
+
 CMON_API cmon_idx cmon_ast_fn_params_begin(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx);
