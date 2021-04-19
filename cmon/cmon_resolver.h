@@ -18,6 +18,7 @@ CMON_API void cmon_resolver_set_input(cmon_resolver * _r,
                                       cmon_modules * _mods,
                                       cmon_idx _mod_idx);
 CMON_API cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx);
+CMON_API cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx);
 CMON_API cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx);

@@ -14,12 +14,18 @@
 
 typedef struct
 {
+    cmon_idx ast_idx;
+    cmon_idx type_idx;
+} _ast_type_pair;
+
+typedef struct
+{
     cmon_resolver * resolver;
     cmon_idx file_scope;
     cmon_idx src_file_idx;
     cmon_str_builder * str_builder;
     cmon_idx_buf_mng * idx_buf_mng;
-    cmon_dyn_arr(cmon_idx) type_decls; // types declared in the file
+    cmon_dyn_arr(_ast_type_pair) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
@@ -227,27 +233,19 @@ static inline cmon_idx _add_global_var_name(cmon_resolver * _r,
 
 cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
-    cmon_src * src;
-    cmon_idx src_file_idx;
-    cmon_ast * ast;
-    cmon_tokens * tokens;
-    cmon_ast_iter it;
-    cmon_idx idx, root_block;
-    cmon_bool is_first_stmt;
-    _file_resolver * fr;
-
-    src = _r->src;
-    src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
-    ast = cmon_src_ast(src, src_file_idx);
-    tokens = cmon_src_tokens(src, src_file_idx);
-    is_first_stmt = cmon_true;
-    fr = &_r->file_resolvers[_file_idx];
+    cmon_src * src = _r->src;
+    cmon_idx src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, _file_idx);
+    cmon_ast * ast = cmon_src_ast(src, src_file_idx);
+    cmon_tokens * tokens = cmon_src_tokens(src, src_file_idx);
+    cmon_bool is_first_stmt = cmon_true;
+    _file_resolver * fr = &_r->file_resolvers[_file_idx];
 
     assert(ast);
     assert(tokens);
-    root_block = cmon_ast_root_block(ast);
+    cmon_idx root_block = cmon_ast_root_block(ast);
 
-    it = cmon_ast_block_iter(ast, root_block);
+    cmon_idx idx;
+    cmon_ast_iter it = cmon_ast_block_iter(ast, root_block);
     while (cmon_is_valid_idx(idx = cmon_ast_iter_next(ast, &it)))
     {
         if (is_first_stmt)
@@ -340,12 +338,13 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 cmon_idx name_tok_idx, tidx;
                 cmon_str_view name;
                 name_tok_idx = cmon_ast_struct_name(ast, idx);
+
                 if (!_check_redec(fr, fr->file_scope, name_tok_idx))
                 {
                     name = cmon_tokens_str_view(tokens, name_tok_idx);
                     tidx = cmon_types_add_struct(
                         _r->types, _r->mod_idx, name, src_file_idx, name_tok_idx);
-                    cmon_dyn_arr_append(&fr->type_decls, tidx);
+                    cmon_dyn_arr_append(&fr->type_decls, ((_ast_type_pair){ idx, tidx }));
                     cmon_symbols_scope_add_type(_r->symbols,
                                                 _r->global_scope,
                                                 name,
@@ -359,12 +358,40 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             {
                 assert(cmon_false);
                 //@TODO: Unexpected top lvl statement? (I guess it would have already failed
-                // parsing?)
+                // parsing?) panic?
             }
         }
     }
 
     return cmon_false;
+}
+
+cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
+{
+    _file_resolver * fr = &_r->file_resolvers[_file_idx];
+    size_t i;
+    for (i = 0; i < cmon_dyn_arr_count(&fr->type_decls); ++i)
+    {
+        assert(cmon_types_kind(_r->types, fr->type_decls[i].type_idx) == cmon_typek_struct);
+        cmon_ast_iter field_it = cmon_ast_struct_fields_iter(_fr_ast(fr), fr->type_decls[i].ast_idx);
+        cmon_idx ast_idx;
+        while(cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
+        {
+            cmon_astk kind = cmon_ast_kind(_fr_ast(fr), ast_idx);
+            if(kind == cmon_astk_struct_field)
+            {
+                
+            }
+            else if(kind == cmon_astk_struct_field_list)
+            {
+
+            }
+            else
+            {
+                _unexpected_ast_panic();
+            }
+        }
+    }
 }
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
@@ -379,15 +406,15 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         for (j = 0; j < cmon_dyn_arr_count(&fr->type_decls); ++j)
         {
             // the only user defined type can be a struct for now
-            assert(cmon_types_kind(_r->types, fr->type_decls[j]) == cmon_typek_struct);
+            assert(cmon_types_kind(_r->types, fr->type_decls[j].type_idx) == cmon_typek_struct);
             cmon_dyn_arr_clear(&_r->dep_buffer);
-            for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j]); ++k)
+            for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j].type_idx); ++k)
             {
                 cmon_dyn_arr_append(&_r->dep_buffer,
-                                    cmon_types_struct_field_type(_r->types, fr->type_decls[j], k));
+                                    cmon_types_struct_field_type(_r->types, fr->type_decls[j].type_idx, k));
             }
             cmon_dep_graph_add(_r->dep_graph,
-                               fr->type_decls[j],
+                               fr->type_decls[j].type_idx,
                                &_r->dep_buffer[0],
                                cmon_dyn_arr_count(&_r->dep_buffer));
         }
@@ -424,6 +451,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _scope,
                                      cmon_idx _ast_idx,
                                      cmon_idx _lh_type);
+static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
 
 static inline cmon_idx _remove_paran(_file_resolver * _fr, cmon_idx _ast_idx)
 {
@@ -1314,7 +1342,7 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
     cmon_bool param_err = cmon_false;
     while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
     {
-        cmon_astk kind = cmon_astk_kind(_fr_ast(_fr), idx);
+        cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
         {
             cmon_idx pt = _resolve_parsed_type(_fr, _scope, idx);
@@ -1400,7 +1428,7 @@ static inline void _resolve_fn_body(_file_resolver * _fr, cmon_idx _scope, cmon_
     cmon_idx idx;
     while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
     {
-        cmon_astk kind = cmon_astk_kind(_fr_ast(_fr), idx);
+        cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
         {
             _add_fn_param_sym(_fr,

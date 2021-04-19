@@ -278,11 +278,14 @@ CMON_API cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx);
 
 // struct declaration specific getters
+CMON_API cmon_idx cmon_ast_struct_field_name(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_struct_field_type(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_fields_begin(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx);
-CMON_API cmon_bool cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx);
+CMON_API cmon_idx cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx);
 
 // addr/deref expr specific getters
 CMON_API cmon_idx cmon_ast_addr_expr(cmon_ast * _ast, cmon_idx _addr_idx);
