@@ -87,6 +87,12 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   ##__VA_ARGS__);                                                                  \
     } while (0)
 
+static inline void _unexpected_ast_panic()
+{
+    assert(0);
+    cmon_panic("Unexpected ast node. This is a bug :(");
+}
+
 static inline cmon_tokens * _fr_tokens(_file_resolver * _fr)
 {
     return cmon_src_tokens(_fr->resolver->src, _fr->src_file_idx);
@@ -753,11 +759,11 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
             //@TODO: Check if resolve_parsed_type returns a valid idx and early out if not?
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _resolve_parsed_type(_fr, _scope, idx));
         }
-        cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
                                  cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+        cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
     }
 
     return ret;
@@ -1297,35 +1303,140 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
     return type;
 }
 
-static inline cmon_idx _resolve_fn(_file_resolver * _fr,
-                                     cmon_idx _scope,
-                                     cmon_idx _ast_idx)
+static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
-    cmon_idx ret_type = _resolve_parsed_type(_fr, _scope, cmon_ast_fn_ret_type(_fr_ast(_fr), _ast_idx));
+    cmon_idx ret_type =
+        _resolve_parsed_type(_fr, _scope, cmon_ast_fn_ret_type(_fr_ast(_fr), _ast_idx));
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
+
     cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
     cmon_idx idx;
-    while(cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
+    cmon_bool param_err = cmon_false;
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
     {
         cmon_astk kind = cmon_astk_kind(_fr_ast(_fr), idx);
-        if(kind == cmon_astk_var_decl)
+        if (kind == cmon_astk_var_decl)
         {
-
+            cmon_idx pt = _resolve_parsed_type(_fr, _scope, idx);
+            _fr->resolved_types[idx] = pt;
+            if (!cmon_is_valid_idx(pt))
+                param_err = cmon_true;
+            cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
         }
-        else if(kind== cmon_astk_var_decl_list)
+        else if (kind == cmon_astk_var_decl_list)
         {
+            cmon_idx pt =
+                _resolve_parsed_type(_fr, _scope, cmon_ast_var_decl_list_type(_fr_ast(_fr), idx));
+            _fr->resolved_types[idx] = pt;
 
+            if (!cmon_is_valid_idx(pt))
+                param_err = cmon_true;
+
+            cmon_ast_iter name_it = cmon_ast_var_decl_list_names_iter(_fr_ast(_fr), idx);
+            cmon_idx name_tok_idx;
+            while (cmon_is_valid_idx(name_tok_idx = cmon_ast_iter_next(_fr_ast(_fr), &name_it)))
+            {
+                cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
+            }
         }
         else
         {
-            assert(0);
-            cmon_panic("This is a bug: Unexpected ast node");
+            _unexpected_ast_panic();
         }
-
-        // cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _)
     }
-         
+
+    cmon_idx ret;
+    if (param_err)
+    {
+        ret = CMON_INVALID_IDX;
+    }
+    else
+    {
+        ret = cmon_types_find_fn(_fr->resolver->types,
+                                 ret_type,
+                                 cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
+                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+    }
     cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
+    return ret;
+}
+
+static inline cmon_bool _add_fn_param_sym(
+    _file_resolver * _fr, cmon_idx _scope, cmon_idx _name_tok, cmon_bool _is_mut, cmon_idx _ast_idx)
+{
+    cmon_idx sym;
+    cmon_str_view str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
+    if (cmon_is_valid_idx(sym = cmon_symbols_find_local(_fr->resolver->symbols, _scope, str_view)))
+    {
+        _fr_err(_fr,
+                _name_tok,
+                "redeclaration of parameter '%.*s'",
+                str_view.end - str_view.begin,
+                str_view.begin);
+        return cmon_true;
+    }
+    else
+    {
+        //@NOTE: The type of the parameter must have been resolved in _resolve_fn_sig
+        assert(cmon_is_valid_idx(_fr->resolved_types[_ast_idx]));
+        CMON_UNUSED(cmon_symbols_scope_add_var(_fr->resolver->symbols,
+                                               _scope,
+                                               str_view,
+                                               _fr->resolved_types[_ast_idx],
+                                               cmon_false,
+                                               _is_mut,
+                                               _fr->src_file_idx,
+                                               _ast_idx));
+    }
+    return cmon_false;
+}
+
+static inline void _resolve_fn_body(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    //@NOTE: Functions only see file scope variables
+    cmon_idx scope = cmon_symbols_scope_begin(_fr->resolver->symbols, _fr->file_scope);
+
+    cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
+    cmon_idx idx;
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
+    {
+        cmon_astk kind = cmon_astk_kind(_fr_ast(_fr), idx);
+        if (kind == cmon_astk_var_decl)
+        {
+            _add_fn_param_sym(_fr,
+                              scope,
+                              cmon_ast_var_decl_name_tok(_fr_ast(_fr), idx),
+                              cmon_ast_var_decl_is_mut(_fr_ast(_fr), idx),
+                              idx);
+        }
+        else if (kind == cmon_astk_var_decl_list)
+        {
+            cmon_bool is_mut = cmon_ast_var_decl_list_is_mut(_fr_ast(_fr), idx);
+            cmon_ast_iter name_tok_it = cmon_ast_var_decl_list_names_iter(_fr_ast(_fr), idx);
+            cmon_idx name_tok;
+            while (cmon_is_valid_idx(name_tok = cmon_ast_iter_next(_fr_ast(_fr), &name_tok_it)))
+            {
+                _add_fn_param_sym(_fr, scope, name_tok, is_mut, idx);
+            }
+        }
+        else
+        {
+            _unexpected_ast_panic();
+        }
+    }
+
+    // resolve the function body block
+    _resolve_stmt(_fr, scope, cmon_ast_fn_block(_fr_ast(_fr), _ast_idx));
+}
+
+static inline cmon_idx _resolve_fn(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    cmon_idx ret = _resolve_fn_sig(_fr, _scope, _ast_idx);
+    if (!_fr->resolver->global_type_pass)
+    {
+        _resolve_fn_body(_fr, _scope, _ast_idx);
+    }
+    return ret;
 }
 
 static inline cmon_idx _resolve_expr(_file_resolver * _fr,
@@ -1395,6 +1506,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_array_init)
     {
         ret = _resolve_array_init(_fr, _scope, _ast_idx, _lh_type);
+    }
+    else if (kind == cmon_astk_fn_decl)
+    {
+        ret = _resolve_fn(_fr, _scope, _ast_idx);
     }
     // else if (kind == cmon_astk_paran_expr)
     // {
@@ -1467,8 +1582,8 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
     size_t i, j;
     _r->global_type_pass = cmon_true;
 
-    //@NOTE: Global variables have their own, slightly different implementation than regular variables
-    //because symbol creation and the rest is split into multiple separate steps.
+    //@NOTE: Global variables have their own, slightly different implementation than regular
+    // variables because symbol creation and the rest is split into multiple separate steps.
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr;
