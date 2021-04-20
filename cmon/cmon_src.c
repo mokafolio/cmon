@@ -19,6 +19,7 @@ typedef struct cmon_src
 
 static inline cmon_src_file * _get_file(cmon_src * _src, cmon_idx _idx)
 {
+    printf("da focking idx %lu\n", _idx);
     assert(_idx < cmon_dyn_arr_count(&_src->files));
     return &_src->files[_idx];
 }
@@ -81,6 +82,7 @@ void cmon_src_set_tokens(cmon_src * _src, cmon_idx _file_idx, cmon_tokens * _tok
 
 cmon_tokens * cmon_src_tokens(cmon_src * _src, cmon_idx _file_idx)
 {
+    printf("da file count %lu %lu\n", _file_idx, cmon_dyn_arr_count(&_src->files));
     return _get_file(_src, _file_idx)->tokens;
 }
 
@@ -97,4 +99,9 @@ const char * cmon_src_filename(cmon_src * _src, cmon_idx _file_idx)
 const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx)
 {
     return _get_file(_src, _file_idx)->code;
+}
+
+size_t cmon_src_count(cmon_src * _src)
+{
+    return cmon_dyn_arr_count(&_src->files);
 }

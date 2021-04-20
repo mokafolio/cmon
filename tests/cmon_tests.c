@@ -3,6 +3,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_parser.h>
+#include <cmon/cmon_resolver.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_tokens.h>
 
@@ -323,7 +324,8 @@ TOKENS_TEST(lexer_invalid_character, "hello#", cmon_false);
 //     cmon_idx root_block = cmon_ast_root_block(ast);
 //     EXPECT_EQ(cmon_astk_block, cmon_ast_kind(ast, root_block));
 //     // printf("end %lu begin %lu\n", cmon_ast_block_end(ast, root_block),
-//     cmon_ast_block_begin(ast, root_block)); EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) -
+//     cmon_ast_block_begin(ast, root_block)); 
+// EXPECT_EQ(1, cmon_ast_block_end(ast, root_block) -
 //     cmon_ast_block_begin(ast, root_block));
 
 //     size_t count = 0;
@@ -466,5 +468,75 @@ UTEST(cmon, basic_symbols_test)
     cmon_src_destroy(src);
     cmon_allocator_dealloc(&a);
 }
+
+static cmon_bool _resolve_test_fn(const char * _name, const char * _code)
+{
+    cmon_bool err;
+
+    cmon_allocator alloc = cmon_mallocator_make();
+    cmon_src * src = cmon_src_create(&alloc);
+    cmon_idx src_idx = cmon_src_add(src, _name, _name);
+    cmon_src_set_code(src, src_idx, _code);
+
+    cmon_parser * parser = cmon_parser_create(&alloc);
+    cmon_tokens * tokens = cmon_tokenize(&alloc, src, src_idx, NULL);
+
+    err = !tokens;
+    if (err)
+        goto end;
+
+    cmon_ast * ast = cmon_parser_parse(parser, src, src_idx, tokens);
+
+    if (!ast)
+    {
+        cmon_err_report err = cmon_parser_err(parser);
+        printf("%s:%lu:%lu: %s", err.filename, err.line, err.line_offset, err.msg);
+        goto end;
+    }
+
+    cmon_src_set_tokens(src, src_idx, tokens);
+    cmon_src_set_ast(src, src_idx, ast);
+
+    cmon_modules * mods = cmon_modules_create(&alloc);
+    cmon_symbols * s = cmon_symbols_create(&alloc, src, mods);
+    cmon_types * types = cmon_types_create(&alloc, mods);
+    cmon_idx mod = cmon_modules_add(mods, _name, _name);
+    cmon_modules_add_src_file(mods, mod, src_idx);
+
+    cmon_resolver * r = cmon_resolver_create(&alloc, 12);
+    cmon_resolver_set_input(r, src, types, s, mods, mod);
+
+    err = cmon_resolver_resolve(r);
+    if(err)
+    {
+        cmon_err_report * errs;
+        size_t err_count;
+        cmon_resolver_errors(r, &errs, &err_count);
+        size_t i;
+        for(i=0; i<err_count; ++i)
+            cmon_err_report_print(&errs[i]);
+    }
+
+end:
+    cmon_resolver_destroy(r);
+    cmon_types_destroy(types);
+    cmon_symbols_destroy(s);
+    cmon_modules_destroy(mods);
+    cmon_parser_destroy(parser);
+    cmon_tokens_destroy(tokens);
+    cmon_src_destroy(src);
+    cmon_allocator_dealloc(&alloc);
+
+    return err;
+}
+
+#define RESOLVE_TEST(_name, _code, _should_pass)                                                   \
+    UTEST(cmon, _name)                                                                             \
+    {                                                                                              \
+        EXPECT_EQ(!_should_pass, _resolve_test_fn(#_name, "module " #_name "\n\n" _code));         \
+    }
+
+// RESOLVE_TEST(resolve_empty, "", cmon_true);
+RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
 
 UTEST_MAIN();

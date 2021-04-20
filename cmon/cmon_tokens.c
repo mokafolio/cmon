@@ -495,6 +495,7 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_tokk * _out_kind, _tok
             _err(_l, "invalid character '%c' in source code", *_l->pos);
         }
 
+        // printf("IDENT BRUV %s %s\n", _out_tok->str_view.begin, _l->pos);
         _out_tok->str_view.end = _l->pos;
         return cmon_true;
     }
@@ -551,7 +552,8 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
     cmon_tokens * ret = _tokens_create(_alloc);
     while (_next_token(&s, &kind, &tok) && cmon_err_report_is_empty(&s.err))
     {
-        printf("ADDING TOKEN %s\n", cmon_tokk_to_str(kind));
+        //sanity check. tokens can't consume no characters
+        assert(tok.str_view.begin < tok.str_view.end);
         cmon_dyn_arr_append(&ret->kinds, kind);
         cmon_dyn_arr_append(&ret->tokens, tok);
     }

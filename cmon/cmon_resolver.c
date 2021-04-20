@@ -1299,11 +1299,13 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     size_t i;
     assert(!cmon_is_valid_idx(_r->global_scope));
     _r->src = _src;
+    printf("asfkjaksfjkajf %lu\n", cmon_src_count(_src));
     _r->types = _types;
     _r->symbols = _symbols;
     _r->mods = _mods;
     _r->mod_idx = _mod_idx;
     _r->global_scope = cmon_symbols_scope_begin(_r->symbols, CMON_INVALID_IDX);
+    cmon_modules_set_global_scope(_r->mods, _r->mod_idx, _r->global_scope);
 
     for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
     {
@@ -1316,6 +1318,9 @@ void cmon_resolver_set_input(cmon_resolver * _r,
 
         fr.str_builder = cmon_str_builder_create(_r->alloc, 1024);
         fr.idx_buf_mng = cmon_idx_buf_mng_create(_r->alloc);
+        fr.src_file_idx = src_file_idx;
+        fr.resolver = _r;
+        fr.file_scope = cmon_symbols_scope_begin(_r->symbols, _r->global_scope);
         cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.errs, _r->alloc, _r->max_errors);
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
@@ -1727,7 +1732,7 @@ cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
     return cmon_false;
 }
 
-cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report * _out_errs, size_t * _out_count)
+cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report ** _out_errs, size_t * _out_count)
 {
     size_t i, j;
     cmon_dyn_arr_clear(&_r->errs);
@@ -1741,7 +1746,7 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report * _out_errs, 
         cmon_dyn_arr_clear(&fr->errs);
     }
 
-    _out_errs = _r->errs;
+    *_out_errs = _r->errs;
     *_out_count = cmon_dyn_arr_count(&_r->errs);
 
     return cmon_dyn_arr_count(&_r->errs) > 0;

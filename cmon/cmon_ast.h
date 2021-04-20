@@ -32,7 +32,6 @@ typedef enum
     // cmon_astk_range,
     // cmon_astk_expl_template_fn_init,
     cmon_astk_var_decl,
-    cmon_astk_var_decl_data,
     cmon_astk_struct_field,
     cmon_astk_struct_decl,
     // cmon_astk_interface_decl,

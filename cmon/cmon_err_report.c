@@ -31,3 +31,8 @@ cmon_bool cmon_err_report_is_empty(cmon_err_report * _er)
 {
     return _er->line == 0;
 }
+
+void cmon_err_report_print(cmon_err_report * _er)
+{
+    printf("%s:%lu:%lu: %s\n", _er->filename, _er->line, _er->line_offset, _er->msg);
+}

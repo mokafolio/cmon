@@ -624,6 +624,10 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
 
         while (_accept(_p, &tok, cmon_tokk_ident))
         {
+            cmon_str_view sv = cmon_tokens_str_view(_p->tokens, tok);
+            printf("APPENDING DA TOK %lu: %*.s\n", tok, sv.end - sv.begin, sv.begin);
+            assert(cmon_tokens_kind(_p->tokens, tok) == cmon_tokk_ident);
+
             cmon_idx_buf_append(_p->idx_buf_mng, path_tok_buf, tok);
 
             if (!_accept(_p, &tok, cmon_tokk_dot))

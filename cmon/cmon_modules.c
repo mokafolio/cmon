@@ -1,6 +1,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_modules.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_util.h>
 
 typedef struct
 {
@@ -13,7 +14,6 @@ typedef struct
 typedef struct cmon_modules
 {
     cmon_allocator * alloc;
-    // cmon_src * src;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
     cmon_dyn_arr(_module) mods;
@@ -23,7 +23,6 @@ cmon_modules * cmon_modules_create(cmon_allocator * _a)
 {
     cmon_modules * ret = CMON_CREATE(_a, cmon_modules);
     ret->alloc = _a;
-    // ret->src = _src;
     ret->str_builder = cmon_str_builder_create(_a, 256);
     ret->str_buf = cmon_str_buf_create(_a, 256);
     cmon_dyn_arr_init(&ret->mods, _a, 16);
@@ -37,7 +36,7 @@ void cmon_modules_destroy(cmon_modules * _m)
     if (!_m)
         return;
 
-    for (i = 0; cmon_dyn_arr_count(&_m->mods); ++i)
+    for (i = 0; i < cmon_dyn_arr_count(&_m->mods); ++i)
     {
         cmon_dyn_arr_dealloc(&_m->mods[i].deps);
         cmon_dyn_arr_dealloc(&_m->mods[i].src_files);
@@ -98,7 +97,16 @@ void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_id
 
 cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
 {
-    
+    //@NOTE: for now we just linear search. maybe hashmap in the future
+    cmon_idx i;
+    for (i = 0; i < cmon_dyn_arr_count(&_m->mods); ++i)
+    {
+        if (cmon_str_view_c_str_cmp(_path, cmon_modules_path(_m, i)) == 0)
+        {
+            return i;
+        }
+    }
+    return CMON_INVALID_IDX;
 }
 
 const char * cmon_modules_path(cmon_modules * _m, cmon_idx _mod_idx)

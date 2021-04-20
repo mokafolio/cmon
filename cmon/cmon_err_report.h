@@ -16,5 +16,6 @@ CMON_API cmon_err_report cmon_err_report_make_empty();
 CMON_API cmon_err_report cmon_err_report_make(const char * _file, size_t _line, size_t _line_off, const char * _msg);
 CMON_API cmon_err_report cmon_err_report_copy(cmon_err_report * _er);
 CMON_API cmon_bool cmon_err_report_is_empty(cmon_err_report * _er);
+CMON_API void cmon_err_report_print(cmon_err_report * _er);
 
 #endif // CMON_CMON_ERR_REPORT_H

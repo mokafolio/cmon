@@ -20,5 +20,6 @@ CMON_API cmon_tokens * cmon_src_tokens(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_path(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_filename(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx);
+CMON_API size_t cmon_src_count(cmon_src * _src);
 
 #endif //CMON_CMON_SRC_H
