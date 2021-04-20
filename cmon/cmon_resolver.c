@@ -1096,10 +1096,10 @@ static inline void _resolve_fn_body(_file_resolver * _fr, cmon_idx _scope, cmon_
 static inline cmon_idx _resolve_fn(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
     cmon_idx ret = _resolve_fn_sig(_fr, _scope, _ast_idx);
-    if (!_fr->resolver->global_type_pass)
-    {
-        _resolve_fn_body(_fr, _scope, _ast_idx);
-    }
+    // if (!_fr->resolver->global_type_pass)
+    // {
+    _resolve_fn_body(_fr, _scope, _ast_idx);
+    // }
     return ret;
 }
 
@@ -1116,8 +1116,8 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     // variables type). In that case we early out.
     //@TODO: Double check if this makes sense?? I have a feeling this should be checked at the level
     // of the global variable instead.
-    if (cmon_is_valid_idx(_fr->resolved_types[_ast_idx]))
-        return _fr->resolved_types[_ast_idx];
+    // if (cmon_is_valid_idx(_fr->resolved_types[_ast_idx]))
+    //     return _fr->resolved_types[_ast_idx];
 
     _ast_idx = _remove_paran(_fr, _ast_idx);
     ast = _fr_ast(_fr);
@@ -1235,6 +1235,10 @@ static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx
     else if (kind == cmon_astk_var_decl)
     {
         _resolve_var_decl(_fr, _scope, _ast_idx);
+    }
+    else
+    {
+        _unexpected_ast_panic();
     }
 }
 
@@ -1647,20 +1651,65 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
             {
                 cmon_idx expr_idx = cmon_ast_var_decl_expr(ast, ast_idx);
                 assert(cmon_is_valid_idx(expr_idx));
-                type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, CMON_INVALID_IDX);
+                if (cmon_ast_kind(ast, expr_idx) != cmon_astk_fn_decl)
+                {
+                    type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, CMON_INVALID_IDX);
+                }
+                else
+                {
+                    // for functions we only want to determine the signature for now
+                    type_idx = _resolve_fn_sig(fr, fr->file_scope, expr_idx);
+                }
             }
 
             cmon_symbols_var_set_type(_r->symbols, fr->global_var_decls[j], type_idx);
         }
     }
     _r->global_type_pass = cmon_false;
+    return cmon_resolver_has_errors(_r);
 }
 
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
 
-    return cmon_false;
+    size_t i;
+    // @NOTE: only thing left to do is to iterate over all global variables. Resolve their default
+    // expressions if that has not happened during the globals pass yet. If they are functions,
+    // resolve the function bodies!
+    for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
+    {
+        cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(fr), fr->global_var_decls[i]);
+        // if its not a function, simply resolve the expression and check the conversion
+        if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl)
+        {
+            // only do this for expressions that have not been resolved during globals pass
+            if (!cmon_is_valid_idx(fr->resolved_types[expr_idx]))
+            {
+                cmon_idx type_suggestion = CMON_INVALID_IDX;
+                cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), fr->global_var_decls[i]);
+                if (cmon_is_valid_idx(ptype))
+                {
+                    type_suggestion = fr->resolved_types[ptype];
+                    assert(cmon_is_valid_idx(type_suggestion));
+                }
+                cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
+                if (cmon_is_valid_idx(ptype))
+                {
+                    _validate_conversion(
+                        fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, ptype);
+                }
+            }
+        }
+        else
+        {
+            // the function signature must have already been resolved during globals pass
+            assert(cmon_is_valid_idx(fr->resolved_types[expr_idx]));
+            _resolve_fn_body(fr, fr->file_scope, expr_idx);
+        }
+    }
+
+    return cmon_dyn_arr_count(&fr->errs) > 0;
 }
 
 cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
