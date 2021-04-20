@@ -1524,10 +1524,12 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     return cmon_false;
 }
 
-static inline void _check_field_name(_file_resolver * _fr,
-                                     cmon_idx _name_tok_buf,
-                                     cmon_idx _name_tok)
+static inline cmon_bool _check_field_name(_file_resolver * _fr,
+                                          cmon_idx _name_tok_buf,
+                                          cmon_idx _name_tok)
 {
+    //@NOTE: Using index buffers to compare field names via token index because we already have them
+    // in place.
     cmon_str_view str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
     size_t i;
     for (i = 0; i < cmon_idx_buf_count(_fr->idx_buf_mng, _name_tok_buf); ++i)
@@ -1542,10 +1544,11 @@ static inline void _check_field_name(_file_resolver * _fr,
                     "duplicate field name '%.*s'",
                     str_view.end - str_view.begin,
                     str_view.begin);
-            return;
+            return cmon_true;
         }
     }
     cmon_idx_buf_append(_fr->idx_buf_mng, _name_tok_buf, _name_tok);
+    return cmon_false;
 }
 
 cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
@@ -1569,19 +1572,11 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
             {
                 parsed_type_idx = cmon_ast_struct_field_type(_fr_ast(fr), ast_idx);
                 def_expr = cmon_ast_struct_field_expr(_fr_ast(fr), ast_idx);
-                _check_field_name(
-                    fr, name_tok_buf, cmon_ast_struct_field_name(_fr_ast(fr), ast_idx));
             }
             else if (kind == cmon_astk_struct_field_list)
             {
                 parsed_type_idx = cmon_ast_struct_field_list_type(_fr_ast(fr), ast_idx);
                 def_expr = cmon_ast_struct_field_list_expr(_fr_ast(fr), ast_idx);
-                cmon_ast_iter nit = cmon_ast_struct_field_list_names_iter(_fr_ast(fr), ast_idx);
-                cmon_idx nidx;
-                while (cmon_is_valid_idx(nidx = cmon_ast_iter_next(_fr_ast(fr), &nit)))
-                {
-                    _check_field_name(fr, name_tok_buf, nidx);
-                }
             }
             else
             {
@@ -1598,11 +1593,41 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
                         fr, cmon_ast_token(_fr_ast(fr), def_expr), expr_type, type);
                 }
             }
+
+            if (kind == cmon_astk_struct_field)
+            {
+                cmon_idx field_name_tok = cmon_ast_struct_field_name(_fr_ast(fr), ast_idx);
+                if (!_check_field_name(fr, name_tok_buf, field_name_tok))
+                {
+                    cmon_types_struct_add_field(
+                        _r->types,
+                        fr->type_decls[i].type_idx,
+                        cmon_tokens_str_view(_fr_tokens(fr), field_name_tok),
+                        type,
+                        def_expr);
+                }
+            }
+            else // cmon_astk_struct_field_list
+            {
+                cmon_ast_iter nit = cmon_ast_struct_field_list_names_iter(_fr_ast(fr), ast_idx);
+                cmon_idx nidx;
+                while (cmon_is_valid_idx(nidx = cmon_ast_iter_next(_fr_ast(fr), &nit)))
+                {
+                    if (!_check_field_name(fr, name_tok_buf, nidx))
+                    {
+                        cmon_types_struct_add_field(_r->types,
+                                                    fr->type_decls[i].type_idx,
+                                                    cmon_tokens_str_view(_fr_tokens(fr), nidx),
+                                                    type,
+                                                    def_expr);
+                    }
+                }
+            }
         }
     }
 
     cmon_idx_buf_mng_return(fr->idx_buf_mng, name_tok_buf);
-    return cmon_false;
+    return cmon_dyn_arr_count(&fr->errs) > 0;
 }
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
