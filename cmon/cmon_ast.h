@@ -36,10 +36,10 @@ typedef enum
     // cmon_astk_range,
     // cmon_astk_expl_template_fn_init,
     cmon_astk_var_decl,
-    cmon_astk_var_decl_list, // i.e. foo, bar : s32 = 3
+    // cmon_astk_var_decl_list, // i.e. foo, bar : s32 = 3
     cmon_astk_var_decl_data,
     cmon_astk_struct_field,
-    cmon_astk_struct_field_list,
+    // cmon_astk_struct_field_list,
     cmon_astk_struct_decl,
     // cmon_astk_interface_decl,
     cmon_astk_exprstmt,
@@ -131,13 +131,13 @@ CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                          cmon_bool _is_mut,
                                          cmon_idx _type,
                                          cmon_idx _expr);
-CMON_API cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
-                                              cmon_idx * _name_toks,
-                                              size_t _count,
-                                              cmon_bool _is_pub,
-                                              cmon_bool _is_mut,
-                                              cmon_idx _type,
-                                              cmon_idx _expr);
+// CMON_API cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
+//                                               cmon_idx * _name_toks,
+//                                               size_t _count,
+//                                               cmon_bool _is_pub,
+//                                               cmon_bool _is_mut,
+//                                               cmon_idx _type,
+//                                               cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
                                       cmon_idx _tok_idx,
                                       cmon_idx * _stmt_indices,
@@ -178,8 +178,8 @@ CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
                                              cmon_idx _name_tok,
                                              cmon_idx _type,
                                              cmon_idx _expr);
-CMON_API cmon_idx cmon_astb_add_struct_field_list(
-    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr);
+// CMON_API cmon_idx cmon_astb_add_struct_field_list(
+//     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_struct_decl(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count);
 
@@ -245,13 +245,13 @@ CMON_API cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx);
 
 // var decl list specific getters
-CMON_API cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _vidx);
-CMON_API cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _vidx);
+// CMON_API cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _vidx);
 
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);

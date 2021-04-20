@@ -219,21 +219,21 @@ cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
     return _add_node(_b, cmon_astk_var_decl, _name_tok_idx, left, _expr);
 }
 
-cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
-                                     cmon_idx * _name_toks,
-                                     size_t _count,
-                                     cmon_bool _is_pub,
-                                     cmon_bool _is_mut,
-                                     cmon_idx _type,
-                                     cmon_idx _expr)
-{
-    assert(_count);
-    cmon_idx left;
-    //@NOTE: see note in cmon_astb_add_block
-    left = _add_extra_data_m(_b, _name_toks, _count, _is_pub, _is_mut, _type, _expr);
-    return _add_node(
-        _b, cmon_astk_var_decl_list, _name_toks[0], left, cmon_dyn_arr_count(&_b->extra_data));
-}
+// cmon_idx cmon_astb_add_var_decl_list(cmon_astb * _b,
+//                                      cmon_idx * _name_toks,
+//                                      size_t _count,
+//                                      cmon_bool _is_pub,
+//                                      cmon_bool _is_mut,
+//                                      cmon_idx _type,
+//                                      cmon_idx _expr)
+// {
+//     assert(_count);
+//     cmon_idx left;
+//     //@NOTE: see note in cmon_astb_add_block
+//     left = _add_extra_data_m(_b, _name_toks, _count, _is_pub, _is_mut, _type, _expr);
+//     return _add_node(
+//         _b, cmon_astk_var_decl_list, _name_toks[0], left, cmon_dyn_arr_count(&_b->extra_data));
+// }
 
 cmon_idx cmon_astb_add_selector(cmon_astb * _b,
                                 cmon_idx _tok_idx,
@@ -367,15 +367,15 @@ cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
     return _add_node(_b, cmon_astk_struct_field, _name_tok, _type, _expr);
 }
 
-cmon_idx cmon_astb_add_struct_field_list(
-    cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr)
-{
-    assert(_count);
-    //@NOTE: see note in cmon_astb_add_block
-    cmon_idx left = _add_extra_data_m(_b, _name_toks, _count, _type, _expr);
-    return _add_node(
-        _b, cmon_astk_struct_field_list, _name_toks[0], left, cmon_dyn_arr_count(&_b->extra_data));
-}
+// cmon_idx cmon_astb_add_struct_field_list(
+//     cmon_astb * _b, cmon_idx * _name_toks, size_t _count, cmon_idx _type, cmon_idx _expr)
+// {
+//     assert(_count);
+//     //@NOTE: see note in cmon_astb_add_block
+//     cmon_idx left = _add_extra_data_m(_b, _name_toks, _count, _type, _expr);
+//     return _add_node(
+//         _b, cmon_astk_struct_field_list, _name_toks[0], left, cmon_dyn_arr_count(&_b->extra_data));
+// }
 
 cmon_idx cmon_astb_add_struct_decl(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count)
@@ -627,47 +627,47 @@ cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx)
     return _ast->left_right[_vidx].right;
 }
 
-cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _ast->left_right[_vidx].left + 4;
-}
+// cmon_idx cmon_ast_var_decl_list_names_begin(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _ast->left_right[_vidx].left + 4;
+// }
 
-cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _ast->left_right[_vidx].right;
-}
+// cmon_idx cmon_ast_var_decl_list_names_end(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _ast->left_right[_vidx].right;
+// }
 
-cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx)
-{
-    return (cmon_ast_iter){ cmon_ast_var_decl_list_names_begin(_ast, _vidx),
-                            cmon_ast_var_decl_list_names_end(_ast, _vidx) };
-}
+// cmon_ast_iter cmon_ast_var_decl_list_names_iter(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     return (cmon_ast_iter){ cmon_ast_var_decl_list_names_begin(_ast, _vidx),
+//                             cmon_ast_var_decl_list_names_end(_ast, _vidx) };
+// }
 
-cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _get_extra_data(_ast, _ast->left_right[_vidx].left);
-}
+// cmon_bool cmon_ast_var_decl_list_is_pub(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _get_extra_data(_ast, _ast->left_right[_vidx].left);
+// }
 
-cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 1);
-}
+// cmon_bool cmon_ast_var_decl_list_is_mut(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 1);
+// }
 
-cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 2);
-}
+// cmon_idx cmon_ast_var_decl_list_type(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 2);
+// }
 
-cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _vidx)
-{
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
-    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 3);
-}
+// cmon_idx cmon_ast_var_decl_list_expr(cmon_ast * _ast, cmon_idx _vidx)
+// {
+//     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl_list);
+//     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 3);
+// }
 
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
 {
@@ -879,35 +879,35 @@ cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx)
     return _ast->left_right[_idx].right;
 }
 
-cmon_idx cmon_ast_struct_field_list_type(cmon_ast * _ast, cmon_idx _idx)
-{
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
-    return _get_extra_data(_ast, _ast->left_right[_idx].left);
-}
+// cmon_idx cmon_ast_struct_field_list_type(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
+//     return _get_extra_data(_ast, _ast->left_right[_idx].left);
+// }
 
-cmon_idx cmon_ast_struct_field_list_expr(cmon_ast * _ast, cmon_idx _idx)
-{
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
-    return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
-}
+// cmon_idx cmon_ast_struct_field_list_expr(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
+//     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
+// }
 
-cmon_idx cmon_ast_struct_field_list_names_begin(cmon_ast * _ast, cmon_idx _idx)
-{
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
-    return _ast->left_right[_idx].left + 2;
-}
+// cmon_idx cmon_ast_struct_field_list_names_begin(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
+//     return _ast->left_right[_idx].left + 2;
+// }
 
-cmon_idx cmon_ast_struct_field_list_names_end(cmon_ast * _ast, cmon_idx _idx)
-{
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
-    return _ast->left_right[_idx].right;
-}
+// cmon_idx cmon_ast_struct_field_list_names_end(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_struct_field_list);
+//     return _ast->left_right[_idx].right;
+// }
 
-cmon_ast_iter cmon_ast_struct_field_list_names_iter(cmon_ast * _ast, cmon_idx _idx)
-{
-    return (cmon_ast_iter){ cmon_ast_struct_field_list_names_begin(_ast, _idx),
-                            cmon_ast_struct_field_list_names_end(_ast, _idx) };
-}
+// cmon_ast_iter cmon_ast_struct_field_list_names_iter(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     return (cmon_ast_iter){ cmon_ast_struct_field_list_names_begin(_ast, _idx),
+//                             cmon_ast_struct_field_list_names_end(_ast, _idx) };
+// }
 
 cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx)
 {
