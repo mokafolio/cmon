@@ -1013,22 +1013,6 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
                 param_err = cmon_true;
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
         }
-        // else if (kind == cmon_astk_var_decl_list)
-        // {
-        //     cmon_idx pt =
-        //         _resolve_parsed_type(_fr, _scope, cmon_ast_var_decl_list_type(_fr_ast(_fr), idx));
-        //     _fr->resolved_types[idx] = pt;
-
-        //     if (!cmon_is_valid_idx(pt))
-        //         param_err = cmon_true;
-
-        //     cmon_ast_iter name_it = cmon_ast_var_decl_list_names_iter(_fr_ast(_fr), idx);
-        //     cmon_idx name_tok_idx;
-        //     while (cmon_is_valid_idx(name_tok_idx = cmon_ast_iter_next(_fr_ast(_fr), &name_it)))
-        //     {
-        //         cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
-        //     }
-        // }
         else
         {
             _unexpected_ast_panic();
@@ -1099,16 +1083,6 @@ static inline void _resolve_fn_body(_file_resolver * _fr, cmon_idx _scope, cmon_
                               cmon_ast_var_decl_is_mut(_fr_ast(_fr), idx),
                               idx);
         }
-        // else if (kind == cmon_astk_var_decl_list)
-        // {
-        //     cmon_bool is_mut = cmon_ast_var_decl_list_is_mut(_fr_ast(_fr), idx);
-        //     cmon_ast_iter name_tok_it = cmon_ast_var_decl_list_names_iter(_fr_ast(_fr), idx);
-        //     cmon_idx name_tok;
-        //     while (cmon_is_valid_idx(name_tok = cmon_ast_iter_next(_fr_ast(_fr), &name_tok_it)))
-        //     {
-        //         _add_fn_param_sym(_fr, scope, name_tok, is_mut, idx);
-        //     }
-        // }
         else
         {
             _unexpected_ast_panic();
@@ -1474,20 +1448,6 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                      cmon_ast_var_decl_is_mut(ast, idx),
                                      idx);
             }
-            // else if (kind == cmon_astk_var_decl_list)
-            // {
-            //     cmon_ast_iter name_it;
-            //     cmon_idx name_tok_idx;
-            //     cmon_bool is_pub, is_mut;
-
-            //     name_it = cmon_ast_var_decl_list_names_iter(ast, idx);
-            //     is_pub = cmon_ast_var_decl_list_is_pub(ast, idx);
-            //     is_mut = cmon_ast_var_decl_list_is_mut(ast, idx);
-            //     while (cmon_is_valid_idx(name_tok_idx = cmon_ast_iter_next(ast, &name_it)))
-            //     {
-            //         _add_global_var_name(_r, fr, name_tok_idx, is_pub, is_mut, idx);
-            //     }
-            // }
             else if (kind == cmon_astk_struct_decl)
             {
                 cmon_idx name_tok_idx, tidx;
@@ -1570,11 +1530,6 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 parsed_type_idx = cmon_ast_struct_field_type(_fr_ast(fr), ast_idx);
                 def_expr = cmon_ast_struct_field_expr(_fr_ast(fr), ast_idx);
             }
-            // else if (kind == cmon_astk_struct_field_list)
-            // {
-            //     parsed_type_idx = cmon_ast_struct_field_list_type(_fr_ast(fr), ast_idx);
-            //     def_expr = cmon_ast_struct_field_list_expr(_fr_ast(fr), ast_idx);
-            // }
             else
             {
                 _unexpected_ast_panic();
@@ -1604,22 +1559,6 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
                         def_expr);
                 }
             }
-            // else // cmon_astk_struct_field_list
-            // {
-            //     cmon_ast_iter nit = cmon_ast_struct_field_list_names_iter(_fr_ast(fr), ast_idx);
-            //     cmon_idx nidx;
-            //     while (cmon_is_valid_idx(nidx = cmon_ast_iter_next(_fr_ast(fr), &nit)))
-            //     {
-            //         if (!_check_field_name(fr, name_tok_buf, nidx))
-            //         {
-            //             cmon_types_struct_add_field(_r->types,
-            //                                         fr->type_decls[i].type_idx,
-            //                                         cmon_tokens_str_view(_fr_tokens(fr), nidx),
-            //                                         type,
-            //                                         def_expr);
-            //         }
-            //     }
-            // }
         }
     }
 
