@@ -109,6 +109,11 @@ cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
     return CMON_INVALID_IDX;
 }
 
+size_t cmon_modules_count(cmon_modules * _m)
+{
+    return cmon_dyn_arr_count(&_m->mods);
+}
+
 const char * cmon_modules_path(cmon_modules * _m, cmon_idx _mod_idx)
 {
     return cmon_str_buf_get(_m->str_buf, _get_module(_m, _mod_idx)->path_str_off);
@@ -138,4 +143,14 @@ size_t cmon_modules_src_file_count(cmon_modules * _m, cmon_idx _mod_idx)
 cmon_idx cmon_modules_global_scope(cmon_modules * _m, cmon_idx _mod_idx)
 {
     return _get_module(_m, _mod_idx)->global_scope;
+}
+
+cmon_idx cmon_modules_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_idx)
+{
+    return _get_module(_m, _mod_idx)->deps[_dep_idx];
+}
+
+size_t cmon_modules_dep_count(cmon_modules * _m, cmon_idx _mod_idx)
+{
+    return cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->deps);
 }
