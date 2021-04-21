@@ -1,35 +1,205 @@
 #include <cmon/cmon_builder_st.h>
-#include <cmon/cmon_parser.h>
 #include <cmon/cmon_dep_graph.h>
+#include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_parser.h>
+#include <cmon/cmon_resolver.h>
+
+typedef struct
+{
+    cmon_tokens * tokens;
+    cmon_parser * parser;
+    cmon_ast * ast;
+    cmon_idx src_file_idx;
+} _per_file_data;
+
+typedef struct
+{
+    cmon_dyn_arr(_per_file_data) file_data;
+    cmon_resolver * resolver;
+} _per_module_data;
 
 typedef struct cmon_builder_st
 {
+    cmon_allocator * alloc;
+    size_t max_errors;
     cmon_src * src;
     cmon_modules * mods;
+    cmon_dyn_arr(_per_module_data) mod_data;
+    cmon_symbols * symbols;
+    cmon_types * types;
     cmon_dyn_arr(cmon_idx) dep_buf;
     cmon_dep_graph * dep_graph;
+    cmon_dyn_arr(cmon_err_report) errs;
 } cmon_builder_st;
 
-cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc, size_t _max_errors, cmon_src * _src, cmon_modules * _mods)
+cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
+                                         size_t _max_errors,
+                                         cmon_src * _src,
+                                         cmon_modules * _mods)
 {
-
 }
 
 void cmon_builder_st_destroy(cmon_builder_st * _b)
 {
+}
 
+static inline void _add_resolver_errors(cmon_builder_st * _b, cmon_resolver * _r)
+{
+    cmon_err_report * errs;
+    size_t count, i;
+    cmon_resolver_errors(_r, &errs, &count);
+    for (i = 0; i < count; ++i)
+    {
+        cmon_dyn_arr_append(&_b->errs, errs[i]);
+    }
 }
 
 cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
 {
-    //01. resolve dependency order between modules.
-    size_t i;
-    for(i=0; i<cmon_modules_count(_b->mods); ++i)
+    size_t i, j;
+
+    // setup all the things needed per module
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
-        
+        _per_module_data mod_data;
+        mod_data.resolver = cmon_resolver_create(_b->alloc, _b->max_errors);
+        cmon_dyn_arr_init(&mod_data.file_data, _b->alloc, cmon_modules_src_file_count(_b->mods, i));
+        // setup everything needed per file
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
+        {
+            cmon_err_report err = cmon_err_report_make_empty();
+            _per_file_data pfd;
+            pfd.src_file_idx = cmon_modules_src_file(_b->mods, i, j);
+            // tokenize the modules files right here
+            pfd.tokens = cmon_tokenize(_b->alloc, _b->src, pfd.src_file_idx, &err);
+            pfd.parser = cmon_parser_create(_b->alloc);
+            pfd.ast = NULL;
+
+            // buffer potential tokenize errors
+            if (!cmon_err_report_is_empty(&err))
+                cmon_dyn_arr_append(&_b->errs, err);
+
+            cmon_dyn_arr_append(&mod_data.file_data, pfd);
+        }
+        cmon_dyn_arr_append(&_b->mod_data, mod_data);
     }
 
-    //02. for each module tokenize/parse all files
+    // return if files failed to tokenize
+    if (cmon_dyn_arr_count(&_b->errs))
+    {
+        return cmon_true;
+    }
 
-    //03. resolve each module
+    // parse all the files
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    {
+        _per_module_data * pmd = &_b->mod_data[i];
+
+        // setup everything needed per file
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
+        {
+            _per_file_data * pfd = &pmd->file_data[j];
+            pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
+            if (!pfd->ast)
+                cmon_dyn_arr_append(&_b->errs, cmon_parser_err(pfd->parser));
+        }
+    }
+
+    // return if files failed to parse
+    if (cmon_dyn_arr_count(&_b->errs))
+    {
+        return cmon_true;
+    }
+
+    // resolve all the top level names for each module to determine which other modules they depend
+    // on
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    {
+        _per_module_data * pmd = &_b->mod_data[i];
+        cmon_resolver_set_input(pmd->resolver, _b->src, _b->types, _b->symbols, _b->mods, i);
+        for (j = 0; j < cmon_modules_dep_count(_b->mods, i); ++j)
+        {
+            if (cmon_resolver_top_lvl_pass(pmd->resolver, j))
+                _add_resolver_errors(_b, pmd->resolver);
+        }
+    }
+
+    // return if modules errored during top level pass.
+    if (cmon_dyn_arr_count(&_b->errs))
+    {
+        return cmon_true;
+    }
+
+    // resolve dependency order between modules
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    {
+        cmon_dyn_arr_clear(&_b->dep_buf);
+        for (j = 0; j < cmon_modules_dep_count(_b->mods, i); ++j)
+        {
+            cmon_dyn_arr_append(&_b->dep_buf, cmon_modules_dep(_b->mods, i, j));
+        }
+
+        cmon_dep_graph_add(_b->dep_graph, i, &_b->dep_buf[0], cmon_dyn_arr_count(&_b->dep_buf));
+    }
+
+    cmon_dep_graph_result result = cmon_dep_graph_resolve(_b->dep_graph);
+    if (!result.array)
+    {
+        cmon_idx a, b;
+        a = cmon_dep_graph_conflict_a(_b->dep_graph);
+        b = cmon_dep_graph_conflict_b(_b->dep_graph);
+        if (a != b)
+        {
+            // _fr_err(fr,
+            //         cmon_types_name_tok(_r->types, a),
+            //         "circular dependency between types '%s' and '%s'",
+            //         cmon_types_name(_r->types, a),
+            //         cmon_types_name(_r->types, b));
+        }
+        else
+        {
+            // _fr_err(fr,
+            //         cmon_types_name_tok(_r->types, a),
+            //         "recursive type '%s'",
+            //         cmon_types_name(_r->types, a));
+        }
+        return cmon_true;
+    }
+
+    // resolve each module
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    {
+        _per_module_data * pmd = &_b->mod_data[i];
+        if (cmon_resolver_globals_pass(pmd->resolver))
+        {
+            _add_resolver_errors(_b, pmd->resolver);
+            return cmon_true;
+        }
+
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
+        {
+            if (cmon_resolver_usertypes_pass(pmd->resolver, j))
+            {
+                _add_resolver_errors(_b, pmd->resolver);
+                return cmon_true;
+            }
+        }
+
+        if (cmon_resolver_circ_pass(pmd->resolver))
+        {
+            _add_resolver_errors(_b, pmd->resolver);
+            return cmon_true;
+        }
+
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
+        {
+            if (cmon_resolver_main_pass(pmd->resolver, j))
+            {
+                _add_resolver_errors(_b, pmd->resolver);
+                return cmon_true;
+            }
+        }
+    }
+
+    return cmon_false;
 }
