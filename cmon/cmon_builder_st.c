@@ -37,10 +37,42 @@ cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
                                          cmon_src * _src,
                                          cmon_modules * _mods)
 {
+    cmon_builder_st * ret = CMON_CREATE(_alloc, cmon_builder_st);
+    ret->alloc = _alloc;
+    ret->max_errors = _max_errors;
+    ret->src = _src;
+    ret->mods = _mods;
+    cmon_dyn_arr_init(&ret->mod_data, _alloc, cmon_modules_count(_mods));
+    ret->symbols = cmon_symbols_create(_alloc, _src, _mods);
+    ret->types = cmon_types_create(_alloc, _mods);
+    cmon_dyn_arr_init(&ret->dep_buf, _alloc, 4);
+    ret->dep_graph = cmon_dep_graph_create(_alloc);
+    cmon_dyn_arr_init(&ret->errs, _alloc, 8);
+    return ret;
 }
 
 void cmon_builder_st_destroy(cmon_builder_st * _b)
 {
+    if (!_b)
+        return;
+
+    cmon_dyn_arr_dealloc(&_b->errs);
+    cmon_dep_graph_destroy(_b->dep_graph);
+    cmon_dyn_arr_dealloc(&_b->dep_buf);
+    cmon_types_destroy(_b->types);
+    cmon_symbols_destroy(_b->symbols);
+    size_t i, j;
+    for (i = 0; i < cmon_dyn_arr_count(&_b->mod_data); ++i)
+    {
+        for (j = 0; j < cmon_dyn_arr_count(&_b->mod_data[i].file_data); ++j)
+        {
+            cmon_parser_destroy(_b->mod_data[i].file_data[j].parser);
+            cmon_tokens_destroy(_b->mod_data[i].file_data[j].tokens);
+        }
+        cmon_resolver_destroy(_b->mod_data[i].resolver);
+    }
+    cmon_dyn_arr_dealloc(&_b->mod_data);
+    CMON_DESTROY(_b->alloc, _b);
 }
 
 static inline void _add_resolver_errors(cmon_builder_st * _b, cmon_resolver * _r)
@@ -101,7 +133,14 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             _per_file_data * pfd = &pmd->file_data[j];
             pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
             if (!pfd->ast)
+            {
                 cmon_dyn_arr_append(&_b->errs, cmon_parser_err(pfd->parser));
+            }
+            else
+            {
+                cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
+                cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
+            }
         }
     }
 
@@ -148,6 +187,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         cmon_idx a, b;
         a = cmon_dep_graph_conflict_a(_b->dep_graph);
         b = cmon_dep_graph_conflict_b(_b->dep_graph);
+        assert(0);
         if (a != b)
         {
             // _fr_err(fr,
@@ -202,4 +242,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     }
 
     return cmon_false;
+}
+
+cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
+                                 cmon_err_report ** _out_errs,
+                                 size_t * _out_count)
+{
+    *_out_errs = _b->errs;
+    *_out_count = cmon_dyn_arr_count(&_b->errs);
+    return cmon_dyn_arr_count(&_b->errs) > 0;
 }
