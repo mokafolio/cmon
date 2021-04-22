@@ -568,7 +568,7 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
     static void _name##_mod_adder_fn(cmon_src * _src, cmon_modules * _mods)                        \
     {                                                                                              \
         cmon_idx src_idx = cmon_src_add(_src, #_name, #_name);                                       \
-        cmon_src_set_code(_src, src_idx, _code);                                                    \
+        cmon_src_set_code(_src, src_idx, "module " #_name "\n\n" _code);                                                    \
         cmon_idx mod = cmon_modules_add(_mods, #_name, #_name);                                      \
         cmon_modules_add_src_file(_mods, mod, src_idx);                                            \
     }                                                                                              \
@@ -577,7 +577,10 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
         EXPECT_EQ(!_should_pass, _resolve_test_fn(_name##_mod_adder_fn));                                    \
     }
 
-RESOLVE_TEST(resolve_empty, "", cmon_true);
+// RESOLVE_TEST(resolve_empty, "", cmon_true);
 // RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
+RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
+RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
+RESOLVE_TEST(resolve_var_decl03, "boink := 1 + 2.2", cmon_true);
 
 UTEST_MAIN();

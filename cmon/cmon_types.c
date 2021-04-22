@@ -55,6 +55,22 @@ typedef struct
     cmon_idx data_idx;
 } _type;
 
+// cmon_idx builtin_s8;
+// cmon_idx builtin_s16;
+// cmon_idx builtin_s32;
+// cmon_idx builtin_s64;
+// cmon_idx builtin_u8;
+// cmon_idx builtin_u16;
+// cmon_idx builtin_u32;
+// cmon_idx builtin_u64;
+// cmon_idx builtin_f32;
+// cmon_idx builtin_f64;
+// cmon_idx builtin_void;
+// cmon_idx builtin_bool;
+// cmon_idx builtin_u8_view;
+// cmon_idx builtin_modident;
+// cmon_idx builtin_typeident;
+
 typedef struct cmon_types
 {
     cmon_allocator * alloc;
@@ -70,6 +86,7 @@ typedef struct cmon_types
     cmon_str_buf * str_buf;
 
     // builtin type indices
+    cmon_dyn_arr(cmon_idx) builtins;
     cmon_idx builtin_s8;
     cmon_idx builtin_s16;
     cmon_idx builtin_s32;
@@ -130,17 +147,22 @@ static inline cmon_idx _add_type(cmon_types * _t,
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
-static inline cmon_idx _add_builtin(cmon_types * _t, cmon_typek _kind, const char * _name)
+static inline cmon_idx _add_builtin(cmon_types * _t, cmon_typek _kind, const char * _name, cmon_bool _hidden)
 {
     size_t name_off = _intern_str(_t, _name);
-    return _add_type(_t,
-                     _kind,
-                     name_off,
-                     name_off,
-                     name_off,
-                     CMON_INVALID_IDX,
-                     CMON_INVALID_IDX,
-                     CMON_INVALID_IDX);
+    cmon_idx ret = _add_type(_t,
+                             _kind,
+                             name_off,
+                             name_off,
+                             name_off,
+                             CMON_INVALID_IDX,
+                             CMON_INVALID_IDX,
+                             CMON_INVALID_IDX);
+    if(!_hidden)
+    {
+        cmon_dyn_arr_append(&_t->builtins, ret);
+    }
+    return ret;
 }
 
 cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
@@ -157,31 +179,36 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     cmon_hashmap_str_key_init(&ret->name_map, _alloc);
     ret->str_builder = cmon_str_builder_create(_alloc, 256);
     ret->str_buf = cmon_str_buf_create(_alloc, 256);
+    cmon_dyn_arr_init(&ret->builtins, _alloc, 16);
 
-    ret->builtin_s8 = _add_builtin(ret, cmon_typek_s8, "s8");
-    ret->builtin_s16 = _add_builtin(ret, cmon_typek_s16, "s16");
-    ret->builtin_s32 = _add_builtin(ret, cmon_typek_s32, "s32");
-    ret->builtin_s64 = _add_builtin(ret, cmon_typek_s64, "s64");
-    ret->builtin_u8 = _add_builtin(ret, cmon_typek_u8, "u8");
-    ret->builtin_u16 = _add_builtin(ret, cmon_typek_u16, "u16");
-    ret->builtin_u32 = _add_builtin(ret, cmon_typek_u32, "u32");
-    ret->builtin_u64 = _add_builtin(ret, cmon_typek_u64, "u64");
-    ret->builtin_f32 = _add_builtin(ret, cmon_typek_f32, "f32");
-    ret->builtin_f64 = _add_builtin(ret, cmon_typek_f64, "f64");
-    ret->builtin_void = _add_builtin(ret, cmon_typek_void, "void");
-    ret->builtin_bool = _add_builtin(ret, cmon_typek_bool, "bool");
+    ret->builtin_s8 = _add_builtin(ret, cmon_typek_s8, "s8", cmon_false);
+    ret->builtin_s16 = _add_builtin(ret, cmon_typek_s16, "s16", cmon_false);
+    ret->builtin_s32 = _add_builtin(ret, cmon_typek_s32, "s32", cmon_false);
+    ret->builtin_s64 = _add_builtin(ret, cmon_typek_s64, "s64", cmon_false);
+    ret->builtin_u8 = _add_builtin(ret, cmon_typek_u8, "u8", cmon_false);
+    ret->builtin_u16 = _add_builtin(ret, cmon_typek_u16, "u16", cmon_false);
+    ret->builtin_u32 = _add_builtin(ret, cmon_typek_u32, "u32", cmon_false);
+    ret->builtin_u64 = _add_builtin(ret, cmon_typek_u64, "u64", cmon_false);
+    ret->builtin_f32 = _add_builtin(ret, cmon_typek_f32, "f32", cmon_false);
+    ret->builtin_f64 = _add_builtin(ret, cmon_typek_f64, "f64", cmon_false);
+    ret->builtin_void = _add_builtin(ret, cmon_typek_void, "void", cmon_false);
+    ret->builtin_bool = _add_builtin(ret, cmon_typek_bool, "bool", cmon_false);
     // ret->builtin_u8_view;
-    ret->builtin_modident = _add_builtin(ret, cmon_typek_modident, "modident");
-    ret->builtin_typeident = _add_builtin(ret, cmon_typek_typeident, "typeident");
+    ret->builtin_modident = _add_builtin(ret, cmon_typek_modident, "__modident", cmon_true);
+    ret->builtin_typeident = _add_builtin(ret, cmon_typek_typeident, "__typeident", cmon_true);
 
     return ret;
 }
 
 void cmon_types_destroy(cmon_types * _t)
 {
+    if (!_t)
+        return;
+
     size_t i;
     cmon_str_buf_destroy(_t->str_buf);
     cmon_str_builder_destroy(_t->str_builder);
+    cmon_dyn_arr_dealloc(&_t->builtins);
     cmon_hashmap_dealloc(&_t->name_map);
     cmon_dyn_arr_dealloc(&_t->types);
     cmon_dyn_arr_dealloc(&_t->arrays);
@@ -197,6 +224,7 @@ void cmon_types_destroy(cmon_types * _t)
         cmon_dyn_arr_dealloc(&_t->structs[i].fields);
     }
     cmon_dyn_arr_dealloc(&_t->structs);
+    CMON_DESTROY(_t->alloc, _t);
 }
 
 cmon_idx cmon_types_add_struct(
@@ -566,6 +594,16 @@ cmon_idx cmon_types_builtin_modident(cmon_types * _t)
 cmon_idx cmon_types_builtin_typeident(cmon_types * _t)
 {
     return _t->builtin_typeident;
+}
+
+size_t cmon_types_builtin_count(cmon_types * _tr)
+{
+    return cmon_dyn_arr_count(&_tr->builtins);
+}
+
+cmon_idx cmon_types_builtin(cmon_types * _tr, cmon_idx _idx)
+{
+    return _tr->builtins[_idx];
 }
 
 cmon_bool cmon_types_is_unsigned_int(cmon_types * _t, cmon_idx _idx)

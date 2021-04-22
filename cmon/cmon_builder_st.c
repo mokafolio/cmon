@@ -69,6 +69,7 @@ void cmon_builder_st_destroy(cmon_builder_st * _b)
             cmon_parser_destroy(_b->mod_data[i].file_data[j].parser);
             cmon_tokens_destroy(_b->mod_data[i].file_data[j].tokens);
         }
+        cmon_dyn_arr_dealloc(&_b->mod_data[i].file_data);
         cmon_resolver_destroy(_b->mod_data[i].resolver);
     }
     cmon_dyn_arr_dealloc(&_b->mod_data);
@@ -156,7 +157,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     {
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_resolver_set_input(pmd->resolver, _b->src, _b->types, _b->symbols, _b->mods, i);
-        for (j = 0; j < cmon_modules_dep_count(_b->mods, i); ++j)
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_top_lvl_pass(pmd->resolver, j))
                 _add_resolver_errors(_b, pmd->resolver);

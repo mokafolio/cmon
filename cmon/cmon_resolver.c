@@ -29,7 +29,6 @@ typedef struct
     cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
-    size_t max_errors;
     jmp_buf err_jmp;
 } _file_resolver;
 
@@ -74,8 +73,12 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                                              cmon_tokens_line_offset(toks, _tok_idx),
                                              cmon_str_builder_c_str(_str_builder)));
     va_end(args);
+    // printf("errors %lu %lu\n", cmon_dyn_arr_count(_out_errs), _max_errors);
+    // // assert(0);
     if (cmon_dyn_arr_count(_out_errs) >= _max_errors)
+    {
         longjmp(*_jmp, 1);
+    }
 }
 
 #define _fr_err(_fr, _tok, _fmt, ...)                                                              \
@@ -86,7 +89,7 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
                   _fr->resolver->src,                                                              \
                   _fr->src_file_idx,                                                               \
                   _tok,                                                                            \
-                  _fr->max_errors,                                                                 \
+                  _fr->resolver->max_errors,                                                       \
                   &_fr->err_jmp,                                                                   \
                   _fmt,                                                                            \
                   ##__VA_ARGS__);                                                                  \
@@ -455,6 +458,8 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
     }
 
+    _fr->resolved_types[_ast_idx] = ret;
+
     return ret;
 }
 
@@ -723,8 +728,8 @@ static inline cmon_idx _resolve_binary(_file_resolver * _fr,
         _fr_err(_fr,
                 cmon_ast_token(_fr_ast(_fr), right_expr),
                 "cannot convert '%s' to '%s'",
-                cmon_types_name(_fr->resolver->types, left_type),
-                cmon_types_name(_fr->resolver->types, right_type));
+                cmon_types_name(_fr->resolver->types, right_type),
+                cmon_types_name(_fr->resolver->types, left_type));
         return CMON_INVALID_IDX;
     }
 
@@ -1299,13 +1304,25 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     size_t i;
     assert(!cmon_is_valid_idx(_r->global_scope));
     _r->src = _src;
-    printf("asfkjaksfjkajf %lu\n", cmon_src_count(_src));
     _r->types = _types;
     _r->symbols = _symbols;
     _r->mods = _mods;
     _r->mod_idx = _mod_idx;
     _r->global_scope = cmon_symbols_scope_begin(_r->symbols, CMON_INVALID_IDX);
     cmon_modules_set_global_scope(_r->mods, _r->mod_idx, _r->global_scope);
+
+    // add all builtins to the global scope
+    for (i = 0; i < cmon_types_builtin_count(_r->types); ++i)
+    {
+        cmon_idx idx = cmon_types_builtin(_r->types, i);
+        cmon_symbols_scope_add_type(_r->symbols,
+                                    _r->global_scope,
+                                    cmon_str_view_make(cmon_types_name(_r->types, idx)),
+                                    idx,
+                                    cmon_false,
+                                    CMON_INVALID_IDX,
+                                    CMON_INVALID_IDX);
+    }
 
     for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
     {
@@ -1383,6 +1400,12 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 
     assert(ast);
     assert(tokens);
+
+    if (setjmp(fr->err_jmp))
+    {
+        goto err_end;
+    }
+
     cmon_idx root_block = cmon_ast_root_block(ast);
 
     cmon_idx idx;
@@ -1491,6 +1514,8 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     }
 
     return cmon_false;
+err_end:
+    return cmon_true;
 }
 
 static inline cmon_bool _check_field_name(_file_resolver * _fr,
@@ -1523,6 +1548,12 @@ static inline cmon_bool _check_field_name(_file_resolver * _fr,
 cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
+
+    if (setjmp(fr->err_jmp))
+    {
+        goto err_end;
+    }
+
     cmon_idx name_tok_buf = cmon_idx_buf_mng_get(fr->idx_buf_mng);
     size_t i;
     for (i = 0; i < cmon_dyn_arr_count(&fr->type_decls); ++i)
@@ -1574,6 +1605,7 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
         }
     }
 
+err_end:
     cmon_idx_buf_mng_return(fr->idx_buf_mng, name_tok_buf);
     return cmon_dyn_arr_count(&fr->errs) > 0;
 }
@@ -1687,7 +1719,11 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
     // resolve the function bodies!
     for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
     {
-        cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(fr), fr->global_var_decls[i]);
+        cmon_idx var_ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[i]);
+        assert(cmon_is_valid_idx(var_ast_idx));
+        cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(fr), var_ast_idx);
+        assert(cmon_is_valid_idx(expr_idx));
+
         // if its not a function, simply resolve the expression and check the conversion
         if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl)
         {
@@ -1695,17 +1731,17 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
             if (!cmon_is_valid_idx(fr->resolved_types[expr_idx]))
             {
                 cmon_idx type_suggestion = CMON_INVALID_IDX;
-                cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), fr->global_var_decls[i]);
+                cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), var_ast_idx);
                 if (cmon_is_valid_idx(ptype))
                 {
                     type_suggestion = fr->resolved_types[ptype];
                     assert(cmon_is_valid_idx(type_suggestion));
                 }
                 cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
-                if (cmon_is_valid_idx(ptype))
+                if (cmon_is_valid_idx(type_suggestion))
                 {
                     _validate_conversion(
-                        fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, ptype);
+                        fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, type_suggestion);
                 }
             }
         }
@@ -1732,7 +1768,9 @@ cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
     return cmon_false;
 }
 
-cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report ** _out_errs, size_t * _out_count)
+cmon_bool cmon_resolver_errors(cmon_resolver * _r,
+                               cmon_err_report ** _out_errs,
+                               size_t * _out_count)
 {
     size_t i, j;
     cmon_dyn_arr_clear(&_r->errs);
@@ -1755,27 +1793,29 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r, cmon_err_report ** _out_errs,
 cmon_bool cmon_resolver_resolve(cmon_resolver * _r)
 {
     size_t i;
-    for(i=0; i<cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
+    for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
     {
         cmon_resolver_top_lvl_pass(_r, i);
     }
 
-    if(cmon_resolver_has_errors(_r)) return cmon_true;
-
-    if(cmon_resolver_globals_pass(_r))
+    if (cmon_resolver_has_errors(_r))
         return cmon_true;
 
-    for(i=0; i<cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
+    if (cmon_resolver_globals_pass(_r))
+        return cmon_true;
+
+    for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
     {
         cmon_resolver_usertypes_pass(_r, i);
     }
 
-    if(cmon_resolver_has_errors(_r)) return cmon_true;
-
-    if(cmon_resolver_circ_pass(_r))
+    if (cmon_resolver_has_errors(_r))
         return cmon_true;
 
-    for(i=0; i<cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
+    if (cmon_resolver_circ_pass(_r))
+        return cmon_true;
+
+    for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
     {
         cmon_resolver_main_pass(_r, i);
     }

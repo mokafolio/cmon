@@ -96,6 +96,8 @@ CMON_API cmon_idx cmon_types_builtin_u8_view(cmon_types * _tr); // used for stri
 // CMON_API cmon_idx cmon_types_noinit(cmon_types * _tr); //---
 CMON_API cmon_idx cmon_types_builtin_modident(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_builtin_typeident(cmon_types * _tr);
+CMON_API size_t cmon_types_builtin_count(cmon_types * _tr);
+CMON_API cmon_idx cmon_types_builtin(cmon_types * _tr, cmon_idx _idx);
 
 // ptr specific getters
 CMON_API cmon_bool cmon_types_ptr_is_mut(cmon_types * _tr, cmon_idx _ptr_idx);

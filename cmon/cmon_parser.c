@@ -406,7 +406,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     }
     else if (_accept(_p, &tok, cmon_tokk_string))
     {
-        ret = cmon_astb_add_ident(_p->ast_builder, tok);
+        ret = cmon_astb_add_string_lit(_p->ast_builder, tok);
     }
     else if (_accept(_p, &tok, cmon_tokk_paran_open))
     {
