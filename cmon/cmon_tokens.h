@@ -68,7 +68,7 @@ typedef enum
     cmon_tokk_pub,
     cmon_tokk_mut,
     //@TODO: amp redundant with bw_and, remove this if amps only use case is bitwise and
-    cmon_tokk_amp,
+    // cmon_tokk_amp,
     cmon_tokk_as,
     cmon_tokk_double_dot,
     cmon_tokk_at,

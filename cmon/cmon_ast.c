@@ -429,8 +429,13 @@ cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx)
 cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it)
 {
     cmon_idx idx = _it->idx;
-    _it->idx = ++_it->idx == _it->end ? CMON_INVALID_IDX : _it->idx;
-    return idx != CMON_INVALID_IDX ? _ast->extra_data[idx] : idx;
+
+    if(_it->idx == _it->end)
+        return CMON_INVALID_IDX;
+
+    ++_it->idx;
+
+    return _ast->extra_data[idx];
 }
 
 cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx)
@@ -620,6 +625,7 @@ cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx)
 
 cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
 {
+    printf("%lu %lu\n", cmon_ast_fn_params_begin(_ast, _fn_idx), cmon_ast_fn_params_end(_ast, _fn_idx));
     return (cmon_ast_iter){ cmon_ast_fn_params_begin(_ast, _fn_idx),
                             cmon_ast_fn_params_end(_ast, _fn_idx) };
 }

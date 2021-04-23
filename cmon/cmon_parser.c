@@ -311,6 +311,18 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
     return ret;
 }
 
+//parse a var decl in pretty function form (i.e. fn foo() {} instead of foo := fn(){})
+static cmon_idx _parse_pretty_fn(cmon_parser * _p)
+{   
+    cmon_idx tmp;
+    cmon_bool is_pub = _accept(_p, &tmp, cmon_tokk_pub);
+    cmon_idx fn_tok = _tok_check(_p, cmon_true, cmon_tokk_fn);
+    cmon_idx name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+
+    return cmon_astb_add_var_decl(
+        _p->ast_builder, name_tok, is_pub, cmon_false, CMON_INVALID_IDX, _parse_fn(_p, fn_tok));
+}
+
 static cmon_idx _parse_struct_init(cmon_parser * _p)
 {
     cmon_idx tmp;
@@ -425,6 +437,14 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     {
         ret = _parse_array_init(_p, tok);
     }
+    else if (_accept(_p, &tok, cmon_tokk_bw_and))
+    {
+        ret = cmon_astb_add_addr(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
+    }
+    else if (_accept(_p, &tok, cmon_tokk_mult))
+    {
+        ret = cmon_astb_add_deref(_p->ast_builder, tok, _parse_expr(_p, _precedence_prefix));
+    }
     else
     {
         //@TODO: Better error
@@ -509,6 +529,13 @@ static inline cmon_bool _peek_var_decl(cmon_parser * _p)
              cmon_tokens_is_next(_p->tokens, cmon_tokk_colon, cmon_tokk_comma)) ||
             (cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
              cmon_tokens_is_next(_p->tokens, cmon_tokk_ident, cmon_tokk_mut)));
+}
+
+static inline cmon_bool _peek_fn_decl(cmon_parser * _p, cmon_bool _is_top_lvl)
+{
+    return cmon_tokens_is_current(_p->tokens, cmon_tokk_fn) ||
+             (_is_top_lvl && cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
+              cmon_tokens_is_next(_p->tokens, cmon_tokk_fn));
 }
 
 static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
@@ -605,6 +632,10 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
     {
         return _parse_var_decl(_p, cmon_false);
     }
+    else if (_peek_fn_decl(_p, cmon_true))
+    {
+        return _parse_pretty_fn(_p);
+    }
     // is this an expression statement?
     return _parse_expr(_p, _precedence_nil);
 }
@@ -680,6 +711,10 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
     else if (_peek_var_decl(_p))
     {
         return _parse_var_decl(_p, cmon_true);
+    }
+    else if (_peek_fn_decl(_p, cmon_true))
+    {
+        return _parse_pretty_fn(_p);
     }
 
     //@TODO: Better error

@@ -879,8 +879,8 @@ const char * cmon_tokk_to_str(cmon_tokk _kind)
     case cmon_tokk_mut:
         return "mut";
     //@TODO: amp redundant with bw_and, remove this if amps only use case is bitwise and
-    case cmon_tokk_amp:
-        return "&";
+    // case cmon_tokk_amp:
+    //     return "&";
     case cmon_tokk_as:
         return "as";
     case cmon_tokk_double_dot:
