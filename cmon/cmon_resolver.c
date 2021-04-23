@@ -239,7 +239,7 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
                     name = cmon_ast_ident_name(_fr_ast(_fr), _expr_idx);
                     _fr_err(_fr,
                             cmon_ast_token(_fr_ast(_fr), _expr_idx),
-                            "variable '%*.s' is not mutable",
+                            "variable '%.*s' is not mutable",
                             name.end - name.begin,
                             name.begin);
                     return cmon_true;
@@ -1310,6 +1310,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
     cmon_idx expr_type_idx, ptype_idx;
     cmon_idx parsed_type_idx = cmon_ast_var_decl_type(_fr_ast(_fr), _ast_idx);
 
+    ptype_idx = CMON_INVALID_IDX;
     if (cmon_is_valid_idx(parsed_type_idx))
     {
         ptype_idx = _resolve_parsed_type(_fr, _scope, parsed_type_idx);
@@ -1317,19 +1318,19 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
 
     cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx);
     assert(cmon_is_valid_idx(expr_idx));
-    expr_type_idx = _resolve_expr(_fr, _scope, expr_idx, CMON_INVALID_IDX);
+    expr_type_idx = _resolve_expr(_fr, _scope, expr_idx, ptype_idx);
 
     CMON_UNUSED(cmon_symbols_scope_add_var(
         _fr->resolver->symbols,
         _scope,
         cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_var_decl_name_tok(_fr_ast(_fr), _ast_idx)),
-        cmon_is_valid_idx(ptype_idx) ? ptype_idx : expr_type_idx,
+        cmon_is_valid_idx(parsed_type_idx) ? ptype_idx : expr_type_idx,
         cmon_false,
         cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
         _fr->src_file_idx,
         _ast_idx));
 
-    if (cmon_is_valid_idx(ptype_idx))
+    if (cmon_is_valid_idx(parsed_type_idx))
     {
         _validate_conversion(_fr, expr_idx, expr_type_idx, ptype_idx);
     }
@@ -1355,7 +1356,8 @@ static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx
     }
     else
     {
-        _unexpected_ast_panic();
+        _resolve_expr(_fr, _scope, _ast_idx, CMON_INVALID_IDX);
+        // _unexpected_ast_panic();
     }
 }
 

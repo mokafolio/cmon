@@ -194,7 +194,7 @@ static cmon_idx _parse_type(cmon_parser * _p)
 
         _tok_check(_p, cmon_true, cmon_tokk_paran_close);
 
-        if(_accept(_p, &tmp, cmon_tokk_arrow))
+        if (_accept(_p, &tmp, cmon_tokk_arrow))
         {
             ret_type = _parse_type(_p);
         }
@@ -334,9 +334,9 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
     return ret;
 }
 
-//parse a var decl in pretty function form (i.e. fn foo() {} instead of foo := fn(){})
+// parse a var decl in pretty function form (i.e. fn foo() {} instead of foo := fn(){})
 static cmon_idx _parse_pretty_fn(cmon_parser * _p)
-{   
+{
     cmon_idx tmp;
     cmon_bool is_pub = _accept(_p, &tmp, cmon_tokk_pub);
     cmon_idx fn_tok = _tok_check(_p, cmon_true, cmon_tokk_fn);
@@ -416,6 +416,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 {
     cmon_idx tok, ret;
 
+    printf("_parse_expr\n\n");
     if (cmon_tokens_is_current(_p->tokens, cmon_tokk_ident))
     {
         cmon_idx ctok = cmon_tokens_current(_p->tokens);
@@ -423,9 +424,13 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
             (cmon_tokens_is_next(_p->tokens, cmon_tokk_dot) &&
              cmon_tokens_is(_p->tokens, ctok + 2, cmon_tokk_ident) &&
              cmon_tokens_is(_p->tokens, ctok + 3, cmon_tokk_curl_open)))
+        {
             ret = _parse_struct_init(_p);
+        }
         else
+        {
             ret = cmon_astb_add_ident(_p->ast_builder, cmon_tokens_advance(_p->tokens, cmon_true));
+        }
     }
     else if (_accept(_p, &tok, cmon_tokk_true, cmon_tokk_false))
     {
@@ -437,6 +442,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     }
     else if (_accept(_p, &tok, cmon_tokk_int))
     {
+        printf("int liiiit\n");
         ret = cmon_astb_add_int_lit(_p->ast_builder, tok);
     }
     else if (_accept(_p, &tok, cmon_tokk_string))
@@ -518,20 +524,20 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 
 static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
 {
-    // cmon_idx tok;
-    // if (cmon_is_valid_idx(tok = _tok_check(_p, cmon_true, cmon_tokk_curl_open)))
-    // {
     cmon_idx ret, stmt;
     cmon_idx b;
 
     b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
     while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_curl_close, cmon_tokk_eof))
     {
+        printf("ADDING STMT a\n\n");
         if (cmon_is_valid_idx(stmt = _parse_stmt(_p)))
         {
+            printf("ADDING STMT b\n\n");
             cmon_idx_buf_append(_p->idx_buf_mng, b, stmt);
         }
     }
+    printf("ADDING STMT c\n\n");
     _tok_check(_p, cmon_true, cmon_tokk_curl_close);
 
     ret = cmon_astb_add_block(_p->ast_builder,
@@ -540,9 +546,6 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
                               cmon_idx_buf_count(_p->idx_buf_mng, b));
     cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
     return ret;
-    // }
-
-    // return CMON_INVALID_IDX;
 }
 
 static inline cmon_bool _peek_var_decl(cmon_parser * _p)
@@ -557,8 +560,8 @@ static inline cmon_bool _peek_var_decl(cmon_parser * _p)
 static inline cmon_bool _peek_fn_decl(cmon_parser * _p, cmon_bool _is_top_lvl)
 {
     return cmon_tokens_is_current(_p->tokens, cmon_tokk_fn) ||
-             (_is_top_lvl && cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
-              cmon_tokens_is_next(_p->tokens, cmon_tokk_fn));
+           (_is_top_lvl && cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
+            cmon_tokens_is_next(_p->tokens, cmon_tokk_fn));
 }
 
 static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
@@ -573,7 +576,9 @@ static cmon_idx _parse_var_decl(cmon_parser * _p, cmon_bool _top_lvl)
     cmon_idx type;
     _tok_check(_p, cmon_true, cmon_tokk_colon);
     if (_accept(_p, &tmp, cmon_tokk_assign))
+    {
         type = CMON_INVALID_IDX;
+    }
     else
     {
         type = _parse_type(_p);
@@ -646,21 +651,28 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
 
 static cmon_idx _parse_stmt(cmon_parser * _p)
 {
-    cmon_idx tok;
+    cmon_idx tok, ret;
     if (_accept(_p, &tok, cmon_tokk_curl_open))
     {
         return _parse_block(_p, tok);
-    }
-    else if (_peek_var_decl(_p))
-    {
-        return _parse_var_decl(_p, cmon_false);
     }
     else if (_peek_fn_decl(_p, cmon_true))
     {
         return _parse_pretty_fn(_p);
     }
-    // is this an expression statement?
-    return _parse_expr(_p, _precedence_nil);
+    else if (_peek_var_decl(_p))
+    {
+        printf("var decl\n");
+        ret = _parse_var_decl(_p, cmon_false);
+    }
+    else
+    {
+        // is this an expression statement?
+        ret = _parse_expr(_p, _precedence_nil);
+    }
+    _check_stmt_end(_p);
+
+    return ret;
 }
 
 static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
