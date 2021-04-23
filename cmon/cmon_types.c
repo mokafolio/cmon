@@ -143,7 +143,7 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.data_idx = _extra_data;
     cmon_dyn_arr_append(&_t->types, t);
     cmon_hashmap_set(
-        &_t->name_map, cmon_str_buf_get(_t->str_buf, _unique_off), cmon_dyn_arr_count(&_t->types));
+        &_t->name_map, cmon_str_buf_get(_t->str_buf, _unique_off), cmon_dyn_arr_count(&_t->types) - 1);
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
@@ -353,8 +353,11 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
     const char * unique_name;
 
     unique_name = _fn_name(_t, _ret_type, _params, _param_count, cmon_types_unique_name);
+    printf("FINDING FN %s\n", unique_name);
+
     _return_if_found(_t, unique_name);
 
+    printf("ADDING FN %s\n", unique_name);
     cmon_dyn_arr_init(&sig.params, _t->alloc, 8);
     cmon_dyn_arr_append(&_t->fns, sig);
 

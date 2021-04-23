@@ -320,7 +320,6 @@ cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
 cmon_idx cmon_astb_add_type_fn(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _ret_type, cmon_idx * _params, size_t _count)
 {
-    assert(_count);
     cmon_idx left = _add_extra_data(_b, _ret_type);
     _add_extra_data_arr(_b, _params, _count);
     return _add_node(_b, cmon_astk_type_fn, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));

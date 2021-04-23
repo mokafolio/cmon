@@ -160,6 +160,7 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
                                              cmon_idx _to)
 {
     cmon_types * t = _fr->resolver->types;
+
     if (cmon_types_is_float(t, _from) && cmon_types_is_int(t, _to))
     {
         _fr_err(_fr,
@@ -440,9 +441,17 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
     else if (kind == cmon_astk_type_fn)
     {
         cmon_ast_iter param_it;
-        cmon_idx ret_type, idx, idx_buf;
+        cmon_idx ret_parsed_type, ret_type, idx, idx_buf;
 
-        ret_type = _resolve_parsed_type(_fr, _scope, cmon_ast_type_fn_return_type(ast, _ast_idx));
+        ret_parsed_type = cmon_ast_type_fn_return_type(ast, _ast_idx);
+        if(cmon_is_valid_idx(ret_parsed_type))
+        {
+            ret_type = _resolve_parsed_type(_fr, _scope, ret_parsed_type);
+        }
+        else
+        {
+            ret_type = cmon_types_builtin_void(_fr->resolver->types);
+        }
         param_it = cmon_ast_type_fn_params_iter(ast, _ast_idx);
         idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
 
@@ -1093,7 +1102,7 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
     cmon_idx fn_parsed_ret = cmon_ast_fn_ret_type(_fr_ast(_fr), _ast_idx);
     cmon_idx ret_type;
 
-    if(cmon_is_valid_idx(fn_parsed_ret))
+    if (cmon_is_valid_idx(fn_parsed_ret))
     {
         ret_type = _resolve_parsed_type(_fr, _scope, fn_parsed_ret);
     }
@@ -1822,8 +1831,10 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(fr), var_ast_idx);
         assert(cmon_is_valid_idx(expr_idx));
 
-        // if its not a function, simply resolve the expression and check the conversion
-        if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl)
+        // if its not a function or the function had an explicit type, resolve the var decl
+        // expression rhs and validate the conversion
+        if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl ||
+            !cmon_is_valid_idx(fr->resolved_types[expr_idx]))
         {
             // only do this for expressions that have not been resolved during globals pass
             if (!cmon_is_valid_idx(fr->resolved_types[expr_idx]))
@@ -1838,6 +1849,7 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
                 if (cmon_is_valid_idx(type_idx) && cmon_is_valid_idx(type_suggestion))
                 {
+                    printf("DA FOCKING INDICES %lu %lu\n", type_idx, type_suggestion);
                     _validate_conversion(
                         fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, type_suggestion);
                 }
@@ -1845,7 +1857,8 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         }
         else
         {
-            // the function signature must have already been resolved during globals pass
+            // otherwise the function signature must have already been resolved during globals type
+            // pass and we only need to resolve the function body
             assert(cmon_is_valid_idx(fr->resolved_types[expr_idx]));
             _resolve_fn_body(fr, fr->file_scope, expr_idx);
         }

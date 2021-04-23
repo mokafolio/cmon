@@ -163,6 +163,19 @@ static cmon_idx _parse_type(cmon_parser * _p)
         is_mut = _accept(_p, &tmp, cmon_tokk_mut);
         return cmon_astb_add_type_ptr(_p->ast_builder, tok, is_mut, _parse_type(_p));
     }
+    else if (_accept(_p, &tok, cmon_tokk_square_open))
+    {
+        // if(_accept(_p, &tok, cmon_tokk_int))
+        // {
+
+        // }
+        // else
+        // {
+        //     _tok_check(_p, cmon_true, cmon_tokk_square_close);
+
+        // }
+        assert(0);
+    }
     else if (_accept(_p, &tok, cmon_tokk_fn))
     {
         _tok_check(_p, cmon_true, cmon_tokk_paran_open);
@@ -179,7 +192,17 @@ static cmon_idx _parse_type(cmon_parser * _p)
                 break;
         }
 
-        ret_type = _accept(_p, &tmp, cmon_tokk_arrow) ? _parse_type(_p) : CMON_INVALID_IDX;
+        _tok_check(_p, cmon_true, cmon_tokk_paran_close);
+
+        if(_accept(_p, &tmp, cmon_tokk_arrow))
+        {
+            ret_type = _parse_type(_p);
+        }
+        else
+        {
+            ret_type = CMON_INVALID_IDX;
+        }
+
         return cmon_astb_add_type_fn(_p->ast_builder,
                                      tok,
                                      ret_type,
