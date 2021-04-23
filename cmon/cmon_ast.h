@@ -200,12 +200,14 @@ CMON_API cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx)
 CMON_API cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx);
 
-// var decl specific getters
+// var decl specific getters/setters
 CMON_API cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_bool cmon_ast_var_decl_is_pub(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx);
 CMON_API cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx);
+CMON_API void cmon_ast_var_decl_set_sym(cmon_ast * _ast, cmon_idx _vidx, cmon_idx _sym);
+CMON_API cmon_idx cmon_ast_var_decl_sym(cmon_ast * _ast, cmon_idx _vidx);
 
 // block specific getters
 CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);

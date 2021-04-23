@@ -583,13 +583,14 @@ RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
 RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
 RESOLVE_TEST(resolve_var_decl03, "boink : fn() -> s32 = fn() -> s32 {} ", cmon_true);
 RESOLVE_TEST(resolve_var_decl04, "boink : fn() = fn() -> u32 {} ", cmon_false);
-RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
-RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
-RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
-RESOLVE_TEST(resolve_addr01, "a := 1; b := &a", cmon_true);
-RESOLVE_TEST(resolve_addr02, "a : u32 = 1; b : *u32 = &a", cmon_true);
-RESOLVE_TEST(resolve_addr03, "fn main() { a : u32 = 1; b : *mut u32 = &a }", cmon_false);
-RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }", cmon_true);
+RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
+// RESOLVE_TEST(resolve_addr01, "a := 1; b := &a", cmon_true);
+// RESOLVE_TEST(resolve_addr02, "a : u32 = 1; b : *u32 = &a", cmon_true);
+// RESOLVE_TEST(resolve_addr03, "fn main() { a : u32 = 1; b : *mut u32 = &a }", cmon_false);
+// RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }", cmon_true);
 // RESOLVE_TEST(resolve_deref01, "a := 1; b := &a; mut c : s32 = *b;", cmon_true);
 // RESOLVE_TEST(resolve_assign01, "mut a := 1; fn main() { a = 2 }", cmon_true);
 // RESOLVE_TEST(resolve_assign02, "a := 1; fn main() { a = 2 }", cmon_false);
@@ -605,7 +606,6 @@ RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }",
 // RESOLVE_TEST(resolve_assign12, "fn main() { a := 1; a /= 3 }", cmon_false);
 // RESOLVE_TEST(resolve_assign13, "fn main() { a := 1; a *= 3 }", cmon_false);
 // RESOLVE_TEST(resolve_assign14, "fn main() { a := 1; a %= 3 }", cmon_false);
-
 // RESOLVE_TEST(resolve_prefix01, "boink : s32 = -2", cmon_true);
 // RESOLVE_TEST(resolve_binop01, "boink := 1 + 2", cmon_true);
 // RESOLVE_TEST(resolve_binop02, "pub boop := 1.1 + 2.3", cmon_true);
@@ -613,6 +613,6 @@ RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }",
 // RESOLVE_TEST(resolve_binop04, "pub mut wee := 11 % 2", cmon_true);
 // RESOLVE_TEST(resolve_binop05, "boink := 33 % 2.3", cmon_false);
 // RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
-
+// RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
 
 UTEST_MAIN();

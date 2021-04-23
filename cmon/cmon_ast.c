@@ -231,6 +231,7 @@ cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
     cmon_idx left = _add_extra_data(_b, (cmon_idx)_is_pub);
     _add_extra_data(_b, (cmon_idx)_is_mut);
     _add_extra_data(_b, _type);
+    _add_extra_data(_b, CMON_INVALID_IDX);
     return _add_node(_b, cmon_astk_var_decl, _name_tok_idx, left, _expr);
 }
 
@@ -590,6 +591,19 @@ cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx)
 {
     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _ast->left_right[_vidx].right;
+}
+
+void cmon_ast_var_decl_set_sym(cmon_ast * _ast, cmon_idx _vidx, cmon_idx _sym)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    cmon_idx sym_ed_idx = _ast->left_right[_vidx].left + 3;
+    return _ast->extra_data[sym_ed_idx] = _sym;
+}
+
+cmon_idx cmon_ast_var_decl_sym(cmon_ast * _ast, cmon_idx _vidx)
+{
+    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    return _get_extra_data(_ast, _ast->left_right[_vidx].left + 3);
 }
 
 cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx)
