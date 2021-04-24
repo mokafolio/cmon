@@ -142,12 +142,16 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.full_name_str_off = _full_off;
     t.data_idx = _extra_data;
     cmon_dyn_arr_append(&_t->types, t);
-    cmon_hashmap_set(
-        &_t->name_map, cmon_str_buf_get(_t->str_buf, _unique_off), cmon_dyn_arr_count(&_t->types) - 1);
+    cmon_hashmap_set(&_t->name_map,
+                     cmon_str_buf_get(_t->str_buf, _unique_off),
+                     cmon_dyn_arr_count(&_t->types) - 1);
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
-static inline cmon_idx _add_builtin(cmon_types * _t, cmon_typek _kind, const char * _name, cmon_bool _hidden)
+static inline cmon_idx _add_builtin(cmon_types * _t,
+                                    cmon_typek _kind,
+                                    const char * _name,
+                                    cmon_bool _hidden)
 {
     size_t name_off = _intern_str(_t, _name);
     cmon_idx ret = _add_type(_t,
@@ -158,7 +162,7 @@ static inline cmon_idx _add_builtin(cmon_types * _t, cmon_typek _kind, const cha
                              CMON_INVALID_IDX,
                              CMON_INVALID_IDX,
                              CMON_INVALID_IDX);
-    if(!_hidden)
+    if (!_hidden)
     {
         cmon_dyn_arr_append(&_t->builtins, ret);
     }
@@ -236,14 +240,14 @@ cmon_idx cmon_types_add_struct(
     return _add_type(
         _t,
         cmon_typek_struct,
-        _intern_str(_t, "%.*s", _name.begin, _name.end - _name.begin),
+        _intern_str(_t, "%.*s", _name.end - _name.begin, _name.begin),
         _intern_str(_t,
                     "%s_%.*s",
                     cmon_modules_prefix(_t->mods, _mod),
-                    _name.begin,
-                    _name.end - _name.begin),
+                    _name.end - _name.begin,
+                    _name.begin),
         _intern_str(
-            _t, "%s.%.*s", cmon_modules_name(_t->mods, _mod), _name.begin, _name.end - _name.begin),
+            _t, "%s.%.*s", cmon_modules_name(_t->mods, _mod), _name.end - _name.begin, _name.begin),
         _src_file_idx,
         _name_tok,
         cmon_dyn_arr_count(&_t->structs) - 1);
@@ -252,12 +256,11 @@ cmon_idx cmon_types_add_struct(
 cmon_idx cmon_types_struct_add_field(
     cmon_types * _t, cmon_idx _struct, cmon_str_view _name, cmon_idx _type, cmon_idx _def_expr_ast)
 {
-    assert(_struct < cmon_dyn_arr_count(&_t->structs));
     cmon_dyn_arr_append(
-        &_t->structs[_struct].fields,
+        &_t->structs[_get_type(_t, _struct).data_idx].fields,
         ((_struct_field){
-            _intern_str(_t, "%.*s", _name.begin, _name.end - _name.begin), _type, _def_expr_ast }));
-    return cmon_dyn_arr_count(&_t->structs[_struct].fields) - 1;
+            _intern_str(_t, "%.*s", _name.end - _name.begin, _name.begin), _type, _def_expr_ast }));
+    return cmon_dyn_arr_count(&_t->structs[_get_type(_t, _struct).data_idx].fields) - 1;
 }
 
 cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)

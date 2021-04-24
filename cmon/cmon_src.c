@@ -9,6 +9,7 @@ typedef struct
     char * code;
     cmon_ast * ast;
     cmon_tokens * tokens;
+    cmon_idx mod_src_idx; //src file index within the module
 } cmon_src_file;
 
 typedef struct cmon_src
@@ -51,6 +52,7 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
     f.code = NULL;
     f.ast = NULL;
     f.tokens = NULL;
+    f.mod_src_idx = CMON_INVALID_IDX;
     cmon_dyn_arr_append(&_src->files, f);
     return cmon_dyn_arr_count(&_src->files) - 1;
 }
@@ -80,6 +82,11 @@ void cmon_src_set_tokens(cmon_src * _src, cmon_idx _file_idx, cmon_tokens * _tok
     _get_file(_src, _file_idx)->tokens = _tokens;
 }
 
+void cmon_src_set_mod_src_idx(cmon_src * _src, cmon_idx _file_idx, cmon_idx _idx)
+{
+    _get_file(_src, _file_idx)->mod_src_idx = _idx;
+}
+
 cmon_tokens * cmon_src_tokens(cmon_src * _src, cmon_idx _file_idx)
 {
     printf("da file count %lu %lu\n", _file_idx, cmon_dyn_arr_count(&_src->files));
@@ -99,6 +106,11 @@ const char * cmon_src_filename(cmon_src * _src, cmon_idx _file_idx)
 const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx)
 {
     return _get_file(_src, _file_idx)->code;
+}
+
+cmon_idx cmon_src_mod_src_idx(cmon_src * _src, cmon_idx _file_idx)
+{
+    return _get_file(_src, _file_idx)->mod_src_idx;
 }
 
 size_t cmon_src_count(cmon_src * _src)

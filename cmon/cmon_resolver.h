@@ -18,9 +18,6 @@ CMON_API void cmon_resolver_set_input(cmon_resolver * _r,
                                       cmon_modules * _mods,
                                       cmon_idx _mod_idx);
 
-//simple single threaded way of executing all the resolving steps below
-CMON_API cmon_bool cmon_resolver_resolve(cmon_resolver * _r);
-
 //these are the individual steps to compile the whole module in the order they need to be executed
 CMON_API cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx);
 CMON_API cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r);

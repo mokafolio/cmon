@@ -542,7 +542,7 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 
     _fn(src, mods);
 
-    cmon_builder_st * builder = cmon_builder_st_create(&alloc, 8, src, mods);
+    cmon_builder_st * builder = cmon_builder_st_create(&alloc, 1, src, mods);
 
     if (cmon_builder_st_build(builder))
     {
@@ -577,13 +577,13 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
         EXPECT_EQ(!_should_pass, _resolve_test_fn(_name##_mod_adder_fn));                                    \
     }
 
-RESOLVE_TEST(resolve_empty, "", cmon_true);
-RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
-RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
-RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
-RESOLVE_TEST(resolve_var_decl03, "boink : fn() -> s32 = fn() -> s32 {} ", cmon_true);
-RESOLVE_TEST(resolve_var_decl04, "boink : fn() = fn() -> u32 {} ", cmon_false);
-RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
+// RESOLVE_TEST(resolve_empty, "", cmon_true);
+// RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
+// RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
+// RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
+// RESOLVE_TEST(resolve_var_decl03, "boink : fn() -> s32 = fn() -> s32 {} ", cmon_true);
+// RESOLVE_TEST(resolve_var_decl04, "boink : fn() = fn() -> u32 {} ", cmon_false);
+// RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
@@ -612,7 +612,13 @@ RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
 // RESOLVE_TEST(resolve_binop03, "boink : s32 = 1 + 2.3", cmon_false);
 // RESOLVE_TEST(resolve_binop04, "pub mut wee := 11 % 2", cmon_true);
 // RESOLVE_TEST(resolve_binop05, "boink := 33 % 2.3", cmon_false);
-RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
-RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
+// RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
+// RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
+
+// RESOLVE_TEST(resolve_struct01, "struct Foo{}", cmon_true);
+RESOLVE_TEST(resolve_struct02, "struct Foo{ bar : s32 }", cmon_true);
+RESOLVE_TEST(resolve_struct03, "struct Foo{ bar : s32; bat : s32 = 1 }", cmon_true);
+RESOLVE_TEST(resolve_struct04, "struct Foo{ bar : s32 bat : s32 }", cmon_false);
+RESOLVE_TEST(resolve_struct05, "struct Boink{ bar : f32; bar : f64 }", cmon_false);
 
 UTEST_MAIN();
