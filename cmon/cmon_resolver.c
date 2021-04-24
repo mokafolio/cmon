@@ -30,7 +30,6 @@ typedef struct
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
     jmp_buf err_jmp;
-    cmon_dyn_arr(cmon_idx) globals_pass_stack;
 } _file_resolver;
 
 typedef struct cmon_resolver
@@ -49,6 +48,7 @@ typedef struct cmon_resolver
     size_t max_errors;
     // flag that is set to true during global variable type resolve pass
     cmon_bool global_type_pass;
+    cmon_dyn_arr(cmon_idx) globals_pass_stack;
 } cmon_resolver;
 
 static inline void _emit_err(cmon_str_builder * _str_builder,
@@ -117,6 +117,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _ast_idx,
                                      cmon_idx _lh_type);
 static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
+static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
 
 static inline cmon_idx _remove_paran(_file_resolver * _fr, cmon_idx _ast_idx)
 {
@@ -503,6 +504,18 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
             // }
             if (!cmon_is_valid_idx(ret) && _fr->resolver->global_type_pass)
             {
+                size_t i;
+                for (i = 0; i < cmon_dyn_arr_count(&_fr->resolver->globals_pass_stack); ++i)
+                {
+                    if(sym == _fr->resolver->globals_pass_stack[i])
+                    {
+                        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "typechecking loop");
+                        return CMON_INVALID_IDX;
+                    }
+                }
+
+                _resolve_var_decl(_fr, _fr->file_scope, cmon_symbols_ast(_fr->resolver->symbols, sym));
+                ret = cmon_symbols_var_type(_fr->resolver->symbols, sym);
             }
             return ret;
         }
@@ -1331,7 +1344,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
                 cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
                 assert(cmon_is_valid_idx(sym));
                 cmon_symbols_var_set_type(_fr->resolver->symbols, sym, ptype_idx);
-                return ptype_idx;
+                return;
             }
         }
         else
@@ -1343,9 +1356,20 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
         }
     }
 
+    if (is_global && _fr->resolver->global_type_pass)
+    {
+        cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
+        cmon_dyn_arr_append(&_fr->resolver->globals_pass_stack, sym);
+    }
+
     cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx);
     assert(cmon_is_valid_idx(expr_idx));
     expr_type_idx = _resolve_expr(_fr, _scope, expr_idx, ptype_idx);
+
+    if (is_global && _fr->resolver->global_type_pass)
+    {
+        cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack);
+    }
 
     // if its not a global being resolved, create the symbol.
     if (!is_global)
@@ -1415,6 +1439,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
+    cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
     return ret;
 }
 
@@ -1434,6 +1459,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
         cmon_idx_buf_mng_destroy(fr->idx_buf_mng);
         cmon_str_builder_destroy(fr->str_builder);
     }
+    cmon_dyn_arr_dealloc(&_r->globals_pass_stack);
     cmon_dyn_arr_dealloc(&_r->errs);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);

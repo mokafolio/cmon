@@ -612,7 +612,7 @@ RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
 // RESOLVE_TEST(resolve_binop03, "boink : s32 = 1 + 2.3", cmon_false);
 // RESOLVE_TEST(resolve_binop04, "pub mut wee := 11 % 2", cmon_true);
 // RESOLVE_TEST(resolve_binop05, "boink := 33 % 2.3", cmon_false);
-// RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
-// RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
+RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
+RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
 
 UTEST_MAIN();
