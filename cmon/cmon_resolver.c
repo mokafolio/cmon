@@ -541,6 +541,7 @@ static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
     cmon_typek kind;
 
     tok = cmon_ast_token(_fr_ast(_fr), _ast_idx);
+    ret = cmon_types_builtin_s32(_fr->resolver->types);
     if (cmon_is_valid_idx(_lh_type))
     {
         kind = cmon_types_kind(_fr->resolver->types, _lh_type);
@@ -550,10 +551,6 @@ static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
         {
             ret = _lh_type;
         }
-    }
-    else
-    {
-        ret = cmon_types_builtin_s32(_fr->resolver->types);
     }
 
     errno = 0;
@@ -1034,12 +1031,12 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
     cmon_ast_iter field_it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
     cmon_bool first = cmon_true;
     cmon_bool expect_field_names;
-    cmon_idx idx, counter;
-    while ((idx = cmon_ast_iter_next(_fr_ast(_fr), &field_it)))
+    cmon_idx idx;
+    cmon_idx counter = 0;
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &field_it)))
     {
         cmon_idx fname_tok = cmon_ast_struct_init_field_name_tok(_fr_ast(_fr), idx);
         cmon_idx expr = cmon_ast_struct_init_field_expr(_fr_ast(_fr), idx);
-
         if (first)
         {
             first = cmon_false;
@@ -1068,7 +1065,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         if (cmon_is_valid_idx(fname_tok))
         {
             cmon_str_view name_str_view = cmon_tokens_str_view(_fr_tokens(_fr), fname_tok);
-            cmon_idx field_idx =
+            field_idx =
                 cmon_types_struct_findv_field(_fr->resolver->types, type, name_str_view);
             if (!cmon_is_valid_idx(field_idx))
             {
@@ -1087,8 +1084,8 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         }
 
         cmon_idx field_type = cmon_types_struct_field_type(_fr->resolver->types, type, field_idx);
+        assert(cmon_is_valid_idx(field_type));
         cmon_idx expr_type = _resolve_expr(_fr, _scope, expr, field_type);
-
         _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), expr), expr_type, field_type);
 
         cmon_idx_buf_set(_fr->idx_buf_mng, field_initialized_buf, field_idx, expr_type);
@@ -1308,6 +1305,10 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_fn_decl)
     {
         ret = _resolve_fn(_fr, _scope, _ast_idx);
+    }
+    else if(kind == cmon_astk_struct_init)
+    {
+        ret = _resolve_struct_init(_fr, _scope, _ast_idx);
     }
     // else if (kind == cmon_astk_paran_expr)
     // {

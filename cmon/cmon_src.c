@@ -20,7 +20,6 @@ typedef struct cmon_src
 
 static inline cmon_src_file * _get_file(cmon_src * _src, cmon_idx _idx)
 {
-    printf("da focking idx %lu\n", _idx);
     assert(_idx < cmon_dyn_arr_count(&_src->files));
     return &_src->files[_idx];
 }

@@ -256,6 +256,7 @@ cmon_idx cmon_types_add_struct(
 cmon_idx cmon_types_struct_add_field(
     cmon_types * _t, cmon_idx _struct, cmon_str_view _name, cmon_idx _type, cmon_idx _def_expr_ast)
 {
+    printf("DA STRUCKT %lu\n", _struct);
     cmon_dyn_arr_append(
         &_t->structs[_get_type(_t, _struct).data_idx].fields,
         ((_struct_field){
@@ -424,6 +425,7 @@ static inline _struct_field * _get_struct_field(cmon_types * _t,
                                                 cmon_idx _struct_idx,
                                                 cmon_idx _field_idx)
 {
+    printf("_get_struct_field %lu %lu\n", _field_idx, cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
     assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
     assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
     assert(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));

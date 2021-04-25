@@ -615,10 +615,16 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
 // RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
 
-// RESOLVE_TEST(resolve_struct01, "struct Foo{}", cmon_true);
+RESOLVE_TEST(resolve_struct01, "struct Foo{}", cmon_true);
 RESOLVE_TEST(resolve_struct02, "struct Foo{ bar : s32 }", cmon_true);
 RESOLVE_TEST(resolve_struct03, "struct Foo{ bar : s32; bat : s32 = 1 }", cmon_true);
 RESOLVE_TEST(resolve_struct04, "struct Foo{ bar : s32 bat : s32 }", cmon_false);
 RESOLVE_TEST(resolve_struct05, "struct Boink{ bar : f32; bar : f64 }", cmon_false);
+RESOLVE_TEST(resolve_struct_init01, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }", cmon_true);
+// RESOLVE_TEST(resolve_struct_init02, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1, 2} }", cmon_true);
+RESOLVE_TEST(resolve_struct_init03, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }", cmon_false);
+RESOLVE_TEST(resolve_struct_init04, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }", cmon_false);
+RESOLVE_TEST(resolve_struct_init05, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{x: 1.0, y: 2.0} }", cmon_true);
+RESOLVE_TEST(resolve_struct_init06, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, y: 2.0} }", cmon_false);
 
 UTEST_MAIN();
