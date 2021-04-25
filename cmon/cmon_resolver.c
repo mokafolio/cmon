@@ -1006,11 +1006,17 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx)
 {
+    printf("_resolve_struct_init asas\n");
     cmon_idx type =
         _resolve_parsed_type(_fr, _scope, cmon_ast_struct_init_parsed_type(_fr_ast(_fr), _ast_idx));
 
     if (!cmon_is_valid_idx(type))
         return CMON_INVALID_IDX;
+
+    if (_fr->resolver->global_type_pass)
+    {
+        return type;
+    }
 
     if (cmon_types_kind(_fr->resolver->types, type) != cmon_typek_struct)
     {
@@ -1065,8 +1071,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         if (cmon_is_valid_idx(fname_tok))
         {
             cmon_str_view name_str_view = cmon_tokens_str_view(_fr_tokens(_fr), fname_tok);
-            field_idx =
-                cmon_types_struct_findv_field(_fr->resolver->types, type, name_str_view);
+            field_idx = cmon_types_struct_findv_field(_fr->resolver->types, type, name_str_view);
             if (!cmon_is_valid_idx(field_idx))
             {
                 _fr_err(_fr,
@@ -1306,7 +1311,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     {
         ret = _resolve_fn(_fr, _scope, _ast_idx);
     }
-    else if(kind == cmon_astk_struct_init)
+    else if (kind == cmon_astk_struct_init)
     {
         ret = _resolve_struct_init(_fr, _scope, _ast_idx);
     }
@@ -1932,25 +1937,22 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         // if its not a function or the function had an explicit type, resolve the var decl
         // expression rhs and validate the conversion
         if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl ||
-            !cmon_is_valid_idx(fr->resolved_types[expr_idx]))
+            !cmon_is_valid_idx(fr->resolved_types[expr_idx] ||
+                               cmon_ast_kind(_fr_ast(fr), expr_idx) == cmon_astk_struct_init))
         {
             // only do this for expressions that have not been resolved during globals pass
-            if (!cmon_is_valid_idx(fr->resolved_types[expr_idx]))
+            cmon_idx type_suggestion = CMON_INVALID_IDX;
+            cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), var_ast_idx);
+            if (cmon_is_valid_idx(ptype))
             {
-                cmon_idx type_suggestion = CMON_INVALID_IDX;
-                cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), var_ast_idx);
-                if (cmon_is_valid_idx(ptype))
-                {
-                    type_suggestion = fr->resolved_types[ptype];
-                    assert(cmon_is_valid_idx(type_suggestion));
-                }
-                cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
-                if (cmon_is_valid_idx(type_idx) && cmon_is_valid_idx(type_suggestion))
-                {
-                    printf("DA FOCKING INDICES %lu %lu\n", type_idx, type_suggestion);
-                    _validate_conversion(
-                        fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, type_suggestion);
-                }
+                type_suggestion = fr->resolved_types[ptype];
+                assert(cmon_is_valid_idx(type_suggestion));
+            }
+            cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
+            if (cmon_is_valid_idx(type_idx) && cmon_is_valid_idx(type_suggestion))
+            {
+                _validate_conversion(
+                    fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, type_suggestion);
             }
         }
         else

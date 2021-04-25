@@ -624,7 +624,7 @@ RESOLVE_TEST(resolve_struct_init01, "struct Boink{ x : f32; y : f32 }; fn main()
 // RESOLVE_TEST(resolve_struct_init02, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1, 2} }", cmon_true);
 RESOLVE_TEST(resolve_struct_init03, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }", cmon_false);
 RESOLVE_TEST(resolve_struct_init04, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }", cmon_false);
-RESOLVE_TEST(resolve_struct_init05, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{x: 1.0, y: 2.0} }", cmon_true);
-RESOLVE_TEST(resolve_struct_init06, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, y: 2.0} }", cmon_false);
+RESOLVE_TEST(resolve_struct_init05, "struct Boink{ x : f32; y : f32 }; b := Boink{x: 1.0, y: 2.0}", cmon_true);
+RESOLVE_TEST(resolve_struct_init06, "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{1.0, y: 2.0}", cmon_false);
 
 UTEST_MAIN();
