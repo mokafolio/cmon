@@ -46,7 +46,7 @@ typedef enum
     cmon_astk_import,
     cmon_astk_module,
     cmon_astk_typedef,
-    cmon_astk_typealias,
+    cmon_astk_alias,
     cmon_astk_if,
     cmon_astk_defer,
     cmon_astk_paran_expr // i.e. (1 + 2)
@@ -123,6 +123,11 @@ CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
                                        cmon_idx _tok_idx,
                                        cmon_idx * _pairs,
                                        size_t _count);
+
+CMON_API cmon_idx cmon_astb_add_alias(cmon_astb * _b,
+                                      cmon_idx _tok_idx,
+                                      cmon_idx _name_tok,
+                                      cmon_idx _parsed_type_idx);
 
 // helpers
 CMON_API void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx);

@@ -293,6 +293,14 @@ cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pai
     return _add_node(_b, cmon_astk_import, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
+cmon_idx cmon_astb_add_alias(cmon_astb * _b,
+                             cmon_idx _tok_idx,
+                             cmon_idx _name_tok,
+                             cmon_idx _parsed_type_idx)
+{
+    return _add_node(_b, cmon_astk_alias, _tok_idx, _name_tok, _parsed_type_idx);
+}
+
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {
     assert(_idx < cmon_dyn_arr_count(&_b->kinds));
