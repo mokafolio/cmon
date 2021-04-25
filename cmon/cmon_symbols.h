@@ -8,12 +8,15 @@ typedef enum
 {
     cmon_symk_var,
     cmon_symk_import,
-    cmon_symk_type
+    cmon_symk_type,
+    cmon_symk_alias
 } cmon_symk;
 
 typedef struct cmon_symbols cmon_symbols;
 
-CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_src * _src, cmon_modules * _mods);
+CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc,
+                                            cmon_src * _src,
+                                            cmon_modules * _mods);
 CMON_API void cmon_symbols_destroy(cmon_symbols * _s);
 CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);
@@ -49,6 +52,14 @@ CMON_API cmon_idx cmon_symbols_scope_add_import(cmon_symbols * _s,
                                                 cmon_idx _src_file_idx,
                                                 cmon_idx _ast_idx);
 
+CMON_API cmon_idx cmon_symbols_scope_add_alias(cmon_symbols * _s,
+                                               cmon_idx _scope,
+                                               cmon_str_view _name,
+                                               cmon_idx _type_idx,
+                                               cmon_bool _is_pub,
+                                               cmon_idx _src_file_idx,
+                                               cmon_idx _ast_idx);
+
 // find symbols
 CMON_API cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,
                                                  cmon_idx _scope,
@@ -76,11 +87,11 @@ CMON_API cmon_idx cmon_symbols_import_module(cmon_symbols * _s, cmon_idx _sym);
 // get type specific symbol info
 CMON_API cmon_idx cmon_symbols_type(cmon_symbols * _s, cmon_idx _sym);
 
-//get var decl specific symbol info
+// get var decl specific symbol info
 CMON_API cmon_idx cmon_symbols_var_type(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_bool cmon_symbols_var_is_mut(cmon_symbols * _s, cmon_idx _sym);
 
-//get scope info
+// get scope info
 CMON_API size_t cmon_symbols_scope_symbol_count(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx);
 CMON_API size_t cmon_symbols_scope_child_count(cmon_symbols * _s, cmon_idx _scope);
