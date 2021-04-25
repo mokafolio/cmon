@@ -649,12 +649,23 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
     return ret;
 }
 
+static cmon_idx _parse_alias(cmon_parser * _p, cmon_idx _alias_tok)
+{
+    cmon_idx name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+    _tok_check(_p, cmon_true, cmon_tokk_assign);
+    return cmon_astb_add_alias(_p->ast_builder, _alias_tok, name_tok, _parse_type(_p));
+}
+
 static cmon_idx _parse_stmt(cmon_parser * _p)
 {
     cmon_idx tok, ret;
     if (_accept(_p, &tok, cmon_tokk_curl_open))
     {
         return _parse_block(_p, tok);
+    }
+    else if (_accept(_p, &tok, cmon_tokk_alias))
+    {
+        return _parse_alias(_p, tok);
     }
     else if (_peek_fn_decl(_p, cmon_true))
     {
