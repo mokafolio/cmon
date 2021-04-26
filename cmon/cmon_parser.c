@@ -659,6 +659,16 @@ static cmon_idx _parse_alias(cmon_parser * _p)
     return cmon_astb_add_alias(_p->ast_builder, alias_tok, name_tok, is_pub, _parse_type(_p));
 }
 
+static cmon_idx _parse_typedef(cmon_parser * _p)
+{
+    cmon_idx tmp;
+    cmon_bool is_pub = _accept(_p, &tmp, cmon_tokk_pub);
+    cmon_idx type_tok = _tok_check(_p, cmon_true, cmon_tokk_type);
+    cmon_idx name_tok = _tok_check(_p, cmon_true, cmon_tokk_ident);
+    _tok_check(_p, cmon_true, cmon_tokk_assign);
+    return cmon_astb_add_typedef(_p->ast_builder, type_tok, name_tok, is_pub, _parse_type(_p));
+}
+
 static cmon_idx _parse_stmt(cmon_parser * _p)
 {
     cmon_idx tok, ret;
@@ -762,6 +772,12 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
               cmon_tokens_is_next(_p->tokens, cmon_tokk_struct)))
     {
         return _parse_struct_decl(_p);
+    }
+    else if (cmon_tokens_is_current(_p->tokens, cmon_tokk_type) ||
+             (cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
+              cmon_tokens_is_next(_p->tokens, cmon_tokk_type)))
+    {
+        return _parse_typedef(_p);
     }
     else if (_peek_var_decl(_p))
     {

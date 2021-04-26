@@ -181,7 +181,8 @@ cmon_idx cmon_astb_add_call(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count)
 {
     //@NOTE: see note in cmon_astb_add_block
-    cmon_idx left = _add_extra_data_arr(_b, _arg_indices, _count);
+    cmon_idx left = _add_extra_data(_b, _expr_idx);
+    _add_extra_data_arr(_b, _arg_indices, _count);
     return _add_node(_b, cmon_astk_call, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
 
@@ -303,6 +304,18 @@ cmon_idx cmon_astb_add_alias(cmon_astb * _b,
     _add_extra_data(_b, (cmon_idx)_is_pub);
     _add_extra_data(_b, CMON_INVALID_IDX);
     return _add_node(_b, cmon_astk_alias, _tok_idx, left, _parsed_type_idx);
+}
+
+cmon_idx cmon_astb_add_typedef(cmon_astb * _b,
+                               cmon_idx _tok_idx,
+                               cmon_idx _name_tok,
+                               cmon_bool _is_pub,
+                               cmon_idx _parsed_type_idx)
+{
+    cmon_idx left = _add_extra_data(_b, _name_tok);
+    _add_extra_data(_b, (cmon_idx)_is_pub);
+    _add_extra_data(_b, CMON_INVALID_IDX);
+    return _add_node(_b, cmon_astk_typedef, _tok_idx, left, _parsed_type_idx);
 }
 
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
@@ -509,6 +522,14 @@ cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
 {
     assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
+}
+
+cmon_idx cmon_ast_import_pair_ident(cmon_ast * _ast, cmon_idx _importp_idx)
+{
+    cmon_idx ret = cmon_ast_import_pair_alias(_ast, _importp_idx);
+    if (cmon_is_valid_idx(ret))
+        return ret;
+    return _get_extra_data(_ast, cmon_ast_import_pair_path_end(_ast, _importp_idx) - 1);
 }
 
 cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx)
@@ -782,6 +803,30 @@ cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
 {
     assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
     return _ast->left_right[_sel_idx].right;
+}
+
+cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_call);
+    return _get_extra_data(_ast, _ast->left_right[_idx].left);
+}
+
+cmon_idx cmon_ast_call_args_begin(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_call);
+    return _ast->left_right[_idx].left + 1;
+}
+
+cmon_idx cmon_ast_call_args_end(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_call);
+    return _ast->left_right[_idx].right;
+}
+
+cmon_ast_iter cmon_ast_call_args_iter(cmon_ast * _ast, cmon_idx _idx)
+{
+    return (cmon_ast_iter){ cmon_ast_call_args_begin(_ast, _idx),
+                            cmon_ast_call_args_end(_ast, _idx) };
 }
 
 cmon_idx cmon_ast_array_init_exprs_begin(cmon_ast * _ast, cmon_idx _ai_idx)

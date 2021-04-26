@@ -961,7 +961,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             {
                 _fr_err(_fr,
                         name_tok,
-                        "struct '%s' has no field '%*.s'",
+                        "struct '%s' has no field '%.*s'",
                         cmon_types_name(_fr->resolver->types, type_idx),
                         name_str_view.end - name_str_view.begin,
                         name_str_view.begin);
@@ -977,6 +977,11 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             name_str_view.begin);
 
     return CMON_INVALID_IDX;
+}
+
+static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+
 }
 
 static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -1131,7 +1136,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
             {
                 _fr_err(_fr,
                         fname_tok,
-                        "no field '%*.s' in '%s'",
+                        "no field '%.*s' in '%s'",
                         name_str_view.end - name_str_view.begin,
                         name_str_view.begin,
                         cmon_types_name(_fr->resolver->types, type));
@@ -1352,6 +1357,11 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else if (kind == cmon_astk_selector)
     {
         ret = _resolve_selector(_fr, _scope, _ast_idx);
+    }
+    else if (kind == cmon_astk_call)
+    {
+        // assert(0);
+        ret = _resolve_call(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_index)
     {
@@ -1708,7 +1718,11 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 {
                     cmon_str_view path = cmon_ast_import_pair_path(ast, ipp_idx);
 
-                    if (!cmon_is_valid_idx(imod_idx = cmon_modules_find(fr->resolver->mods, path)))
+                    printf("finding module %.*s\n", path.end - path.begin, path.begin);
+                    imod_idx = cmon_modules_find(fr->resolver->mods, path);
+                    printf("imod_idx %lu\n", imod_idx);
+
+                    if (!cmon_is_valid_idx(imod_idx))
                     {
                         _fr_err(fr,
                                 cmon_ast_import_pair_path_begin(ast, ipp_idx),
@@ -1719,7 +1733,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                     else if (!_check_redec(fr,
                                            fr->file_scope,
                                            alias_tok_idx =
-                                               cmon_ast_import_pair_alias(ast, ipp_idx)))
+                                               cmon_ast_import_pair_ident(ast, ipp_idx)))
                     {
                         cmon_modules_add_dep(fr->resolver->mods, fr->resolver->mod_idx, imod_idx);
                         cmon_symbols_scope_add_import(fr->resolver->symbols,

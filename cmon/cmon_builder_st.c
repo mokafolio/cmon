@@ -100,6 +100,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         // setup everything needed per file
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
+            printf("MODOMOMOMO %lu %lu\n\n\n", i, j);
             cmon_err_report err = cmon_err_report_make_empty();
             _per_file_data pfd;
             pfd.src_file_idx = cmon_modules_src_file(_b->mods, i, j);
@@ -155,12 +156,16 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     // on
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        printf("top lvl names %lu\n", i);
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_resolver_set_input(pmd->resolver, _b->src, _b->types, _b->symbols, _b->mods, i);
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
+            printf("top lvl names02 %lu\n", j);
             if (cmon_resolver_top_lvl_pass(pmd->resolver, j))
+            {
                 _add_resolver_errors(_b, pmd->resolver);
+            }
         }
     }
 
@@ -210,6 +215,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     // resolve each module
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        printf("main pass names %lu\n", i);
         _per_module_data * pmd = &_b->mod_data[i];
         if (cmon_resolver_globals_pass(pmd->resolver))
         {

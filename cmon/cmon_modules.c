@@ -101,10 +101,12 @@ void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_id
 
 cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
 {
+    printf("cmon_modules_find\n\n\n");
     //@NOTE: for now we just linear search. maybe hashmap in the future
     cmon_idx i;
     for (i = 0; i < cmon_dyn_arr_count(&_m->mods); ++i)
     {
+        printf("cmp bruh %.*s %s\n", _path.end - _path.begin, _path.begin, cmon_modules_path(_m, i));
         if (cmon_str_view_c_str_cmp(_path, cmon_modules_path(_m, i)) == 0)
         {
             return i;
