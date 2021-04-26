@@ -59,6 +59,8 @@ CMON_API cmon_idx cmon_symbols_scope_add_alias(cmon_symbols * _s,
                                                cmon_bool _is_pub,
                                                cmon_idx _src_file_idx,
                                                cmon_idx _ast_idx);
+CMON_API void cmon_symbols_alias_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type);
+
 
 // find symbols
 CMON_API cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,

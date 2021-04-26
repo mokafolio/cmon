@@ -127,6 +127,7 @@ CMON_API cmon_idx cmon_astb_add_import(cmon_astb * _b,
 CMON_API cmon_idx cmon_astb_add_alias(cmon_astb * _b,
                                       cmon_idx _tok_idx,
                                       cmon_idx _name_tok,
+                                      cmon_bool _is_pub,
                                       cmon_idx _parsed_type_idx);
 
 // helpers
@@ -275,6 +276,13 @@ CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _id
 CMON_API cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_fields_end(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx);
+
+// alias specific getters
+CMON_API cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_bool cmon_ast_alias_is_pub(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_alias_parsed_type(cmon_ast * _ast, cmon_idx _idx);
+CMON_API void cmon_ast_alias_set_sym(cmon_ast * _ast, cmon_idx _idx, cmon_idx _sym);
+CMON_API cmon_idx cmon_ast_alias_sym(cmon_ast * _ast, cmon_idx _idx);
 
 // CMON_API cmon_idx cmon_ast_data(cmon_ast * _ast, cmon_idx _idx);
 // CMON_API uint64_t cmon_ast_int(cmon_ast * _ast, cmon_idx _idx);

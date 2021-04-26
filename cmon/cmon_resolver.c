@@ -28,6 +28,7 @@ typedef struct
     cmon_dyn_arr(_ast_type_pair) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
+    cmon_dyn_arr(cmon_idx) global_alias_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
     jmp_buf err_jmp;
 } _file_resolver;
@@ -117,6 +118,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
                                      cmon_idx _lh_type);
 static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
 static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
+static inline void _resolve_alias(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx);
 
 static inline cmon_idx _remove_paran(_file_resolver * _fr, cmon_idx _ast_idx)
 {
@@ -153,6 +155,24 @@ static inline cmon_bool _is_indexable(_file_resolver * _fr, cmon_idx _type)
     cmon_typek kind =
         cmon_types_kind(_fr->resolver->types, cmon_types_remove_ptr(_fr->resolver->types, _type));
     return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_tuple;
+}
+
+static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon_idx _name_tok)
+{
+    cmon_idx s;
+    cmon_str_view str_view;
+
+    str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
+    if (cmon_is_valid_idx(s = cmon_symbols_find(_fr->resolver->symbols, _scope, str_view)))
+    {
+        _fr_err(_fr,
+                _name_tok,
+                "redeclaration of '%.*s'",
+                str_view.end - str_view.begin,
+                str_view.begin);
+        return cmon_true;
+    }
+    return cmon_false;
 }
 
 static inline cmon_bool _validate_conversion(_file_resolver * _fr,
@@ -403,7 +423,41 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         type_sym = cmon_symbols_find(_fr->resolver->symbols, lookup_scope, name_str_view);
         if (cmon_is_valid_idx(type_sym))
         {
-            if (cmon_symbols_kind(_fr->resolver->symbols, type_sym) == cmon_symk_type &&
+            cmon_symk sk = cmon_symbols_kind(_fr->resolver->symbols, type_sym);
+
+            // check if a global alias currently being resolved is recursive
+            if (_fr->resolver->global_type_pass && sk == cmon_symk_alias &&
+                cmon_symbols_scope_is_file(_fr->resolver->symbols, _scope))
+            {
+                size_t i;
+                for (i = 0; i < cmon_dyn_arr_count(&_fr->resolver->globals_pass_stack); ++i)
+                {
+                    printf("muck %lu %lu\n\n", _fr->resolver->globals_pass_stack[i], type_sym);
+                    cmon_str_view a = cmon_symbols_name(_fr->resolver->symbols,
+                                                        _fr->resolver->globals_pass_stack[i]);
+                    cmon_str_view b = cmon_symbols_name(_fr->resolver->symbols, type_sym);
+                    printf("%.*s %.*s\n\n", a.end - a.begin, a.begin, b.end - b.begin, b.begin);
+                    if (_fr->resolver->globals_pass_stack[i] == type_sym)
+                    {
+                        cmon_str_view name = cmon_symbols_name(_fr->resolver->symbols, type_sym);
+                        _fr_err(_fr,
+                                name_tok,
+                                "invalid recursive type alias '%.*s'",
+                                name.end - name.begin,
+                                name.begin);
+                        return CMON_INVALID_IDX;
+                    }
+                }
+
+                // this might be another global alias that is not resolved yet, if that's the case,
+                // do it.
+                if (!cmon_is_valid_idx(cmon_symbols_type(_fr->resolver->symbols, type_sym)))
+                {
+                    _resolve_alias(_fr, _scope, cmon_symbols_ast(_fr->resolver->symbols, type_sym));
+                }
+            }
+
+            if ((sk == cmon_symk_type || sk == cmon_symk_alias) &&
                 (cmon_symbols_is_pub(_fr->resolver->symbols, type_sym) ||
                  mod_idx == _fr->resolver->mod_idx))
             {
@@ -485,7 +539,7 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
     {
         cmon_ast_ident_set_sym(_fr_ast(_fr), _ast_idx, sym);
         skind = cmon_symbols_kind(_fr->resolver->symbols, sym);
-        if (skind == cmon_symk_type)
+        if (skind == cmon_symk_type || skind == cmon_symk_alias)
         {
             return cmon_types_builtin_typeident(_fr->resolver->types);
         }
@@ -517,6 +571,7 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
                     _fr, _fr->file_scope, cmon_symbols_ast(_fr->resolver->symbols, sym));
                 ret = cmon_symbols_var_type(_fr->resolver->symbols, sym);
             }
+            assert(cmon_is_valid_idx(ret));
             return ret;
         }
     }
@@ -1205,7 +1260,6 @@ static inline void _resolve_fn_body(_file_resolver * _fr, cmon_idx _scope, cmon_
 {
     //@NOTE: Functions only see file scope variables
     cmon_idx scope = cmon_symbols_scope_begin(_fr->resolver->symbols, _fr->file_scope);
-
     cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
     cmon_idx idx;
     while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
@@ -1322,6 +1376,7 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     else
     {
         ret = CMON_INVALID_IDX;
+        assert(0);
     }
 
     _fr->resolved_types[_ast_idx] = ret;
@@ -1337,7 +1392,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
 
     cmon_str_view sv =
         cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx));
-    printf("_resolve_var_decl %.*s\n\n", sv.end - sv.begin, sv.begin);
+
     ptype_idx = CMON_INVALID_IDX;
     if (cmon_is_valid_idx(parsed_type_idx))
     {
@@ -1374,7 +1429,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
 
     if (is_global && _fr->resolver->global_type_pass)
     {
-        cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack);
+        CMON_UNUSED(cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack));
     }
 
     // if its not a global being resolved, create the symbol.
@@ -1392,7 +1447,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
             _ast_idx));
     }
     // only set the globals symbol type if it was not set above yet
-    else if (cmon_is_valid_idx(parsed_type_idx))
+    else if (!cmon_is_valid_idx(parsed_type_idx))
     {
         cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
         assert(cmon_is_valid_idx(sym));
@@ -1402,6 +1457,40 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
     if (cmon_is_valid_idx(parsed_type_idx))
     {
         _validate_conversion(_fr, expr_idx, expr_type_idx, ptype_idx);
+    }
+}
+
+static inline void _resolve_alias(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
+{
+    cmon_bool is_global = cmon_symbols_scope_is_file(_fr->resolver->symbols, _scope);
+
+    if (is_global)
+    {
+        cmon_idx sym = cmon_ast_alias_sym(_fr_ast(_fr), _ast_idx);
+        assert(cmon_is_valid_idx(sym));
+        cmon_dyn_arr_append(&_fr->resolver->globals_pass_stack, sym);
+    }
+
+    cmon_idx type =
+        _resolve_parsed_type(_fr, _scope, cmon_ast_alias_parsed_type(_fr_ast(_fr), _ast_idx));
+
+    if (is_global)
+    {
+        CMON_UNUSED(cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack));
+        cmon_idx sym = cmon_ast_alias_sym(_fr_ast(_fr), _ast_idx);
+        cmon_symbols_alias_set_type(_fr->resolver->symbols, sym, type);
+    }
+    else
+    {
+        cmon_idx name_tok = cmon_ast_alias_name_tok(_fr_ast(_fr), _ast_idx);
+        assert(!cmon_ast_alias_is_pub(_fr_ast(_fr), _ast_idx));
+        cmon_symbols_scope_add_alias(_fr->resolver->symbols,
+                                     _scope,
+                                     cmon_tokens_str_view(_fr_tokens(_fr), name_tok),
+                                     type,
+                                     cmon_ast_alias_is_pub(_fr_ast(_fr), _ast_idx),
+                                     _fr->src_file_idx,
+                                     _ast_idx);
     }
 }
 
@@ -1422,6 +1511,10 @@ static inline void _resolve_stmt(_file_resolver * _fr, cmon_idx _scope, cmon_idx
     else if (kind == cmon_astk_var_decl)
     {
         _resolve_var_decl(_fr, _scope, _ast_idx);
+    }
+    else if (kind == cmon_astk_alias)
+    {
+        _resolve_alias(_fr, _scope, _ast_idx);
     }
     else
     {
@@ -1459,6 +1552,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
         cmon_allocator_free(
             _r->alloc,
             (cmon_mem_blk){ fr->resolved_types, sizeof(cmon_idx) * cmon_ast_count(_fr_ast(fr)) });
+        cmon_dyn_arr_dealloc(&fr->global_alias_decls);
         cmon_dyn_arr_dealloc(&fr->global_var_decls);
         cmon_dyn_arr_dealloc(&fr->errs);
         cmon_dyn_arr_dealloc(&fr->type_decls);
@@ -1520,29 +1614,12 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.errs, _r->alloc, _r->max_errors);
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
+        cmon_dyn_arr_init(&fr.global_alias_decls, _r->alloc, 16);
         fr.resolved_types =
             cmon_allocator_alloc(_r->alloc, sizeof(cmon_idx) * cmon_ast_count(ast)).ptr;
         memset(fr.resolved_types, (int)CMON_INVALID_IDX, sizeof(cmon_idx) * cmon_ast_count(ast));
         cmon_dyn_arr_append(&_r->file_resolvers, fr);
     }
-}
-
-static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon_idx _name_tok)
-{
-    cmon_idx s;
-    cmon_str_view str_view;
-
-    str_view = cmon_tokens_str_view(_fr_tokens(_fr), _name_tok);
-    if (cmon_is_valid_idx(s = cmon_symbols_find(_fr->resolver->symbols, _scope, str_view)))
-    {
-        _fr_err(_fr,
-                _name_tok,
-                "redeclaration of '%.*s'",
-                str_view.end - str_view.begin,
-                str_view.begin);
-        return cmon_true;
-    }
-    return cmon_false;
 }
 
 static inline cmon_idx _add_global_var_name(cmon_resolver * _r,
@@ -1663,6 +1740,23 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                      cmon_ast_var_decl_is_mut(ast, idx),
                                      idx);
             }
+            else if (kind == cmon_astk_alias)
+            {
+                cmon_idx name_tok = cmon_ast_alias_name_tok(ast, idx);
+                if (!_check_redec(fr, fr->file_scope, name_tok))
+                {
+                    cmon_idx sym =
+                        cmon_symbols_scope_add_alias(_r->symbols,
+                                                     _r->global_scope,
+                                                     cmon_tokens_str_view(_fr_tokens(fr), name_tok),
+                                                     CMON_INVALID_IDX,
+                                                     cmon_ast_alias_is_pub(ast, idx),
+                                                     fr->src_file_idx,
+                                                     idx);
+                    cmon_ast_alias_set_sym(ast, idx, sym);
+                    cmon_dyn_arr_append(&fr->global_alias_decls, sym);
+                }
+            }
             else if (kind == cmon_astk_struct_decl)
             {
                 cmon_idx name_tok_idx, tidx;
@@ -1746,7 +1840,6 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
         cmon_idx ast_idx;
         while (cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
         {
-            printf("WOOOP\n");
             cmon_astk kind = cmon_ast_kind(_fr_ast(fr), ast_idx);
             cmon_idx parsed_type_idx;
             cmon_idx def_expr;
@@ -1798,6 +1891,7 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
     _file_resolver * fr;
     cmon_dep_graph_result result;
 
+    cmon_dep_graph_clear(_r->dep_graph);
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         fr = &_r->file_resolvers[i];
@@ -1828,7 +1922,7 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         cmon_idx src_file_idx = cmon_types_src_file(_r->types, a);
         assert(cmon_is_valid_idx(src_file_idx));
         cmon_idx mod_src_idx = cmon_src_mod_src_idx(_r->src, src_file_idx);
-        assert(cmon_is_valid_idx(src_file_idx));
+        assert(cmon_is_valid_idx(mod_src_idx));
         _file_resolver * fr = &_r->file_resolvers[mod_src_idx];
 
         if (setjmp(fr->err_jmp))
@@ -1862,6 +1956,23 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
 {
     size_t i, j;
     _r->global_type_pass = cmon_true;
+
+    // first resolve the types of all global aliases and make sure there is no recursion.
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        _file_resolver * fr = &_r->file_resolvers[i];
+
+        if (setjmp(fr->err_jmp))
+        {
+            goto err_end;
+        }
+
+        for (j = 0; j < cmon_dyn_arr_count(&fr->global_alias_decls); ++j)
+        {
+            cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
+            _resolve_alias(fr, fr->file_scope, ast_idx);
+        }
+    }
 
     //@NOTE: Global variables have their own, slightly different implementation than regular
     // variables because symbol creation and the rest is split into multiple separate steps.
@@ -1937,8 +2048,8 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         // if its not a function or the function had an explicit type, resolve the var decl
         // expression rhs and validate the conversion
         if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl ||
-            !cmon_is_valid_idx(fr->resolved_types[expr_idx] ||
-                               cmon_ast_kind(_fr_ast(fr), expr_idx) == cmon_astk_struct_init))
+            (!cmon_is_valid_idx(fr->resolved_types[expr_idx]) ||
+             cmon_ast_kind(_fr_ast(fr), expr_idx) == cmon_astk_struct_init))
         {
             // only do this for expressions that have not been resolved during globals pass
             cmon_idx type_suggestion = CMON_INVALID_IDX;

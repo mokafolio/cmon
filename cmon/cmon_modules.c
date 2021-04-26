@@ -14,15 +14,17 @@ typedef struct
 typedef struct cmon_modules
 {
     cmon_allocator * alloc;
+    cmon_src * src;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
     cmon_dyn_arr(_module) mods;
 } cmon_modules;
 
-cmon_modules * cmon_modules_create(cmon_allocator * _a)
+cmon_modules * cmon_modules_create(cmon_allocator * _a, cmon_src * _src)
 {
     cmon_modules * ret = CMON_CREATE(_a, cmon_modules);
     ret->alloc = _a;
+    ret->src = _src;
     ret->str_builder = cmon_str_builder_create(_a, 256);
     ret->str_buf = cmon_str_buf_create(_a, 256);
     cmon_dyn_arr_init(&ret->mods, _a, 16);
@@ -87,6 +89,8 @@ void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_de
 void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file)
 {
     cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->src_files, _src_file);
+    cmon_src_set_mod_src_idx(
+        _m->src, _src_file, cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files) - 1);
 }
 
 void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _scope)

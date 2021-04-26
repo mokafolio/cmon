@@ -113,6 +113,17 @@ cmon_dep_graph * cmon_dep_graph_create(cmon_allocator * _alloc)
 
 void cmon_dep_graph_destroy(cmon_dep_graph * _g)
 {
+    cmon_dep_graph_clear(_g);
+    cmon_dyn_arr_dealloc(&_g->resolved);
+    cmon_dyn_arr_dealloc(&_g->unmarked);
+    cmon_dyn_arr_dealloc(&_g->unresolved);
+    cmon_dyn_arr_dealloc(&_g->nodes);
+    CMON_DESTROY(_g->alloc, _g);
+}
+
+//@TODO: add a simple free list to reuse nodes instead of deallocating?
+void cmon_dep_graph_clear(cmon_dep_graph * _g)
+{
     size_t i;
     for (i = 0; i < cmon_dyn_arr_count(&_g->nodes); ++i)
     {
@@ -120,12 +131,10 @@ void cmon_dep_graph_destroy(cmon_dep_graph * _g)
         cmon_dyn_arr_dealloc(&n->deps);
         CMON_DESTROY(_g->alloc, n);
     }
-
-    cmon_dyn_arr_dealloc(&_g->resolved);
-    cmon_dyn_arr_dealloc(&_g->unmarked);
-    cmon_dyn_arr_dealloc(&_g->unresolved);
-    cmon_dyn_arr_dealloc(&_g->nodes);
-    CMON_DESTROY(_g->alloc, _g);
+    cmon_dyn_arr_clear(&_g->resolved);
+    cmon_dyn_arr_clear(&_g->unmarked);
+    cmon_dyn_arr_clear(&_g->unresolved);
+    cmon_dyn_arr_clear(&_g->nodes);
 }
 
 void cmon_dep_graph_add(cmon_dep_graph * _g, cmon_idx _data, cmon_idx * _deps, size_t _count)

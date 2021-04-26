@@ -227,9 +227,16 @@ cmon_idx cmon_symbols_scope_add_alias(cmon_symbols * _s,
                                       cmon_idx _src_file_idx,
                                       cmon_idx _ast_idx)
 {
-    cmon_idx ret = _add_symbol(_s, _scope, _name, cmon_symk_alias, _is_pub, _src_file_idx, _ast_idx);
+    cmon_idx ret =
+        _add_symbol(_s, _scope, _name, cmon_symk_alias, _is_pub, _src_file_idx, _ast_idx);
     _get_symbol(_s, ret)->data.idx = _type_idx;
     return ret;
+}
+
+void cmon_symbols_alias_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type_idx)
+{
+    assert(_get_symbol(_s, _sym)->kind == cmon_symk_alias);
+    _get_symbol(_s, _sym)->data.idx = _type_idx;
 }
 
 cmon_idx cmon_symbols_find_local_before(cmon_symbols * _s,
@@ -315,7 +322,8 @@ cmon_idx cmon_symbols_import_module(cmon_symbols * _s, cmon_idx _sym)
 
 cmon_idx cmon_symbols_type(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_type);
+    assert(_get_symbol(_s, _sym)->kind == cmon_symk_type ||
+           _get_symbol(_s, _sym)->kind == cmon_symk_alias);
     return _get_symbol(_s, _sym)->data.idx;
 }
 

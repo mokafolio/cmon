@@ -296,9 +296,13 @@ cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pai
 cmon_idx cmon_astb_add_alias(cmon_astb * _b,
                              cmon_idx _tok_idx,
                              cmon_idx _name_tok,
+                             cmon_bool _is_pub,
                              cmon_idx _parsed_type_idx)
 {
-    return _add_node(_b, cmon_astk_alias, _tok_idx, _name_tok, _parsed_type_idx);
+    cmon_idx left = _add_extra_data(_b, _name_tok);
+    _add_extra_data(_b, (cmon_idx)_is_pub);
+    _add_extra_data(_b, CMON_INVALID_IDX);
+    return _add_node(_b, cmon_astk_alias, _tok_idx, left, _parsed_type_idx);
 }
 
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
@@ -862,4 +866,34 @@ cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx)
 {
     return (cmon_ast_iter){ cmon_ast_struct_init_fields_begin(_ast, _idx),
                             cmon_ast_struct_init_fields_end(_ast, _idx) };
+}
+
+cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    return _get_extra_data(_ast, _ast->left_right[_idx].left);
+}
+
+cmon_bool cmon_ast_alias_is_pub(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    return (cmon_bool)_get_extra_data(_ast, _ast->left_right[_idx].left + 1);
+}
+
+cmon_idx cmon_ast_alias_parsed_type(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    return _ast->left_right[_idx].right;
+}
+
+void cmon_ast_alias_set_sym(cmon_ast * _ast, cmon_idx _idx, cmon_idx _sym)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    return _ast->extra_data[_ast->left_right[_idx].left + 2] = _sym;
+}
+
+cmon_idx cmon_ast_alias_sym(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    return _get_extra_data(_ast, _ast->left_right[_idx].left + 2);
 }
