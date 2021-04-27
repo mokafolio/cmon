@@ -583,13 +583,13 @@ cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx)
 cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
-    return _get_extra_data(_ast, _ast->left_right[_tidx].left + 1);
+    return _ast, _ast->left_right[_tidx].left + 2;
 }
 
 cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
-    return _get_extra_data(_ast, _ast->left_right[_tidx].right);
+    return _ast->left_right[_tidx].right;
 }
 
 cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx)
@@ -673,7 +673,7 @@ cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx)
 
 cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    printf("%lu %lu\n",
+    printf("asdasdasda iter %lu %lu\n",
            cmon_ast_fn_params_begin(_ast, _fn_idx),
            cmon_ast_fn_params_end(_ast, _fn_idx));
     return (cmon_ast_iter){ cmon_ast_fn_params_begin(_ast, _fn_idx),

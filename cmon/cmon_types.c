@@ -357,12 +357,19 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
     const char * unique_name;
 
     unique_name = _fn_name(_t, _ret_type, _params, _param_count, cmon_types_unique_name);
-    printf("FINDING FN %s\n", unique_name);
+    printf("FINDING FN %s %lu\n", unique_name, _param_count);
 
     _return_if_found(_t, unique_name);
 
     printf("ADDING FN %s\n", unique_name);
-    cmon_dyn_arr_init(&sig.params, _t->alloc, 8);
+    cmon_dyn_arr_init(&sig.params, _t->alloc, _param_count);
+
+    size_t i;
+    for (i = 0; i < _param_count; ++i)
+    {
+        cmon_dyn_arr_append(&sig.params, _params[i]);
+    }
+
     cmon_dyn_arr_append(&_t->fns, sig);
 
     return _add_type(
@@ -425,7 +432,9 @@ static inline _struct_field * _get_struct_field(cmon_types * _t,
                                                 cmon_idx _struct_idx,
                                                 cmon_idx _field_idx)
 {
-    printf("_get_struct_field %lu %lu\n", _field_idx, cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
+    printf("_get_struct_field %lu %lu\n",
+           _field_idx,
+           cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
     assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
     assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
     assert(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
@@ -527,6 +536,13 @@ cmon_idx cmon_types_fn_param(cmon_types * _t, cmon_idx _fn_idx, cmon_idx _param_
     assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
     assert(_param_idx < cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params));
     return _t->fns[_t->types[_fn_idx].data_idx].params[_param_idx];
+}
+
+cmon_idx cmon_types_fn_return_type(cmon_types * _t, cmon_idx _fn_idx)
+{
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    return _t->fns[_t->types[_fn_idx].data_idx].return_type;
 }
 
 cmon_idx cmon_types_builtin_s8(cmon_types * _t)

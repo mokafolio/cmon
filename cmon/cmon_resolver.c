@@ -981,7 +981,45 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
 
 static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
 {
+    cmon_idx left_ast = cmon_ast_call_left(_fr_ast(_fr), _ast_idx);
+    cmon_idx left_type = _resolve_expr(_fr, _scope, left_ast, CMON_INVALID_IDX);
+    if (!cmon_is_valid_idx(left_type))
+    {
+        return CMON_INVALID_IDX;
+    }
 
+    if (cmon_types_kind(_fr->resolver->types, left_type) != cmon_typek_fn)
+    {
+        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), left_ast), "not callable");
+        return CMON_INVALID_IDX;
+    }
+
+    size_t arg_count = cmon_ast_call_args_end(_fr_ast(_fr), _ast_idx) -
+                       cmon_ast_call_args_begin(_fr_ast(_fr), _ast_idx);
+
+    size_t param_count = cmon_types_fn_param_count(_fr->resolver->types, left_type);
+
+    if (arg_count != param_count)
+    {
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                "argument count mismatch (%lu expected, got %lu)",
+                param_count,
+                arg_count);
+        return CMON_INVALID_IDX;
+    }
+
+    cmon_idx idx;
+    cmon_idx param_idx = 0;
+    cmon_ast_iter it = cmon_ast_call_args_iter(_fr_ast(_fr), _ast_idx);
+    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+    {
+        cmon_idx param_type = cmon_types_fn_param(_fr->resolver->types, left_type, param_idx);
+        cmon_idx arg_type = _resolve_expr(_fr, _scope, idx, param_type);
+        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), arg_type, param_type);
+    }
+
+    return cmon_types_fn_return_type(_fr->resolver->types, left_type);
 }
 
 static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmon_idx _ast_idx)
@@ -1202,11 +1240,14 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
         cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
         {
-            cmon_idx pt = _resolve_parsed_type(_fr, _scope, idx);
+            cmon_idx pt = _resolve_parsed_type(_fr, _scope, cmon_ast_var_decl_type(_fr_ast(_fr), idx));
             _fr->resolved_types[idx] = pt;
             if (!cmon_is_valid_idx(pt))
                 param_err = cmon_true;
+            printf("fu %lu %lu\n", idx_buf, pt);
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
+            printf("FOCKING PARAM COUNT 01 %lu\n\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+                        // assert(0);
         }
         else
         {
@@ -1221,6 +1262,7 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
     }
     else
     {
+        printf("FOCKING PARAM COUNT %lu\n\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),

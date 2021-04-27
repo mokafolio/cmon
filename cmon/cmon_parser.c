@@ -594,7 +594,7 @@ static void _check_stmt_end(cmon_parser * _p)
     if (!cmon_is_valid_idx(cmon_tokens_accept(_p->tokens, cmon_tokk_semicolon)))
     {
         cmon_idx cur = cmon_tokens_current(_p->tokens);
-        if (cur && !cmon_tokens_follows_nl(_p->tokens, cur) &&
+        if (cmon_is_valid_idx(cur) && !cmon_tokens_follows_nl(_p->tokens, cur) &&
             !cmon_tokens_is(_p->tokens,
                             cur,
                             cmon_tokk_square_close,
@@ -674,11 +674,11 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
     cmon_idx tok, ret;
     if (_accept(_p, &tok, cmon_tokk_curl_open))
     {
-        return _parse_block(_p, tok);
+        ret = _parse_block(_p, tok);
     }
     else if (_peek_fn_decl(_p, cmon_true))
     {
-        return _parse_pretty_fn(_p);
+        ret = _parse_pretty_fn(_p);
     }
     else if (cmon_tokens_is_current(_p->tokens, cmon_tokk_alias))
     {
@@ -751,47 +751,50 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
 
 static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
 {
-    cmon_idx tok;
+    cmon_idx tok, ret;
     if (_accept(_p, &tok, cmon_tokk_module))
     {
-        return cmon_astb_add_module(
-            _p->ast_builder, tok, _tok_check(_p, cmon_true, cmon_tokk_ident));
+        ret =
+            cmon_astb_add_module(_p->ast_builder, tok, _tok_check(_p, cmon_true, cmon_tokk_ident));
     }
     else if (_accept(_p, &tok, cmon_tokk_import))
     {
-        return _parse_import(_p, tok);
+        ret = _parse_import(_p, tok);
     }
     else if (cmon_tokens_is_current(_p->tokens, cmon_tokk_alias) ||
              (cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
               cmon_tokens_is_next(_p->tokens, cmon_tokk_alias)))
     {
-        return _parse_alias(_p);
+        ret = _parse_alias(_p);
     }
     else if (cmon_tokens_is_current(_p->tokens, cmon_tokk_struct) ||
              (cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
               cmon_tokens_is_next(_p->tokens, cmon_tokk_struct)))
     {
-        return _parse_struct_decl(_p);
+        ret = _parse_struct_decl(_p);
     }
     else if (cmon_tokens_is_current(_p->tokens, cmon_tokk_type) ||
              (cmon_tokens_is_current(_p->tokens, cmon_tokk_pub) &&
               cmon_tokens_is_next(_p->tokens, cmon_tokk_type)))
     {
-        return _parse_typedef(_p);
+        ret = _parse_typedef(_p);
     }
     else if (_peek_var_decl(_p))
     {
-        return _parse_var_decl(_p, cmon_true);
+        ret = _parse_var_decl(_p, cmon_true);
     }
     else if (_peek_fn_decl(_p, cmon_true))
     {
-        return _parse_pretty_fn(_p);
+        ret= _parse_pretty_fn(_p);
+    }
+    else
+    {
+        _err(_p, cmon_tokens_current(_p->tokens), "top level statement expected");
+        return CMON_INVALID_IDX;
     }
 
-    //@TODO: Better error
-    _err(_p, cmon_tokens_current(_p->tokens), "top level statement expected");
-
-    return CMON_INVALID_IDX;
+    _check_stmt_end(_p);
+    return ret;
 }
 
 cmon_parser * cmon_parser_create(cmon_allocator * _alloc)
@@ -855,13 +858,10 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
     while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_eof))
     {
         stmt_idx = _parse_top_lvl_stmt(_p);
-
         if (cmon_is_valid_idx(stmt_idx))
         {
             cmon_idx_buf_append(_p->idx_buf_mng, b, stmt_idx);
         }
-
-        _check_stmt_end(_p);
     }
 
     root_block_idx = cmon_astb_add_block(_p->ast_builder,
