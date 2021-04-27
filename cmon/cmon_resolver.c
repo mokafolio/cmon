@@ -192,6 +192,7 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
         return cmon_true;
     }
 
+    // assert(0);
     cmon_typek fkind = cmon_types_kind(t, _from);
     cmon_typek tkind = cmon_types_kind(t, _to);
 
@@ -1240,14 +1241,15 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
         cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
         {
-            cmon_idx pt = _resolve_parsed_type(_fr, _scope, cmon_ast_var_decl_type(_fr_ast(_fr), idx));
+            cmon_idx pt =
+                _resolve_parsed_type(_fr, _scope, cmon_ast_var_decl_type(_fr_ast(_fr), idx));
             _fr->resolved_types[idx] = pt;
             if (!cmon_is_valid_idx(pt))
                 param_err = cmon_true;
             printf("fu %lu %lu\n", idx_buf, pt);
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
             printf("FOCKING PARAM COUNT 01 %lu\n\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
-                        // assert(0);
+            // assert(0);
         }
         else
         {
@@ -1483,6 +1485,9 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
     {
         CMON_UNUSED(cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack));
     }
+
+    if(!cmon_is_valid_idx(expr_type_idx))
+        return;
 
     // if its not a global being resolved, create the symbol.
     if (!is_global)
@@ -2030,8 +2035,7 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
         }
     }
 
-    //@NOTE: Global variables have their own, slightly different implementation than regular
-    // variables because symbol creation and the rest is split into multiple separate steps.
+    //@NOTE: resolve var_decl will no what to do during this pass based on global_type_pass being set.
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr;
@@ -2046,31 +2050,6 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
 
         for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
         {
-            // cmon_idx type_idx;
-            // cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
-            // cmon_idx parsed_type_idx = cmon_ast_var_decl_type(ast, ast_idx);
-            // if (cmon_is_valid_idx(parsed_type_idx))
-            // {
-            //     type_idx = _resolve_parsed_type(fr, fr->file_scope, parsed_type_idx);
-            // }
-            // else
-            // {
-            //     cmon_idx expr_idx = cmon_ast_var_decl_expr(ast, ast_idx);
-            //     assert(cmon_is_valid_idx(expr_idx));
-            //     if (cmon_ast_kind(ast, expr_idx) != cmon_astk_fn_decl)
-            //     {
-            //         // cmon_dyn_arr_append(&fr->globals_pass_stack, fr->global_var_decls[j]);
-            //         type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, CMON_INVALID_IDX);
-            //         // cmon_dyn_arr_pop(&fr->globals_pass_stack);
-            //     }
-            //     else
-            //     {
-            //         // for functions we only want to determine the signature for now
-            //         type_idx = _resolve_fn_sig(fr, fr->file_scope, expr_idx);
-            //     }
-            // }
-
-            // cmon_symbols_var_set_type(_r->symbols, fr->global_var_decls[j], type_idx);
             cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[j]);
             _resolve_var_decl(fr, fr->file_scope, ast_idx);
         }
@@ -2091,44 +2070,12 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
     }
 
     size_t i;
-    // @NOTE: only thing left to do is to iterate over all global variables. Resolve their default
-    // expressions if that has not happened during the globals pass yet. If they are functions,
-    // resolve the function bodies!
+    // @NOTE: only thing left to do is to iterate over all global variables again and resolve their expressions.
     for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
     {
         cmon_idx var_ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[i]);
         assert(cmon_is_valid_idx(var_ast_idx));
-        cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(fr), var_ast_idx);
-        assert(cmon_is_valid_idx(expr_idx));
-
-        // if its not a function or the function had an explicit type, resolve the var decl
-        // expression rhs and validate the conversion
-        if (cmon_ast_kind(_fr_ast(fr), expr_idx) != cmon_astk_fn_decl ||
-            (!cmon_is_valid_idx(fr->resolved_types[expr_idx]) ||
-             cmon_ast_kind(_fr_ast(fr), expr_idx) == cmon_astk_struct_init))
-        {
-            // only do this for expressions that have not been resolved during globals pass
-            cmon_idx type_suggestion = CMON_INVALID_IDX;
-            cmon_idx ptype = cmon_ast_var_decl_type(_fr_ast(fr), var_ast_idx);
-            if (cmon_is_valid_idx(ptype))
-            {
-                type_suggestion = fr->resolved_types[ptype];
-                assert(cmon_is_valid_idx(type_suggestion));
-            }
-            cmon_idx type_idx = _resolve_expr(fr, fr->file_scope, expr_idx, type_suggestion);
-            if (cmon_is_valid_idx(type_idx) && cmon_is_valid_idx(type_suggestion))
-            {
-                _validate_conversion(
-                    fr, cmon_ast_token(_fr_ast(fr), expr_idx), type_idx, type_suggestion);
-            }
-        }
-        else
-        {
-            // otherwise the function signature must have already been resolved during globals type
-            // pass and we only need to resolve the function body
-            assert(cmon_is_valid_idx(fr->resolved_types[expr_idx]));
-            _resolve_fn_body(fr, fr->file_scope, expr_idx);
-        }
+        _resolve_var_decl(fr, fr->file_scope, var_ast_idx);
     }
 
 err_end:

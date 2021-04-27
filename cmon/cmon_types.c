@@ -369,6 +369,7 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
     {
         cmon_dyn_arr_append(&sig.params, _params[i]);
     }
+    sig.return_type = _ret_type;
 
     cmon_dyn_arr_append(&_t->fns, sig);
 
