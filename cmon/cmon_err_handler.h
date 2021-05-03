@@ -16,7 +16,7 @@ CMON_API void cmon_err_handler_err(
 CMON_API void cmon_err_handler_add_err(cmon_err_handler * _e, cmon_bool _jump, cmon_err_report * _err);
 CMON_API void cmon_err_handler_set_jump(cmon_err_handler * _e, jmp_buf * _jmp);
 CMON_API void cmon_err_handler_set_src(cmon_err_handler * _e, cmon_src * _src);
-CMON_API void cmon_err_handler_jump(cmon_err_handler * _e);
+CMON_API void cmon_err_handler_jump(cmon_err_handler * _e, cmon_bool _jmp_on_any_err);
 CMON_API size_t cmon_err_handler_count(cmon_err_handler * _e);
 CMON_API cmon_err_report * cmon_err_handler_err_report(cmon_err_handler * _e, size_t _idx);
 CMON_API void cmon_err_handler_clear(cmon_err_handler * _e);

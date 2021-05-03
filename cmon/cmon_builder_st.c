@@ -1,8 +1,10 @@
 #include <cmon/cmon_builder_st.h>
 #include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_err_handler.h>
 #include <cmon/cmon_parser.h>
 #include <cmon/cmon_resolver.h>
+#include <setjmp.h>
 
 typedef struct
 {
@@ -29,7 +31,8 @@ typedef struct cmon_builder_st
     cmon_types * types;
     cmon_dyn_arr(cmon_idx) dep_buf;
     cmon_dep_graph * dep_graph;
-    cmon_dyn_arr(cmon_err_report) errs;
+    cmon_err_handler * err_handler;
+    jmp_buf err_jmp;
 } cmon_builder_st;
 
 cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
@@ -47,7 +50,7 @@ cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
     ret->types = cmon_types_create(_alloc, _mods);
     cmon_dyn_arr_init(&ret->dep_buf, _alloc, 4);
     ret->dep_graph = cmon_dep_graph_create(_alloc);
-    cmon_dyn_arr_init(&ret->errs, _alloc, 8);
+    ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     return ret;
 }
 
@@ -56,7 +59,7 @@ void cmon_builder_st_destroy(cmon_builder_st * _b)
     if (!_b)
         return;
 
-    cmon_dyn_arr_dealloc(&_b->errs);
+    cmon_err_handler_destroy(_b->err_handler);
     cmon_dep_graph_destroy(_b->dep_graph);
     cmon_dyn_arr_dealloc(&_b->dep_buf);
     cmon_types_destroy(_b->types);
@@ -76,20 +79,32 @@ void cmon_builder_st_destroy(cmon_builder_st * _b)
     CMON_DESTROY(_b->alloc, _b);
 }
 
-static inline void _add_resolver_errors(cmon_builder_st * _b, cmon_resolver * _r)
+static inline void _add_resolver_errors(cmon_builder_st * _b,
+                                        cmon_resolver * _r,
+                                        cmon_bool _jmp_on_any_err)
 {
     cmon_err_report * errs;
     size_t count, i;
     cmon_resolver_errors(_r, &errs, &count);
     for (i = 0; i < count; ++i)
     {
-        cmon_dyn_arr_append(&_b->errs, errs[i]);
+        cmon_err_handler_add_err(_b->err_handler, cmon_true, &errs[i]);
+    }
+    if (_jmp_on_any_err)
+    {
+        cmon_err_handler_jump(_b->err_handler, cmon_true);
     }
 }
 
 cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
 {
     size_t i, j;
+
+    if (setjmp(_b->err_jmp))
+    {
+        goto err_end;
+    }
+    cmon_err_handler_set_jump(_b->err_handler, &_b->err_jmp);
 
     // setup all the things needed per module
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
@@ -111,7 +126,9 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
 
             // buffer potential tokenize errors
             if (!cmon_err_report_is_empty(&err))
-                cmon_dyn_arr_append(&_b->errs, err);
+            {
+                cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
+            }
 
             cmon_dyn_arr_append(&mod_data.file_data, pfd);
         }
@@ -119,10 +136,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     }
 
     // return if files failed to tokenize
-    if (cmon_dyn_arr_count(&_b->errs))
-    {
-        return cmon_true;
-    }
+    cmon_err_handler_jump(_b->err_handler, cmon_true);
 
     // parse all the files
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
@@ -136,7 +150,8 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
             if (!pfd->ast)
             {
-                cmon_dyn_arr_append(&_b->errs, cmon_parser_err(pfd->parser));
+                cmon_err_report err = cmon_parser_err(pfd->parser);
+                cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
             }
             else
             {
@@ -147,10 +162,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     }
 
     // return if files failed to parse
-    if (cmon_dyn_arr_count(&_b->errs))
-    {
-        return cmon_true;
-    }
+    cmon_err_handler_jump(_b->err_handler, cmon_true);
 
     // resolve all the top level names for each module to determine which other modules they depend
     // on
@@ -164,16 +176,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             printf("top lvl names02 %lu\n", j);
             if (cmon_resolver_top_lvl_pass(pmd->resolver, j))
             {
-                _add_resolver_errors(_b, pmd->resolver);
+                _add_resolver_errors(_b, pmd->resolver, cmon_false);
             }
         }
     }
 
     // return if modules errored during top level pass.
-    if (cmon_dyn_arr_count(&_b->errs))
-    {
-        return cmon_true;
-    }
+    cmon_err_handler_jump(_b->err_handler, cmon_true);
 
     // resolve dependency order between modules
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
@@ -225,43 +234,45 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         _per_module_data * pmd = &_b->mod_data[i];
         if (cmon_resolver_globals_pass(pmd->resolver))
         {
-            _add_resolver_errors(_b, pmd->resolver);
-            return cmon_true;
+            _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_usertypes_pass(pmd->resolver, j))
             {
-                _add_resolver_errors(_b, pmd->resolver);
-                return cmon_true;
+                _add_resolver_errors(_b, pmd->resolver, cmon_true);
             }
         }
 
         if (cmon_resolver_circ_pass(pmd->resolver))
         {
-            _add_resolver_errors(_b, pmd->resolver);
-            return cmon_true;
+            _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_main_pass(pmd->resolver, j))
             {
-                _add_resolver_errors(_b, pmd->resolver);
-                return cmon_true;
+                _add_resolver_errors(_b, pmd->resolver, cmon_true);
             }
         }
     }
 
     return cmon_false;
+err_end:
+    return cmon_true;
 }
 
 cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
                                  cmon_err_report ** _out_errs,
                                  size_t * _out_count)
 {
-    *_out_errs = _b->errs;
-    *_out_count = cmon_dyn_arr_count(&_b->errs);
-    return cmon_dyn_arr_count(&_b->errs) > 0;
+    if (cmon_err_handler_count(_b->err_handler))
+    {
+        *_out_errs = cmon_err_handler_err_report(_b->err_handler, 0);
+        *_out_count = cmon_err_handler_count(_b->err_handler);
+        return cmon_true;
+    }
+    return cmon_false;
 }

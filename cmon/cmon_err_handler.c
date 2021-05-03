@@ -1,6 +1,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_err_handler.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_tokens.h>
 #include <stdarg.h>
 
 typedef struct cmon_err_handler
@@ -64,7 +65,7 @@ void cmon_err_handler_add_err(cmon_err_handler * _e, cmon_bool _jump, cmon_err_r
     cmon_dyn_arr_append(&_e->errs, *_err);
     if (_jump)
     {
-        cmon_err_handler_jump(_e);
+        cmon_err_handler_jump(_e, cmon_false);
     }
 }
 
@@ -78,9 +79,9 @@ void cmon_err_handler_set_jump(cmon_err_handler * _e, jmp_buf * _jmp)
     _e->jmp = _jmp;
 }
 
-void cmon_err_handler_jump(cmon_err_handler * _e)
+void cmon_err_handler_jump(cmon_err_handler * _e, cmon_bool _jmp_on_any_err)
 {
-    if (_e->jmp && cmon_dyn_arr_count(&_e->errs) >= _e->max_errors)
+    if (_e->jmp && (_jmp_on_any_err || cmon_dyn_arr_count(&_e->errs) >= _e->max_errors))
     {
         longjmp(*_e->jmp, 1);
     }
