@@ -22,7 +22,7 @@ cmon_err_handler * cmon_err_handler_create(cmon_allocator * _alloc,
     ret->jmp = NULL;
     ret->src = _src;
     ret->max_errors = _max_errors;
-    ret->str_builder = cmon_str_builder_create(_alloc, 1024);
+    ret->str_builder = cmon_str_builder_create(_alloc, 256);
     cmon_dyn_arr_init(&ret->errs, _alloc, _max_errors);
     return ret;
 }
@@ -37,8 +37,12 @@ void cmon_err_handler_destroy(cmon_err_handler * _e)
     CMON_DESTROY(_e->alloc, _e);
 }
 
-void cmon_err_handler_err(
-    cmon_err_handler * _e, cmon_idx _src_file_idx, cmon_idx _tok_idx, const char * _fmt, ...)
+void cmon_err_handler_err(cmon_err_handler * _e,
+                          cmon_bool _jump,
+                          cmon_idx _src_file_idx,
+                          cmon_idx _tok_idx,
+                          const char * _fmt,
+                          ...)
 {
     va_list args;
     va_start(args, _fmt);
@@ -52,12 +56,16 @@ void cmon_err_handler_err(
                                                cmon_tokens_line_offset(toks, _tok_idx),
                                                cmon_str_builder_c_str(_e->str_builder));
     va_end(args);
-    cmon_err_handler_add_err(_e, &err);
+    cmon_err_handler_add_err(_e, _jump, &err);
 }
 
-void cmon_err_handler_add_err(cmon_err_handler * _e, cmon_err_report * _err)
+void cmon_err_handler_add_err(cmon_err_handler * _e, cmon_bool _jump, cmon_err_report * _err)
 {
     cmon_dyn_arr_append(&_e->errs, *_err);
+    if (_jump)
+    {
+        cmon_err_handler_jump(_e);
+    }
 }
 
 void cmon_err_handler_set_src(cmon_err_handler * _e, cmon_src * _src)

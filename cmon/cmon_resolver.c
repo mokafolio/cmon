@@ -103,7 +103,8 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
 #define _fr_err(_fr, _tok, _fmt, ...)                                                              \
     do                                                                                             \
     {                                                                                              \
-        cmon_err_handler_err(_fr->err_handler, _fr->src_file_idx, _tok, _fmt, ##__VA_ARGS__);      \
+        cmon_err_handler_err(                                                                      \
+            _fr->err_handler, cmon_true, _fr->src_file_idx, _tok, _fmt, ##__VA_ARGS__);            \
     } while (0)
 
 static inline void _unexpected_ast_panic()
@@ -2109,8 +2110,8 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r,
         _file_resolver * fr = &_r->file_resolvers[i];
         for (j = 0; j < cmon_err_handler_count(fr->err_handler); ++j)
         {
-            cmon_err_handler_add_err(_r->err_handler,
-                                     cmon_err_handler_err_report(fr->err_handler, j));
+            cmon_err_handler_add_err(
+                _r->err_handler, cmon_false, cmon_err_handler_err_report(fr->err_handler, j));
         }
         cmon_err_handler_clear(fr->err_handler);
     }

@@ -427,56 +427,56 @@ end:
 // PARSE_TEST(parse_array_init01, "a := [1, 2, 3]", cmon_true);
 // PARSE_TEST(parse_array_init02, "a := []", cmon_true);
 // PARSE_TEST(parse_array_init03, "a := [\"foo\", \"bar\",]", cmon_false);
-PARSE_TEST(parse_alias01, "alias Foo = *Bar", cmon_true);
-PARSE_TEST(parse_alias02, "pub alias Foo = Bar", cmon_true);
-PARSE_TEST(parse_alias03, "fn main() { pub alias Foo = Bar }", cmon_false);
-PARSE_TEST(parse_alias04, "fn main() { alias Foo = Bar; }", cmon_true);
-PARSE_TEST(parse_typedef01, "type Foo = Bar", cmon_true);
-PARSE_TEST(parse_top01, "alias Foo = Bar; fn main(){}", cmon_true);
-PARSE_TEST(parse_top02, "alias Foo = Bar\nfn main(){}", cmon_true);
+// PARSE_TEST(parse_alias01, "alias Foo = *Bar", cmon_true);
+// PARSE_TEST(parse_alias02, "pub alias Foo = Bar", cmon_true);
+// PARSE_TEST(parse_alias03, "fn main() { pub alias Foo = Bar }", cmon_false);
+// PARSE_TEST(parse_alias04, "fn main() { alias Foo = Bar; }", cmon_true);
+// PARSE_TEST(parse_typedef01, "type Foo = Bar", cmon_true);
+// PARSE_TEST(parse_top01, "alias Foo = Bar; fn main(){}", cmon_true);
+// PARSE_TEST(parse_top02, "alias Foo = Bar\nfn main(){}", cmon_true);
 PARSE_TEST(parse_top03, "alias Foo = Bar fn main(){}", cmon_false);
 
-UTEST(cmon, basic_symbols_test)
-{
-    cmon_symbols * s;
-    cmon_src * src;
-    cmon_modules * mods;
-    cmon_allocator a;
+// UTEST(cmon, basic_symbols_test)
+// {
+//     cmon_symbols * s;
+//     cmon_src * src;
+//     cmon_modules * mods;
+//     cmon_allocator a;
 
-    cmon_idx global_scope, file_scope, scope;
-    cmon_idx foo, bar, car;
+//     cmon_idx global_scope, file_scope, scope;
+//     cmon_idx foo, bar, car;
 
-    a = cmon_mallocator_make();
-    src = cmon_src_create(&a);
-    mods = cmon_modules_create(&a, src);
-    s = cmon_symbols_create(&a, src, mods);
+//     a = cmon_mallocator_make();
+//     src = cmon_src_create(&a);
+//     mods = cmon_modules_create(&a, src);
+//     s = cmon_symbols_create(&a, src, mods);
 
-    global_scope = cmon_symbols_scope_begin(s, CMON_INVALID_IDX);
-    file_scope = cmon_symbols_scope_begin(s, global_scope);
-    EXPECT_EQ(global_scope, cmon_symbols_scope_end(s, file_scope));
-    EXPECT_EQ(cmon_true, cmon_symbols_scope_is_global(s, global_scope));
-    EXPECT_EQ(cmon_true, cmon_symbols_scope_is_file(s, file_scope));
-    EXPECT_EQ(cmon_false, cmon_symbols_scope_is_global(s, file_scope));
-    EXPECT_EQ(cmon_false, cmon_symbols_scope_is_file(s, global_scope));
+//     global_scope = cmon_symbols_scope_begin(s, CMON_INVALID_IDX);
+//     file_scope = cmon_symbols_scope_begin(s, global_scope);
+//     EXPECT_EQ(global_scope, cmon_symbols_scope_end(s, file_scope));
+//     EXPECT_EQ(cmon_true, cmon_symbols_scope_is_global(s, global_scope));
+//     EXPECT_EQ(cmon_true, cmon_symbols_scope_is_file(s, file_scope));
+//     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_global(s, file_scope));
+//     EXPECT_EQ(cmon_false, cmon_symbols_scope_is_file(s, global_scope));
 
-    foo = cmon_symbols_scope_add_var(
-        s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, cmon_false, 99, 33);
-    EXPECT_EQ(CMON_INVALID_IDX,
-              cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
-    EXPECT_EQ(foo, cmon_symbols_find(s, global_scope, cmon_str_view_make("foo")));
-    EXPECT_EQ(foo, cmon_symbols_find(s, file_scope, cmon_str_view_make("foo")));
+//     foo = cmon_symbols_scope_add_var(
+//         s, global_scope, cmon_str_view_make("foo"), 1, cmon_true, cmon_false, 99, 33);
+//     EXPECT_EQ(CMON_INVALID_IDX,
+//               cmon_symbols_find(s, global_scope, cmon_str_view_make("not found")));
+//     EXPECT_EQ(foo, cmon_symbols_find(s, global_scope, cmon_str_view_make("foo")));
+//     EXPECT_EQ(foo, cmon_symbols_find(s, file_scope, cmon_str_view_make("foo")));
 
-    EXPECT_EQ(cmon_symk_var, cmon_symbols_kind(s, foo));
-    EXPECT_EQ(global_scope, cmon_symbols_scope(s, foo));
-    EXPECT_EQ(0, cmon_str_view_cmp(cmon_str_view_make("foo"), cmon_symbols_name(s, foo)));
-    EXPECT_EQ(cmon_true, cmon_symbols_is_pub(s, foo));
-    EXPECT_EQ(99, cmon_symbols_src_file(s, foo));
-    EXPECT_EQ(33, cmon_symbols_ast(s, foo));
-    cmon_symbols_destroy(s);
-    cmon_modules_destroy(mods);
-    cmon_src_destroy(src);
-    cmon_allocator_dealloc(&a);
-}
+//     EXPECT_EQ(cmon_symk_var, cmon_symbols_kind(s, foo));
+//     EXPECT_EQ(global_scope, cmon_symbols_scope(s, foo));
+//     EXPECT_EQ(0, cmon_str_view_cmp(cmon_str_view_make("foo"), cmon_symbols_name(s, foo)));
+//     EXPECT_EQ(cmon_true, cmon_symbols_is_pub(s, foo));
+//     EXPECT_EQ(99, cmon_symbols_src_file(s, foo));
+//     EXPECT_EQ(33, cmon_symbols_ast(s, foo));
+//     cmon_symbols_destroy(s);
+//     cmon_modules_destroy(mods);
+//     cmon_src_destroy(src);
+//     cmon_allocator_dealloc(&a);
+// }
 
 // static cmon_bool _resolve_test_fn(const char * _name, const char * _code)
 // {
@@ -662,45 +662,45 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
 // RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
 // RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
-RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
-RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
-RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
-RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
-RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
-RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
+// RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
+// RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
+// RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
+// RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
+// RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
+// RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
 
-void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-{
-    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
-    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
-    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-}
+// void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+// {
+//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+//     cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+//     cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
+//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+// }
 
-UTEST(cmon, resolve_module_selector_test)
-{
-    EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
-}
+// UTEST(cmon, resolve_module_selector_test)
+// {
+//     EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
+// }
 
-void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-{
-    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; import bar");
-    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-    cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
-    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-}
+// void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+// {
+//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+//     cmon_src_set_code(_src, src01_idx, "module foo; import bar");
+//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+//     cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
+//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+// }
 
-UTEST(cmon, resolve_module_circ_dep)
-{
-    EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
-}
+// UTEST(cmon, resolve_module_circ_dep)
+// {
+//     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
+// }
 
 UTEST_MAIN();

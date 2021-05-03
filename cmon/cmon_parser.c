@@ -7,16 +7,23 @@
 #include <stdarg.h>
 
 // for now the parser stops on the first error. we simpy save the error and jump out of parsing.
-#define _err(_p, _tok, _msg, ...)                                                                  \
+// #define _err(_p, _tok, _msg, ...) \
+//     do \
+//     { \
+//         cmon_str_builder_clear(_p->err_str_builder); \
+//         cmon_str_builder_append_fmt(_p->err_str_builder, _msg, ##__VA_ARGS__); \
+//         _p->err = cmon_err_report_make(cmon_src_filename(_p->src, _p->src_file_idx), \
+//                                        cmon_tokens_line(_p->tokens, _tok), \
+//                                        cmon_tokens_line_offset(_p->tokens, _tok), \
+//                                        cmon_str_builder_c_str(_p->err_str_builder)); \
+//         longjmp(_p->err_jmp, 1); \
+//     } while (0)
+
+#define _err(_p, _tok, _fmt, ...)                                                                  \
     do                                                                                             \
     {                                                                                              \
-        cmon_str_builder_clear(_p->err_str_builder);                                               \
-        cmon_str_builder_append_fmt(_p->err_str_builder, _msg, ##__VA_ARGS__);                     \
-        _p->err = cmon_err_report_make(cmon_src_filename(_p->src, _p->src_file_idx),               \
-                                       cmon_tokens_line(_p->tokens, _tok),                         \
-                                       cmon_tokens_line_offset(_p->tokens, _tok),                  \
-                                       cmon_str_builder_c_str(_p->err_str_builder));               \
-        longjmp(_p->err_jmp, 1);                                                                   \
+        cmon_err_handler_err(                                                                      \
+            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _fmt, ##__VA_ARGS__);             \
     } while (0)
 
 typedef enum
@@ -80,11 +87,10 @@ typedef struct cmon_parser
     cmon_src * src;
     cmon_idx src_file_idx;
     cmon_astb * ast_builder;
-    cmon_str_builder * err_str_builder;
     cmon_str_builder * tk_str_builder;
     cmon_idx_buf_mng * idx_buf_mng;
     cmon_tokens * tokens;
-    cmon_err_report err;
+    cmon_err_handler * err_handler;
     jmp_buf err_jmp;
 } cmon_parser;
 
@@ -206,11 +212,13 @@ static cmon_idx _parse_type(cmon_parser * _p)
             ret_type = CMON_INVALID_IDX;
         }
 
-        return cmon_astb_add_type_fn(_p->ast_builder,
+        cmon_idx ret = cmon_astb_add_type_fn(_p->ast_builder,
                                      tok,
                                      ret_type,
                                      cmon_idx_buf_ptr(_p->idx_buf_mng, param_buf),
                                      cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
+        cmon_idx_buf_mng_return(_p->idx_buf_mng, param_buf);
+        return ret;
     }
     else if (_accept(_p, &tok, cmon_tokk_ident))
     {
@@ -394,8 +402,8 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
             if (cmon_tokens_is_current(_p->tokens, cmon_tokk_curl_close))
             {
                 _err(_p, tmp, "unexpected comma");
-                 cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
-                 return CMON_INVALID_IDX;
+                cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
+                return CMON_INVALID_IDX;
             }
         }
         else
@@ -491,7 +499,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         return CMON_INVALID_IDX;
     }
 
-    if(!cmon_is_valid_idx(ret))
+    if (!cmon_is_valid_idx(ret))
     {
         return CMON_INVALID_IDX;
     }
@@ -512,7 +520,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
             ret = _parse_index(_p, tok, ret);
         }
 
-        if(!cmon_is_valid_idx(ret))
+        if (!cmon_is_valid_idx(ret))
         {
             return CMON_INVALID_IDX;
         }
@@ -534,7 +542,7 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
                                      _parse_expr(_p, _tok_prec(cmon_tokens_kind(_p->tokens, tok))));
         }
 
-        if(!cmon_is_valid_idx(ret))
+        if (!cmon_is_valid_idx(ret))
         {
             return CMON_INVALID_IDX;
         }
@@ -719,7 +727,7 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
         // is this an expression statement?
         ret = _parse_expr(_p, _precedence_nil);
     }
-    if(cmon_is_valid_idx(ret))
+    if (cmon_is_valid_idx(ret))
     {
         _check_stmt_end(_p);
     }
@@ -813,7 +821,7 @@ static cmon_idx _parse_top_lvl_stmt(cmon_parser * _p)
     }
     else if (_peek_fn_decl(_p, cmon_true))
     {
-        ret= _parse_pretty_fn(_p);
+        ret = _parse_pretty_fn(_p);
     }
     else
     {
@@ -830,10 +838,9 @@ cmon_parser * cmon_parser_create(cmon_allocator * _alloc)
     cmon_parser * ret = CMON_CREATE(_alloc, cmon_parser);
     ret->alloc = _alloc;
     ret->ast_builder = NULL;
-    ret->err_str_builder = cmon_str_builder_create(_alloc, 256);
     ret->tk_str_builder = cmon_str_builder_create(_alloc, 64);
     ret->idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
-    ret->err = cmon_err_report_make_empty();
+    ret->err_handler = cmon_err_handler_create(_alloc, NULL, 1);
     return ret;
 }
 
@@ -842,16 +849,18 @@ void cmon_parser_destroy(cmon_parser * _p)
     if (!_p)
         return;
 
+    cmon_err_handler_destroy(_p->err_handler);
     cmon_idx_buf_mng_destroy(_p->idx_buf_mng);
     cmon_str_builder_destroy(_p->tk_str_builder);
-    cmon_str_builder_destroy(_p->err_str_builder);
     cmon_astb_destroy(_p->ast_builder);
     CMON_DESTROY(_p->alloc, _p);
 }
 
 cmon_err_report cmon_parser_err(cmon_parser * _p)
 {
-    return _p->err;
+    return cmon_err_handler_count(_p->err_handler)
+               ? *cmon_err_handler_err_report(_p->err_handler, 0)
+               : cmon_err_report_make_empty();
 }
 
 cmon_ast * cmon_parser_parse(cmon_parser * _p,
@@ -876,10 +885,14 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
 
     first_tok = cmon_tokens_count(_p->tokens) ? 0 : CMON_INVALID_IDX;
 
+    cmon_src_set_tokens(_src, _src_file_idx, _tokens);
+    cmon_err_handler_set_src(_p->err_handler, _src);
+
     if (setjmp(_p->err_jmp))
     {
         goto end;
     }
+    cmon_err_handler_set_jump(_p->err_handler, &_p->err_jmp);
 
     b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
 

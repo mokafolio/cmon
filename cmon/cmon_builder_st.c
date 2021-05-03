@@ -140,8 +140,8 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             }
             else
             {
-                cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
-                cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
+                // cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
+                // cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
             }
         }
     }
