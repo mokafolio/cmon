@@ -7,6 +7,7 @@
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_types.h>
 
+typedef struct cmon_resolved_ast cmon_resolved_ast;
 typedef struct cmon_resolver cmon_resolver;
 
 CMON_API cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors);
@@ -30,5 +31,10 @@ CMON_API cmon_bool cmon_resolver_has_errors(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_errors(cmon_resolver * _r,
                                         cmon_err_report ** _out_errs,
                                         size_t * _out_count);
+
+//retrieve the resolved ast
+CMON_API cmon_resolved_ast * cmon_resolver_resolved_ast(cmon_resolver * _r, cmon_bool _copy);
+CMON_API void cmon_resolved_ast_destroy(cmon_resolved_ast * _ra);
+CMON_API size_t cmon_resolved_ast_type_count(cmon_resolved_ast * _ra);
 
 #endif // CMON_CMON_RESOLVER_H

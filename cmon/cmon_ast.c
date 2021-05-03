@@ -343,6 +343,22 @@ cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
     return _add_node(_b, cmon_astk_type_ptr, _tok_idx, (cmon_idx)_is_mut, _type_idx);
 }
 
+cmon_idx cmon_astb_add_type_view(cmon_astb * _b,
+                                 cmon_idx _tok_idx,
+                                 cmon_bool _is_mut,
+                                 cmon_idx _type_idx)
+{
+    return _add_node(_b, cmon_astk_type_view, _tok_idx, (cmon_idx)_is_mut, _type_idx);
+}
+
+cmon_idx cmon_astb_add_type_array(cmon_astb * _b,
+                                  cmon_idx _tok_idx,
+                                  size_t _count,
+                                  cmon_idx _type_idx)
+{
+    return _add_node(_b, cmon_astk_type_array, _tok_idx, _count, _type_idx);
+}
+
 cmon_idx cmon_astb_add_type_fn(
     cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _ret_type, cmon_idx * _params, size_t _count)
 {

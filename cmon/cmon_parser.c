@@ -171,16 +171,21 @@ static cmon_idx _parse_type(cmon_parser * _p)
     }
     else if (_accept(_p, &tok, cmon_tokk_square_open))
     {
-        // if(_accept(_p, &tok, cmon_tokk_int))
-        // {
+        //@TODO: Once there is some more elaborate compile time expressions, we need to take that
+        //into account here
+        cmon_idx count_tok;
+        cmon_bool is_array = _accept(_p, &count_tok, cmon_tokk_int);
+        _tok_check(_p, cmon_true, cmon_tokk_square_close);
 
-        // }
-        // else
-        // {
-        //     _tok_check(_p, cmon_true, cmon_tokk_square_close);
-
-        // }
-        assert(0);
+        if(is_array)
+        {
+            return cmon_astb_add_type_array(_p->ast_builder, tok, atol(cmon_tokens_str_view(_p->tokens, count_tok).begin), _parse_type(_p));
+        }
+        else
+        {
+            cmon_bool is_mut = _accept(_p, &count_tok, cmon_tokk_mut);
+            return cmon_astb_add_type_view(_p->ast_builder, tok, is_mut, _parse_type(_p));
+        }
     }
     else if (_accept(_p, &tok, cmon_tokk_fn))
     {
@@ -201,9 +206,6 @@ static cmon_idx _parse_type(cmon_parser * _p)
                 break;
         }
 
-        printf("DA FOCKING PARAM BUF COUNT %lu\n", cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
-        // assert(0);
-        
         _tok_check(_p, cmon_true, cmon_tokk_paran_close);
 
         if (_accept(_p, &tmp, cmon_tokk_arrow))
