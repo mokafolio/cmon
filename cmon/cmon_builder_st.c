@@ -50,7 +50,7 @@ cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
     ret->types = cmon_types_create(_alloc, _mods);
     cmon_dyn_arr_init(&ret->dep_buf, _alloc, 4);
     ret->dep_graph = cmon_dep_graph_create(_alloc);
-    ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
+    ret->err_handler = cmon_err_handler_create(_alloc, _src, _max_errors);
     return ret;
 }
 
@@ -115,7 +115,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         // setup everything needed per file
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
-            printf("MODOMOMOMO %lu %lu\n\n\n", i, j);
             cmon_err_report err = cmon_err_report_make_empty();
             _per_file_data pfd;
             pfd.src_file_idx = cmon_modules_src_file(_b->mods, i, j);
@@ -153,11 +152,11 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
                 cmon_err_report err = cmon_parser_err(pfd->parser);
                 cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
             }
-            else
-            {
-                // cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
-                // cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
-            }
+            // else
+            // {
+            //     // cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
+            //     // cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
+            // }
         }
     }
 
@@ -190,41 +189,38 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         cmon_dyn_arr_clear(&_b->dep_buf);
         for (j = 0; j < cmon_modules_dep_count(_b->mods, i); ++j)
         {
-            cmon_dyn_arr_append(&_b->dep_buf, cmon_modules_dep(_b->mods, i, j));
+            cmon_dyn_arr_append(&_b->dep_buf, cmon_modules_dep_mod_idx(_b->mods, i, j));
         }
 
         cmon_dep_graph_add(_b->dep_graph, i, &_b->dep_buf[0], cmon_dyn_arr_count(&_b->dep_buf));
     }
 
     cmon_dep_graph_result result = cmon_dep_graph_resolve(_b->dep_graph);
+    //ensure that there is no circular dependency
     if (!result.array)
     {
         cmon_idx a, b;
         a = cmon_dep_graph_conflict_a(_b->dep_graph);
         b = cmon_dep_graph_conflict_b(_b->dep_graph);
 
-        // cmon_idx file_idx = cmon_types_src_file(_b->types, a);
-        // assert(cmon_is_validx_idx(file_idx));
-        // cmon_idx tok_idx = cmon_types_name_tok(_b->types, a);
-        // assert(cmon_is_validx_idx(tok_idx));
-        // cmon_idx mf_idx
+        cmon_idx dep_idx = cmon_modules_find_dep_idx(_b->mods, a, b);
+        assert(cmon_is_valid_idx(dep_idx));
 
-        if (a != b)
-        {
-            // _fr_err(fr,
-            //         cmon_types_name_tok(_r->types, a),
-            //         "circular dependency between types '%s' and '%s'",
-            //         cmon_types_name(_r->types, a),
-            //         cmon_types_name(_r->types, b));
-        }
-        else
-        {
-            // _fr_err(fr,
-            //         cmon_types_name_tok(_r->types, a),
-            //         "recursive type '%s'",
-            //         cmon_types_name(_r->types, a));
-        }
-        return cmon_true;
+        cmon_idx src_idx = cmon_modules_dep_src_file_idx(_b->mods, a, dep_idx);
+        assert(cmon_is_valid_idx(src_idx));
+
+        cmon_idx tok_idx = cmon_modules_dep_tok_idx(_b->mods, a, dep_idx);
+        assert(cmon_is_valid_idx(tok_idx));
+
+        cmon_err_handler_err(_b->err_handler,
+                             cmon_true,
+                             src_idx,
+                             tok_idx,
+                             "circular dependency between modules '%s' and '%s'",
+                             cmon_modules_path(_b->mods, a),
+                             cmon_modules_path(_b->mods, b));
+
+        cmon_err_handler_jump(_b->err_handler, cmon_true);
     }
 
     // resolve each module
@@ -274,5 +270,7 @@ cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
         *_out_count = cmon_err_handler_count(_b->err_handler);
         return cmon_true;
     }
+    *_out_errs = NULL;
+    *_out_count = 0;
     return cmon_false;
 }

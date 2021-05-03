@@ -81,7 +81,8 @@ void cmon_err_handler_set_jump(cmon_err_handler * _e, jmp_buf * _jmp)
 
 void cmon_err_handler_jump(cmon_err_handler * _e, cmon_bool _jmp_on_any_err)
 {
-    if (_e->jmp && (_jmp_on_any_err || cmon_dyn_arr_count(&_e->errs) >= _e->max_errors))
+    if (_e->jmp && ((cmon_dyn_arr_count(&_e->errs) && _jmp_on_any_err) ||
+                    cmon_dyn_arr_count(&_e->errs) >= _e->max_errors))
     {
         longjmp(*_e->jmp, 1);
     }

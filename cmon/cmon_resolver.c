@@ -527,6 +527,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
             //@TODO: Check if resolve_parsed_type returns a valid idx and early out if not?
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, _resolve_parsed_type(_fr, _scope, idx));
         }
+
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
@@ -1801,7 +1802,11 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                            alias_tok_idx =
                                                cmon_ast_import_pair_ident(ast, ipp_idx)))
                     {
-                        cmon_modules_add_dep(fr->resolver->mods, fr->resolver->mod_idx, imod_idx);
+                        cmon_modules_add_dep(fr->resolver->mods,
+                                             fr->resolver->mod_idx,
+                                             imod_idx,
+                                             fr->src_file_idx,
+                                             cmon_ast_import_pair_path_first_tok(ast, ipp_idx));
                         cmon_symbols_scope_add_import(fr->resolver->symbols,
                                                       fr->file_scope,
                                                       cmon_tokens_str_view(tokens, alias_tok_idx),

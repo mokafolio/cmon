@@ -5,9 +5,16 @@
 
 typedef struct
 {
+    cmon_idx mod_idx;
+    cmon_idx src_file_idx;
+    cmon_idx import_name_tok_idx;
+} _dep;
+
+typedef struct
+{
     size_t name_str_off, path_str_off, prefix_str_off;
     cmon_dyn_arr(cmon_idx) src_files;
-    cmon_dyn_arr(cmon_idx) deps; // module indices that this module depends on
+    cmon_dyn_arr(_dep) deps; // module indices that this module depends on
     cmon_idx global_scope;
 } _module;
 
@@ -81,9 +88,9 @@ static inline _module * _get_module(cmon_modules * _m, cmon_idx _mod_idx)
     return &_m->mods[_mod_idx];
 }
 
-void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_dep_idx)
+void cmon_modules_add_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _mod_dep_idx, cmon_idx _src_file_idx, cmon_idx _import_tok_idx)
 {
-    cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->deps, _mod_dep_idx);
+    cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->deps, ((_dep){_mod_dep_idx, _src_file_idx, _import_tok_idx}));
 }
 
 void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file)
@@ -151,12 +158,37 @@ cmon_idx cmon_modules_global_scope(cmon_modules * _m, cmon_idx _mod_idx)
     return _get_module(_m, _mod_idx)->global_scope;
 }
 
-cmon_idx cmon_modules_dep(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_idx)
+cmon_idx cmon_modules_dep_mod_idx(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_idx)
 {
-    return _get_module(_m, _mod_idx)->deps[_dep_idx];
+    return _get_module(_m, _mod_idx)->deps[_dep_idx].mod_idx;
+}
+
+cmon_idx cmon_modules_dep_tok_idx(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_idx)
+{
+    return _get_module(_m, _mod_idx)->deps[_dep_idx].import_name_tok_idx;
+}
+
+cmon_idx cmon_modules_dep_src_file_idx(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_idx)
+{
+    return _get_module(_m, _mod_idx)->deps[_dep_idx].src_file_idx;
 }
 
 size_t cmon_modules_dep_count(cmon_modules * _m, cmon_idx _mod_idx)
 {
     return cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->deps);
+}
+
+cmon_idx cmon_modules_find_dep_idx(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _dep_mod_idx)
+{
+    size_t i;
+    
+    for(i=0; i<cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->deps); ++i)
+    {
+        if(cmon_modules_dep_mod_idx(_m, _mod_idx, i) == _dep_mod_idx)
+        {
+            return i;
+        }
+    }
+
+    return CMON_INVALID_IDX;
 }

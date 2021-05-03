@@ -23,7 +23,7 @@
     do                                                                                             \
     {                                                                                              \
         cmon_err_handler_err(                                                                      \
-            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _fmt, ##__VA_ARGS__);             \
+            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _fmt, ##__VA_ARGS__);              \
     } while (0)
 
 typedef enum
@@ -201,6 +201,9 @@ static cmon_idx _parse_type(cmon_parser * _p)
                 break;
         }
 
+        printf("DA FOCKING PARAM BUF COUNT %lu\n", cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
+        // assert(0);
+        
         _tok_check(_p, cmon_true, cmon_tokk_paran_close);
 
         if (_accept(_p, &tmp, cmon_tokk_arrow))
@@ -213,10 +216,10 @@ static cmon_idx _parse_type(cmon_parser * _p)
         }
 
         cmon_idx ret = cmon_astb_add_type_fn(_p->ast_builder,
-                                     tok,
-                                     ret_type,
-                                     cmon_idx_buf_ptr(_p->idx_buf_mng, param_buf),
-                                     cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
+                                             tok,
+                                             ret_type,
+                                             cmon_idx_buf_ptr(_p->idx_buf_mng, param_buf),
+                                             cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
         cmon_idx_buf_mng_return(_p->idx_buf_mng, param_buf);
         return ret;
     }

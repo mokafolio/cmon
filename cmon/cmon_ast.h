@@ -194,6 +194,7 @@ CMON_API cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_id
 CMON_API cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_idx cmon_ast_import_pair_path_begin(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _importp_idx);
+CMON_API cmon_idx cmon_ast_import_pair_path_first_tok(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_idx cmon_ast_import_pair_ident(cmon_ast * _ast, cmon_idx _importp_idx);
