@@ -193,7 +193,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         cmon_idx a, b;
         a = cmon_dep_graph_conflict_a(_b->dep_graph);
         b = cmon_dep_graph_conflict_b(_b->dep_graph);
-        assert(0);
+
+        // cmon_idx file_idx = cmon_types_src_file(_b->types, a);
+        // assert(cmon_is_validx_idx(file_idx));
+        // cmon_idx tok_idx = cmon_types_name_tok(_b->types, a);
+        // assert(cmon_is_validx_idx(tok_idx));
+        // cmon_idx mf_idx
+
         if (a != b)
         {
             // _fr_err(fr,

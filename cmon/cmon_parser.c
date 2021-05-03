@@ -1,5 +1,5 @@
 #include <cmon/cmon_dyn_arr.h>
-#include <cmon/cmon_err_report.h>
+#include <cmon/cmon_err_handler.h>
 #include <cmon/cmon_idx_buf_mng.h>
 #include <cmon/cmon_parser.h>
 #include <cmon/cmon_str_builder.h>
@@ -186,7 +186,10 @@ static cmon_idx _parse_type(cmon_parser * _p)
             if (_accept(_p, &tmp, cmon_tokk_comma))
             {
                 if (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close))
+                {
                     _err(_p, tmp, "unexpected comma");
+                    return CMON_INVALID_IDX;
+                }
             }
             else
                 break;
@@ -241,6 +244,7 @@ static inline void _parse_comma_separated_exprs(cmon_parser * _p,
             if (cmon_tokens_is_current(_p->tokens, _end_tkind))
             {
                 _err(_p, tmp, "unexpected comma");
+                return;
             }
         }
         else
@@ -307,7 +311,11 @@ static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
         if (_accept(_p, &tmp, cmon_tokk_comma))
         {
             if (cmon_tokens_is_current(_p->tokens, cmon_tokk_paran_close))
+            {
                 _err(_p, tmp, "unexpected comma");
+                cmon_idx_buf_mng_return(_p->idx_buf_mng, param_buf);
+                return CMON_INVALID_IDX;
+            }
         }
         else
             break;
@@ -386,6 +394,8 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
             if (cmon_tokens_is_current(_p->tokens, cmon_tokk_curl_close))
             {
                 _err(_p, tmp, "unexpected comma");
+                 cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
+                 return CMON_INVALID_IDX;
             }
         }
         else
@@ -481,6 +491,11 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         return CMON_INVALID_IDX;
     }
 
+    if(!cmon_is_valid_idx(ret))
+    {
+        return CMON_INVALID_IDX;
+    }
+
     while (cmon_tokens_is_current(
         _p->tokens, cmon_tokk_paran_open, cmon_tokk_dot, cmon_tokk_square_open))
     {
@@ -495,6 +510,11 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
         else if (_accept(_p, &tok, cmon_tokk_square_open))
         {
             ret = _parse_index(_p, tok, ret);
+        }
+
+        if(!cmon_is_valid_idx(ret))
+        {
+            return CMON_INVALID_IDX;
         }
     }
 
@@ -513,9 +533,10 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
                                      ret,
                                      _parse_expr(_p, _tok_prec(cmon_tokens_kind(_p->tokens, tok))));
         }
-        else
+
+        if(!cmon_is_valid_idx(ret))
         {
-            assert(0);
+            return CMON_INVALID_IDX;
         }
     }
 
@@ -535,6 +556,10 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
         {
             printf("ADDING STMT b\n\n");
             cmon_idx_buf_append(_p->idx_buf_mng, b, stmt);
+        }
+        else
+        {
+            return CMON_INVALID_IDX;
         }
     }
     printf("ADDING STMT c\n\n");
@@ -694,7 +719,10 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
         // is this an expression statement?
         ret = _parse_expr(_p, _precedence_nil);
     }
-    _check_stmt_end(_p);
+    if(cmon_is_valid_idx(ret))
+    {
+        _check_stmt_end(_p);
+    }
 
     return ret;
 }

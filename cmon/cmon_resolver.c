@@ -1,5 +1,6 @@
 #include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_err_handler.h>
 #include <cmon/cmon_idx_buf_mng.h>
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_str_builder.h>
@@ -23,13 +24,12 @@ typedef struct
     cmon_resolver * resolver;
     cmon_idx file_scope;
     cmon_idx src_file_idx;
-    cmon_str_builder * str_builder;
     cmon_idx_buf_mng * idx_buf_mng;
     cmon_dyn_arr(_ast_type_pair) type_decls; // types declared in the file
-    cmon_dyn_arr(cmon_err_report) errs;
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_dyn_arr(cmon_idx) global_alias_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
+    cmon_err_handler * err_handler;
     jmp_buf err_jmp;
 } _file_resolver;
 
@@ -47,6 +47,7 @@ typedef struct cmon_resolver
     cmon_dyn_arr(cmon_idx) dep_buffer;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
+    cmon_err_handler * err_handler;
     // flag that is set to true during global variable type resolve pass
     cmon_bool global_type_pass;
     cmon_dyn_arr(cmon_idx) globals_pass_stack;
@@ -82,18 +83,27 @@ static inline void _emit_err(cmon_str_builder * _str_builder,
     }
 }
 
+// #define _fr_err(_fr, _tok, _fmt, ...)                                                              \
+//     do                                                                                             \
+//     {                                                                                              \
+//         _emit_err(_fr->str_builder,                                                                \
+//                   &_fr->errs,                                                                      \
+//                   _fr->resolver->src,                                                              \
+//                   _fr->src_file_idx,                                                               \
+//                   _tok,                                                                            \
+//                   _fr->resolver->max_errors,                                                       \
+//                   &_fr->err_jmp,                                                                   \
+//                   _fmt,                                                                            \
+//                   ##__VA_ARGS__);                                                                  \
+//     } while (0)
+
+// #define _err(_fr, _tok, _fmt, ...) do { cmon_err_handler_err(_fr->err_handler, _tok, _fmt,
+// ##__VA_ARGS__); } while(0)
+
 #define _fr_err(_fr, _tok, _fmt, ...)                                                              \
     do                                                                                             \
     {                                                                                              \
-        _emit_err(_fr->str_builder,                                                                \
-                  &_fr->errs,                                                                      \
-                  _fr->resolver->src,                                                              \
-                  _fr->src_file_idx,                                                               \
-                  _tok,                                                                            \
-                  _fr->resolver->max_errors,                                                       \
-                  &_fr->err_jmp,                                                                   \
-                  _fmt,                                                                            \
-                  ##__VA_ARGS__);                                                                  \
+        cmon_err_handler_err(_fr->err_handler, _fr->src_file_idx, _tok, _fmt, ##__VA_ARGS__);      \
     } while (0)
 
 static inline void _unexpected_ast_panic()
@@ -1486,7 +1496,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
         CMON_UNUSED(cmon_dyn_arr_pop(&_fr->resolver->globals_pass_stack));
     }
 
-    if(!cmon_is_valid_idx(expr_type_idx))
+    if (!cmon_is_valid_idx(expr_type_idx))
         return;
 
     // if its not a global being resolved, create the symbol.
@@ -1595,6 +1605,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
+    ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
     return ret;
 }
@@ -1611,12 +1622,12 @@ void cmon_resolver_destroy(cmon_resolver * _r)
             (cmon_mem_blk){ fr->resolved_types, sizeof(cmon_idx) * cmon_ast_count(_fr_ast(fr)) });
         cmon_dyn_arr_dealloc(&fr->global_alias_decls);
         cmon_dyn_arr_dealloc(&fr->global_var_decls);
-        cmon_dyn_arr_dealloc(&fr->errs);
         cmon_dyn_arr_dealloc(&fr->type_decls);
         cmon_idx_buf_mng_destroy(fr->idx_buf_mng);
-        cmon_str_builder_destroy(fr->str_builder);
+        cmon_err_handler_destroy(fr->err_handler);
     }
     cmon_dyn_arr_dealloc(&_r->globals_pass_stack);
+    cmon_err_handler_destroy(_r->err_handler);
     cmon_dyn_arr_dealloc(&_r->errs);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
@@ -1634,6 +1645,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     size_t i;
     assert(!cmon_is_valid_idx(_r->global_scope));
     _r->src = _src;
+    cmon_err_handler_set_src(_r->err_handler, _src);
     _r->types = _types;
     _r->symbols = _symbols;
     _r->mods = _mods;
@@ -1663,18 +1675,17 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, i);
         ast = cmon_src_ast(_r->src, src_file_idx);
 
-        fr.str_builder = cmon_str_builder_create(_r->alloc, 1024);
         fr.idx_buf_mng = cmon_idx_buf_mng_create(_r->alloc);
         fr.src_file_idx = src_file_idx;
         fr.resolver = _r;
         fr.file_scope = cmon_symbols_scope_begin(_r->symbols, _r->global_scope);
         cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
-        cmon_dyn_arr_init(&fr.errs, _r->alloc, _r->max_errors);
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.global_alias_decls, _r->alloc, 16);
         fr.resolved_types =
             cmon_allocator_alloc(_r->alloc, sizeof(cmon_idx) * cmon_ast_count(ast)).ptr;
         memset(fr.resolved_types, (int)CMON_INVALID_IDX, sizeof(cmon_idx) * cmon_ast_count(ast));
+        fr.err_handler = cmon_err_handler_create(_r->alloc, _r->src, _r->max_errors);
         cmon_dyn_arr_append(&_r->file_resolvers, fr);
     }
 }
@@ -1703,6 +1714,16 @@ static inline cmon_idx _add_global_var_name(cmon_resolver * _r,
     return CMON_INVALID_IDX;
 }
 
+#define _set_err_jmp_goto(_fr, _label)                                                             \
+    do                                                                                             \
+    {                                                                                              \
+        if (setjmp(_fr->err_jmp))                                                                  \
+        {                                                                                          \
+            goto _label;                                                                           \
+        }                                                                                          \
+        cmon_err_handler_set_jump(_fr->err_handler, &_fr->err_jmp);                                \
+    } while (0)
+
 cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     cmon_src * src = _r->src;
@@ -1715,10 +1736,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
     assert(ast);
     assert(tokens);
 
-    if (setjmp(fr->err_jmp))
-    {
-        goto err_end;
-    }
+    _set_err_jmp_goto(fr, err_end);
 
     cmon_idx root_block = cmon_ast_root_block(ast);
 
@@ -1885,10 +1903,7 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
 
-    if (setjmp(fr->err_jmp))
-    {
-        goto err_end;
-    }
+    _set_err_jmp_goto(fr, err_end);
 
     cmon_idx name_tok_buf = cmon_idx_buf_mng_get(fr->idx_buf_mng);
     size_t i;
@@ -1943,7 +1958,7 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 
 err_end:
     cmon_idx_buf_mng_return(fr->idx_buf_mng, name_tok_buf);
-    return cmon_dyn_arr_count(&fr->errs) > 0;
+    return cmon_err_handler_count(fr->err_handler) > 0;
 }
 
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
@@ -1986,10 +2001,7 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         assert(cmon_is_valid_idx(mod_src_idx));
         _file_resolver * fr = &_r->file_resolvers[mod_src_idx];
 
-        if (setjmp(fr->err_jmp))
-        {
-            goto err_end;
-        }
+        _set_err_jmp_goto(fr, err_end);
 
         if (a != b)
         {
@@ -2023,10 +2035,7 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
     {
         _file_resolver * fr = &_r->file_resolvers[i];
 
-        if (setjmp(fr->err_jmp))
-        {
-            goto err_end;
-        }
+        _set_err_jmp_goto(fr, err_end);
 
         for (j = 0; j < cmon_dyn_arr_count(&fr->global_alias_decls); ++j)
         {
@@ -2035,7 +2044,8 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
         }
     }
 
-    //@NOTE: resolve var_decl will no what to do during this pass based on global_type_pass being set.
+    //@NOTE: resolve var_decl will no what to do during this pass based on global_type_pass being
+    // set.
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr;
@@ -2043,10 +2053,7 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
         fr = &_r->file_resolvers[i];
         ast = _fr_ast(fr);
 
-        if (setjmp(fr->err_jmp))
-        {
-            goto err_end;
-        }
+        _set_err_jmp_goto(fr, err_end);
 
         for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
         {
@@ -2063,14 +2070,11 @@ err_end:
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
-
-    if (setjmp(fr->err_jmp))
-    {
-        goto err_end;
-    }
+    _set_err_jmp_goto(fr, err_end);
 
     size_t i;
-    // @NOTE: only thing left to do is to iterate over all global variables again and resolve their expressions.
+    // @NOTE: only thing left to do is to iterate over all global variables again and resolve their
+    // expressions.
     for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
     {
         cmon_idx var_ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[i]);
@@ -2079,7 +2083,7 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
     }
 
 err_end:
-    return cmon_dyn_arr_count(&fr->errs) > 0;
+    return cmon_err_handler_count(fr->err_handler) > 0;
 }
 
 cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
@@ -2088,7 +2092,7 @@ cmon_bool cmon_resolver_has_errors(cmon_resolver * _r)
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr = &_r->file_resolvers[i];
-        if (cmon_dyn_arr_count(&fr->errs))
+        if (cmon_err_handler_count(fr->err_handler))
             return cmon_true;
     }
     return cmon_false;
@@ -2103,48 +2107,16 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r,
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr = &_r->file_resolvers[i];
-        for (j = 0; j < cmon_dyn_arr_count(&fr->errs); ++j)
+        for (j = 0; j < cmon_err_handler_count(fr->err_handler); ++j)
         {
-            cmon_dyn_arr_append(&_r->errs, fr->errs[j]);
+            cmon_err_handler_add_err(_r->err_handler,
+                                     cmon_err_handler_err_report(fr->err_handler, j));
         }
-        cmon_dyn_arr_clear(&fr->errs);
+        cmon_err_handler_clear(fr->err_handler);
     }
 
-    *_out_errs = _r->errs;
-    *_out_count = cmon_dyn_arr_count(&_r->errs);
+    *_out_errs = cmon_err_handler_err_report(_r->err_handler, 0);
+    *_out_count = cmon_err_handler_count(_r->err_handler);
 
-    return cmon_dyn_arr_count(&_r->errs) > 0;
+    return cmon_err_handler_count(_r->err_handler) > 0;
 }
-
-// cmon_bool cmon_resolver_resolve(cmon_resolver * _r)
-// {
-//     size_t i;
-//     for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
-//     {
-//         cmon_resolver_top_lvl_pass(_r, i);
-//     }
-
-//     if (cmon_resolver_has_errors(_r))
-//         return cmon_true;
-
-//     if (cmon_resolver_globals_pass(_r))
-//         return cmon_true;
-
-//     for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
-//     {
-//         cmon_resolver_usertypes_pass(_r, i);
-//     }
-
-//     if (cmon_resolver_has_errors(_r))
-//         return cmon_true;
-
-//     if (cmon_resolver_circ_pass(_r))
-//         return cmon_true;
-
-//     for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
-//     {
-//         cmon_resolver_main_pass(_r, i);
-//     }
-
-//     return cmon_resolver_has_errors(_r);
-// }
