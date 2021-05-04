@@ -73,6 +73,11 @@ UTEST(cmon, hashmap_tests)
     EXPECT_EQ(2, cmon_hashmap_count(&map2));
     EXPECT_EQ(-3, *cmon_hashmap_get(&map2, "bar"));
 
+    cmon_hashmap_set(&map2, "Array3_s32", 192);
+    int * res = cmon_hashmap_get(&map2, "Array3_s32");
+    EXPECT_NE(NULL, res);
+    EXPECT_EQ(192, *res);
+
     const char ** key_ref;
     cmon_hashmap_iter_t it = cmon_hashmap_iter(&map2);
     while ((key_ref = cmon_hashmap_next(&map2, &it)))
@@ -84,25 +89,25 @@ UTEST(cmon, hashmap_tests)
 
     EXPECT_EQ(cmon_true, cmon_hashmap_remove(&map2, "foo"));
     EXPECT_EQ(cmon_false, cmon_hashmap_remove(&map2, "not there"));
-    EXPECT_EQ(1, cmon_hashmap_count(&map2));
+    EXPECT_EQ(2, cmon_hashmap_count(&map2));
     EXPECT_EQ(NULL, cmon_hashmap_get(&map2, "foo"));
     EXPECT_NE(NULL, cmon_hashmap_get(&map2, "bar"));
 
     cmon_hashmap_dealloc(&map2);
 
-    int b, c;
-    cmon_hashmap(int *, const char *) map3;
-    cmon_hashmap_ptr_key_init(&map3, &a);
-    cmon_hashmap_set(&map3, &b, "foink");
-    cmon_hashmap_set(&map3, &c, "boink");
-    EXPECT_EQ(2, cmon_hashmap_count(&map3));
-    EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
-    EXPECT_STREQ("foink", *cmon_hashmap_get(&map3, &b));
-    EXPECT_STREQ("boink", *cmon_hashmap_get(&map3, &c));
-    EXPECT_EQ(cmon_true, cmon_hashmap_remove(&map3, &c));
-    EXPECT_EQ(NULL, cmon_hashmap_get(&map3, &c));
-    EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
-    cmon_hashmap_dealloc(&map3);
+    // int b, c;
+    // cmon_hashmap(int *, const char *) map3;
+    // cmon_hashmap_ptr_key_init(&map3, &a);
+    // cmon_hashmap_set(&map3, &b, "foink");
+    // cmon_hashmap_set(&map3, &c, "boink");
+    // EXPECT_EQ(2, cmon_hashmap_count(&map3));
+    // EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
+    // EXPECT_STREQ("foink", *cmon_hashmap_get(&map3, &b));
+    // EXPECT_STREQ("boink", *cmon_hashmap_get(&map3, &c));
+    // EXPECT_EQ(cmon_true, cmon_hashmap_remove(&map3, &c));
+    // EXPECT_EQ(NULL, cmon_hashmap_get(&map3, &c));
+    // EXPECT_NE(NULL, cmon_hashmap_get(&map3, &b));
+    // cmon_hashmap_dealloc(&map3);
 
     cmon_allocator_dealloc(&a);
 }
@@ -636,78 +641,78 @@ RESOLVE_TEST(resolve_struct05, "struct Boink{ bar : f32; bar : f64 }", cmon_fals
 RESOLVE_TEST(resolve_struct06, "struct Boink{ bar : Boink }", cmon_false);
 RESOLVE_TEST(resolve_struct07, "struct A{ b : B }; struct B{ a : A }", cmon_false);
 RESOLVE_TEST(resolve_arr_init01, "foo :[3]s32 = [1, 2, 3]", cmon_true);
+RESOLVE_TEST(resolve_arr_init02, "foo :[2]f32 = [1.0, 2.0]", cmon_true);
+RESOLVE_TEST(resolve_arr_init03, "foo :[3]f64 = [1.0, -3.0]", cmon_false);
+RESOLVE_TEST(resolve_arr_init04, "foo :[2]f64 = [-99.3, 0.3, 20.0]", cmon_false);
+RESOLVE_TEST(resolve_struct_init01,
+             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }",
+             cmon_true);
+RESOLVE_TEST(resolve_struct_init02,
+             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }",
+             cmon_false);
+RESOLVE_TEST(resolve_struct_init03,
+             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }",
+             cmon_false);
+RESOLVE_TEST(resolve_struct_init04,
+             "struct Boink{ x : f32; y : f32 }; b := Boink{x: 1.0, y: 2.0}",
+             cmon_true);
+RESOLVE_TEST(resolve_struct_init05,
+             "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{1.0, y: 2.0}",
+             cmon_false);
+RESOLVE_TEST(resolve_struct_init06,
+             "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{x: 1.0, z: 2.0}",
+             cmon_false);
+RESOLVE_TEST(resolve_alias01,
+             "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{} }",
+             cmon_true);
+RESOLVE_TEST(resolve_alias02,
+             "alias Boop = Bar; struct Bar{}; mut man := Boop{}; mut bar_man : Bar = man",
+             cmon_true);
+RESOLVE_TEST(resolve_alias03, "alias Boop = f64", cmon_true);
+RESOLVE_TEST(resolve_alias04, "alias Boop = NoExist", cmon_false);
+RESOLVE_TEST(resolve_alias05, "alias Boop = no.Exist", cmon_false);
+RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
+RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
+RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
+RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
+RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
+RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
+RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
+RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
+RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
 
-// RESOLVE_TEST(resolve_struct_init01,
-//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }",
-//              cmon_true);
-// // RESOLVE_TEST(resolve_struct_init02, "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1,
-// // 2} }", cmon_true);
-// RESOLVE_TEST(resolve_struct_init03,
-//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }",
-//              cmon_false);
-// RESOLVE_TEST(resolve_struct_init04,
-//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }",
-//              cmon_false);
-// RESOLVE_TEST(resolve_struct_init05,
-//              "struct Boink{ x : f32; y : f32 }; b := Boink{x: 1.0, y: 2.0}",
-//              cmon_true);
-// RESOLVE_TEST(resolve_struct_init06,
-//              "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{1.0, y: 2.0}",
-//              cmon_false);
-// RESOLVE_TEST(resolve_struct_init07,
-//              "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{x: 1.0, z: 2.0}",
-//              cmon_false);
-// RESOLVE_TEST(resolve_alias01,
-//              "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{} }",
-//              cmon_true);
-// RESOLVE_TEST(resolve_alias02,
-//              "alias Boop = Bar; struct Bar{}; mut man := Boop{}; mut bar_man : Bar = man",
-//              cmon_true);
-// RESOLVE_TEST(resolve_alias03, "alias Boop = f64", cmon_true);
-// RESOLVE_TEST(resolve_alias04, "alias Boop = NoExist", cmon_false);
-// RESOLVE_TEST(resolve_alias05, "alias Boop = no.Exist", cmon_false);
-// RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
-// RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
-// RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
-// RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
-// RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
-// RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
-// RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
-// RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
-// RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
+void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+}
 
-// void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-//     cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-// }
+UTEST(cmon, resolve_module_selector_test)
+{
+    EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
+}
 
-// UTEST(cmon, resolve_module_selector_test)
-// {
-//     EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
-// }
+void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; import bar");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+}
 
-// void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; import bar");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-//     cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-// }
-
-// UTEST(cmon, resolve_module_circ_dep)
-// {
-//     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
-// }
+UTEST(cmon, resolve_module_circ_dep)
+{
+    EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
+}
 
 UTEST_MAIN();

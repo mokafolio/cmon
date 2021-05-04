@@ -219,6 +219,10 @@ CMON_API cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx
 CMON_API cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_view_type(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_bool cmon_ast_type_view_is_mut(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API cmon_idx cmon_ast_type_array_type(cmon_ast * _ast, cmon_idx _tidx);
+CMON_API size_t cmon_ast_type_array_count(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx);

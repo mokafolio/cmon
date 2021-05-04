@@ -7,7 +7,7 @@
 
 typedef struct
 {
-    size_t name_str_off;
+    const char * name_str;
     cmon_idx type;
     cmon_idx def_expr;
 } _struct_field;
@@ -47,29 +47,13 @@ typedef struct
     // if it's a none builtin type, src_file_idx and name_tok will be set.
     cmon_idx src_file_idx;
     cmon_idx name_tok;
-    size_t name_str_off;
-    size_t full_name_str_off;
-    size_t unique_name_str_off;
+    const char * name_str;
+    const char * full_name_str;
+    const char * unique_name_str;
     // data idx for additional type information that gets interpreted based on kind.
     // i.e. for structs this is the index into the structs array.
     cmon_idx data_idx;
 } _type;
-
-// cmon_idx builtin_s8;
-// cmon_idx builtin_s16;
-// cmon_idx builtin_s32;
-// cmon_idx builtin_s64;
-// cmon_idx builtin_u8;
-// cmon_idx builtin_u16;
-// cmon_idx builtin_u32;
-// cmon_idx builtin_u64;
-// cmon_idx builtin_f32;
-// cmon_idx builtin_f64;
-// cmon_idx builtin_void;
-// cmon_idx builtin_bool;
-// cmon_idx builtin_u8_view;
-// cmon_idx builtin_modident;
-// cmon_idx builtin_typeident;
 
 typedef struct cmon_types
 {
@@ -83,7 +67,7 @@ typedef struct cmon_types
     cmon_dyn_arr(_type) types;
     cmon_hashmap(const char *, cmon_idx) name_map;
     cmon_str_builder * str_builder;
-    cmon_str_buf * str_buf;
+    cmon_dyn_arr(cmon_short_str) name_buf;
 
     // builtin type indices
     cmon_dyn_arr(cmon_idx) builtins;
@@ -104,13 +88,18 @@ typedef struct cmon_types
     cmon_idx builtin_typeident;
 } cmon_types;
 
-#define _tmp_str(_t, _fmt, ...)                                                                    \
-    (cmon_str_builder_clear(_t->str_builder),                                                      \
-     cmon_str_builder_append_fmt(_t->str_builder, _fmt, ##__VA_ARGS__),                            \
-     cmon_str_builder_c_str(_t->str_builder))
+// #define _tmp_str(_t, _fmt, ...)                                                                    \
+//     (cmon_str_builder_clear(_t->str_builder),                                                      \
+//      cmon_str_builder_append_fmt(_t->str_builder, _fmt, ##__VA_ARGS__),                            \
+//      cmon_str_builder_c_str(_t->str_builder))
 
-#define _intern_str(_t, _fmt, ...)                                                                 \
-    cmon_str_buf_append(_t->str_buf, _tmp_str(_t, _fmt, ##__VA_ARGS__))
+// #define _intern_str(_t, _fmt, ...)                                                                 \
+//     cmon_str_buf_append(_t->str_buf, _tmp_str(_t, _fmt, ##__VA_ARGS__))
+
+// #define _intern_str(_t, _fmt, ...)                                                                 \
+//     (cmon_dyn_arr_append(&(_t)->name_buf,                                                          \
+//                          (cmon_short_str_make(_t->alloc, _tmp_str(_t, _fmt, ##__VA_ARGS__)))),     \
+//      cmon_short_str_c_str(&cmon_dyn_arr_last(&_t->name_buf)))
 
 #define _get_type(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->types)), _t->types[_idx])
 
@@ -124,11 +113,31 @@ typedef struct cmon_types
         }                                                                                          \
     } while (0)
 
+static inline const char * _intern_c_str(cmon_types * _t, const char * _c_str)
+{
+    printf("_intern_c_str %s\n\n", _c_str);
+    cmon_dyn_arr_append(&_t->name_buf, cmon_short_str_make(_t->alloc, _c_str));
+    cmon_short_str str = cmon_dyn_arr_last(&_t->name_buf);
+    printf("_intern_c_str 02 %s\n\n", cmon_short_str_c_str(&str));
+    return cmon_short_str_c_str(&cmon_dyn_arr_last(&_t->name_buf));
+}
+
+static inline const char * _intern_str(cmon_types * _t, const char * _fmt, ...)
+{
+    va_list args;
+    va_start(args, _fmt);
+    cmon_dyn_arr_append(
+        &_t->name_buf,
+        cmon_short_str_make(_t->alloc, cmon_str_builder_tmp_str_v(_t->str_builder, _fmt, args)));
+    va_end(args);
+    return cmon_short_str_c_str(&cmon_dyn_arr_last(&_t->name_buf));
+}
+
 static inline cmon_idx _add_type(cmon_types * _t,
                                  cmon_typek _kind,
-                                 size_t _name_off,
-                                 size_t _unique_off,
-                                 size_t _full_off,
+                                 const char * _name,
+                                 const char * _unique,
+                                 const char * _full,
                                  cmon_idx _src_file_idx,
                                  cmon_idx _name_tok,
                                  cmon_idx _extra_data)
@@ -137,14 +146,15 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.kind = _kind;
     t.src_file_idx = _src_file_idx;
     t.name_tok = _name_tok;
-    t.name_str_off = _name_off;
-    t.unique_name_str_off = _unique_off;
-    t.full_name_str_off = _full_off;
+    t.name_str = _name;
+    t.unique_name_str = _unique;
+    t.full_name_str = _full;
     t.data_idx = _extra_data;
+
+    printf("ADDING FOCKING TYPE %s\n", _unique);
+
     cmon_dyn_arr_append(&_t->types, t);
-    cmon_hashmap_set(&_t->name_map,
-                     cmon_str_buf_get(_t->str_buf, _unique_off),
-                     cmon_dyn_arr_count(&_t->types) - 1);
+    cmon_hashmap_set(&_t->name_map, _unique, cmon_dyn_arr_count(&_t->types) - 1);
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
@@ -153,15 +163,9 @@ static inline cmon_idx _add_builtin(cmon_types * _t,
                                     const char * _name,
                                     cmon_bool _hidden)
 {
-    size_t name_off = _intern_str(_t, _name);
-    cmon_idx ret = _add_type(_t,
-                             _kind,
-                             name_off,
-                             name_off,
-                             name_off,
-                             CMON_INVALID_IDX,
-                             CMON_INVALID_IDX,
-                             CMON_INVALID_IDX);
+    const char * name = _intern_c_str(_t, _name);
+    cmon_idx ret = _add_type(
+        _t, _kind, name, name, name, CMON_INVALID_IDX, CMON_INVALID_IDX, CMON_INVALID_IDX);
     if (!_hidden)
     {
         cmon_dyn_arr_append(&_t->builtins, ret);
@@ -182,7 +186,7 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     cmon_dyn_arr_init(&ret->types, _alloc, 64);
     cmon_hashmap_str_key_init(&ret->name_map, _alloc);
     ret->str_builder = cmon_str_builder_create(_alloc, 256);
-    ret->str_buf = cmon_str_buf_create(_alloc, 256);
+    cmon_dyn_arr_init(&ret->name_buf, _alloc, 64);
     cmon_dyn_arr_init(&ret->builtins, _alloc, 16);
 
     ret->builtin_s8 = _add_builtin(ret, cmon_typek_s8, "s8", cmon_false);
@@ -210,8 +214,12 @@ void cmon_types_destroy(cmon_types * _t)
         return;
 
     size_t i;
-    cmon_str_buf_destroy(_t->str_buf);
     cmon_str_builder_destroy(_t->str_builder);
+    for (i = 0; i < cmon_dyn_arr_count(&_t->name_buf); ++i)
+    {
+        cmon_short_str_dealloc(&_t->name_buf[i]);
+    }
+    cmon_dyn_arr_dealloc(&_t->name_buf);
     cmon_dyn_arr_dealloc(&_t->builtins);
     cmon_hashmap_dealloc(&_t->name_map);
     cmon_dyn_arr_dealloc(&_t->types);
@@ -268,7 +276,8 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
 {
     _ptr ptr;
     const char * unique_name;
-    unique_name = _tmp_str(_t, "Ptr%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
+    unique_name = cmon_str_builder_tmp_str(
+        _t->str_builder, "Ptr%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
     _return_if_found(_t, unique_name);
 
     ptr.is_mut = _is_mut;
@@ -279,7 +288,7 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
         _t,
         cmon_typek_ptr,
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
-        cmon_str_buf_append(_t->str_buf, unique_name),
+        _intern_c_str(_t, unique_name),
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
@@ -290,18 +299,20 @@ cmon_idx cmon_types_find_view(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut
 {
     _view view;
     const char * unique_name;
-    unique_name =
-        _tmp_str(_t, "View%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
+    unique_name = cmon_str_builder_tmp_str(
+        _t->str_builder, "View%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
     _return_if_found(_t, unique_name);
 
     view.is_mut = _is_mut;
     view.type = _type;
     cmon_dyn_arr_append(&_t->views, view);
+
+    unique_name = _intern_c_str(_t, unique_name);
     return _add_type(
         _t,
         cmon_typek_view,
         _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
-        cmon_str_buf_append(_t->str_buf, unique_name),
+        unique_name,
         _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
@@ -312,17 +323,20 @@ cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size)
 {
     _array arr;
     const char * unique_name;
-    unique_name = _tmp_str(_t, "Array%lu_%s", _size, cmon_types_unique_name(_t, _type));
+    unique_name = cmon_str_builder_tmp_str(
+        _t->str_builder, "Array%lu_%s", _size, cmon_types_unique_name(_t, _type));
+    printf("ARRAY BRUH %s\n", unique_name);
     _return_if_found(_t, unique_name);
-
+    printf("ARRAY BRUH020202020 %s\n", unique_name);
     arr.count = _size;
     arr.type = _type;
     cmon_dyn_arr_append(&_t->arrays, arr);
-
+    printf("HM COUNT %lu\n\n", cmon_hashmap_count(&_t->name_map));
+    unique_name = _intern_c_str(_t, unique_name);
     return _add_type(_t,
                      cmon_typek_array,
                      _intern_str(_t, "[%lu]%s", _size, cmon_types_name(_t, _type)),
-                     cmon_str_buf_append(_t->str_buf, unique_name),
+                     unique_name,
                      _intern_str(_t, "[%lu]%s", _size, cmon_types_full_name(_t, _type)),
                      CMON_INVALID_IDX,
                      CMON_INVALID_IDX,
@@ -373,14 +387,13 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
 
     cmon_dyn_arr_append(&_t->fns, sig);
 
+    unique_name = _intern_c_str(_t, unique_name);
     return _add_type(
         _t,
         cmon_typek_fn,
-        cmon_str_buf_append(_t->str_buf,
-                            _fn_name(_t, _ret_type, _params, _param_count, cmon_types_name)),
-        cmon_str_buf_append(_t->str_buf, unique_name),
-        cmon_str_buf_append(_t->str_buf,
-                            _fn_name(_t, _ret_type, _params, _param_count, cmon_types_full_name)),
+        _intern_str(_t, _fn_name(_t, _ret_type, _params, _param_count, cmon_types_name)),
+        unique_name,
+        _intern_str(_t, _fn_name(_t, _ret_type, _params, _param_count, cmon_types_full_name)),
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         cmon_dyn_arr_count(&_t->fns) - 1);
@@ -389,29 +402,28 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
 cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name)
 {
     cmon_idx * idx_ptr;
+    printf("trying to find %s\n", _unique_name);
     if ((idx_ptr = cmon_hashmap_get(&_t->name_map, _unique_name)))
+    {
+        printf("found iiiiit\n");
         return *idx_ptr;
+    }
     return CMON_INVALID_IDX;
-}
-
-inline const char * _get_str(cmon_types * _t, cmon_idx _str_idx)
-{
-    return cmon_str_buf_get(_t->str_buf, _str_idx);
 }
 
 const char * cmon_types_unique_name(cmon_types * _t, cmon_idx _type_idx)
 {
-    return cmon_str_buf_get(_t->str_buf, _get_type(_t, _type_idx).unique_name_str_off);
+    return _get_type(_t, _type_idx).unique_name_str;
 }
 
 const char * cmon_types_name(cmon_types * _t, cmon_idx _type_idx)
 {
-    return cmon_str_buf_get(_t->str_buf, _get_type(_t, _type_idx).name_str_off);
+    return _get_type(_t, _type_idx).name_str;
 }
 
 const char * cmon_types_full_name(cmon_types * _t, cmon_idx _type_idx)
 {
-    return cmon_str_buf_get(_t->str_buf, _get_type(_t, _type_idx).full_name_str_off);
+    return _get_type(_t, _type_idx).full_name_str;
 }
 
 cmon_typek cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
@@ -453,8 +465,7 @@ const char * cmon_types_struct_field_name(cmon_types * _t,
                                           cmon_idx _struct_idx,
                                           cmon_idx _field_idx)
 {
-    return cmon_str_buf_get(_t->str_buf,
-                            _get_struct_field(_t, _struct_idx, _field_idx)->name_str_off);
+    return _get_struct_field(_t, _struct_idx, _field_idx)->name_str;
 }
 
 cmon_idx cmon_types_struct_field_type(cmon_types * _t, cmon_idx _struct_idx, cmon_idx _field_idx)

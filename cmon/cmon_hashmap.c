@@ -93,13 +93,13 @@ static cmon_hashmap_node ** _getref(cmon_hashmap_base * _m,
     cmon_hashmap_node ** next;
     if (_m->bucket_count > 0)
     {
-        printf("aswoop\n");
+        printf("aswoop %lu %lu\n", _m->bucket_count, _bucket_idx(_m, _hash));
         size_t hash = _hash;
         next = &_m->buckets[_bucket_idx(_m, hash)];
         while (*next)
         {
             printf("woop\n");
-            if ((*next)->hash == hash && _m->cmp_fn(_key_ref, (*next)->key, _key_size))
+            if ((*next)->hash == hash && _m->cmp_fn(_key_ref, (*next)->key, _key_size, _m->cmp_user_data))
             {
                 printf("FOOOUN!\n");
                 return next;
@@ -307,12 +307,16 @@ uint64_t _cmon_integer_hash(uint64_t _i)
     return _i;
 }
 
-cmon_bool _cmon_str_cmp(const void * _stra, const void * _strb, size_t _byte_count)
+cmon_bool _cmon_str_cmp(const void * _stra,
+                        const void * _strb,
+                        size_t _byte_count,
+                        void * _user_data)
 {
+    printf("cmp %s %s\n", *(const char **)_stra, *(const char **)_strb);
     return strcmp(*(const char **)_stra, *(const char **)_strb) == 0;
 }
 
-cmon_bool _cmon_default_cmp(const void * _a, const void * _b, size_t _byte_count)
+cmon_bool _cmon_default_cmp(const void * _a, const void * _b, size_t _byte_count, void * _user_data)
 {
     return memcmp(_a, _b, _byte_count) == 0;
 }

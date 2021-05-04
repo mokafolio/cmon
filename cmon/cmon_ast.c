@@ -249,6 +249,8 @@ cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
                                   cmon_idx * _exprs,
                                   size_t _count)
 {
+    // printf("da focking arra init count %lu\n", _count);
+    // assert(0);
     cmon_idx left = _add_extra_data_arr(_b, _exprs, _count);
     return _add_node(_b, cmon_astk_array_init, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
@@ -594,6 +596,30 @@ cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx)
 {
     assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
     return (cmon_bool)_ast->left_right[_tidx].left;
+}
+
+cmon_idx cmon_ast_type_view_type(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_view);
+    return _ast->left_right[_tidx].right;
+}
+
+cmon_bool cmon_ast_type_view_is_mut(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_view);
+    return (cmon_bool)_ast->left_right[_tidx].left;
+}
+
+cmon_idx cmon_ast_type_array_type(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_array);
+    return _ast->left_right[_tidx].right;
+}
+
+size_t cmon_ast_type_array_count(cmon_ast * _ast, cmon_idx _tidx)
+{
+    assert(_get_kind(_ast, _tidx) == cmon_astk_type_array);
+    return (size_t)_ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx)

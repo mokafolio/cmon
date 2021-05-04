@@ -14,7 +14,7 @@ struct cmon_hashmap_node
     cmon_hashmap_node * next;
 };
 
-typedef cmon_bool (*cmon_hashmap_cmp_fn)(const void *, const void *, size_t);
+typedef cmon_bool (*cmon_hashmap_cmp_fn)(const void *, const void *, size_t, void *);
 
 typedef struct
 {
@@ -22,6 +22,7 @@ typedef struct
     cmon_hashmap_node ** buckets;
     size_t bucket_count, node_count;
     cmon_hashmap_cmp_fn cmp_fn;
+    void * cmp_user_data;
     size_t node_byte_count; // how many bytes does a node take? Needed for cmon_allocator_free
 } cmon_hashmap_base;
 
@@ -38,12 +39,13 @@ typedef struct
         V * ref;                                                                                   \
         V tmp;                                                                                     \
         K tmp_key;                                                                                 \
-        uint64_t (*hash_fn)(K);                                                                      \
+        uint64_t (*hash_fn)(K);                                                                    \
     }
-#define cmon_hashmap_init(_m, _alloc, _hash_fn, _cmp_fn)                                           \
+#define cmon_hashmap_init(_m, _alloc, _hash_fn, _cmp_fn, _cmp_user_data)                           \
     (memset((_m), 0, sizeof(*(_m))),                                                               \
      (_m)->base.alloc = (_alloc),                                                                  \
      (_m)->base.cmp_fn = (_cmp_fn),                                                                \
+     (_m)->base.cmp_user_data = (_cmp_user_data),                                                  \
      (_m)->hash_fn = (_hash_fn))
 #define cmon_hashmap_dealloc(_m) _cmon_hashmap_deinit(&(_m)->base)
 #define cmon_hashmap_get(_m, _key)                                                                 \
@@ -91,17 +93,18 @@ CMON_API uint64_t _cmon_str_range_hash(const char * _begin, const char * _end);
 CMON_API uint64_t _cmon_str_hash(const char * _str);
 CMON_API uint64_t _cmon_ptr_hash(const void * _ptr);
 CMON_API uint64_t _cmon_integer_hash(uint64_t _i);
-CMON_API cmon_bool _cmon_str_cmp(const void * _stra, const void * _strb, size_t _byte_count);
-CMON_API cmon_bool _cmon_default_cmp(const void * _a, const void * _b, size_t _byte_count);
+CMON_API cmon_bool _cmon_str_cmp(const void * _stra,
+                                 const void * _strb,
+                                 size_t _byte_count,
+                                 void *);
+CMON_API cmon_bool _cmon_default_cmp(const void * _a, const void * _b, size_t _byte_count, void *);
 
 // helpers to initialize hash maps with certain key hash functions
 #define cmon_hashmap_str_key_init(_m, _alloc)                                                      \
-    cmon_hashmap_init((_m), (_alloc), _cmon_str_hash, _cmon_str_cmp)
+    cmon_hashmap_init((_m), (_alloc), _cmon_str_hash, _cmon_str_cmp, NULL)
 #define cmon_hashmap_ptr_key_init(_m, _alloc)                                                      \
-    cmon_hashmap_init((_m), (_alloc), _cmon_ptr_hash, _cmon_default_cmp)
+    cmon_hashmap_init((_m), (_alloc), _cmon_ptr_hash, _cmon_default_cmp, NULL)
 #define cmon_hashmap_int_key_init(_m, _alloc)                                                      \
-    cmon_hashmap_init((_m), (_alloc), _cmon_integer_hash, _cmon_default_cmp)
-
-typedef cmon_hashmap(const char *, int) test;
+    cmon_hashmap_init((_m), (_alloc), _cmon_integer_hash, _cmon_default_cmp, NULL)
 
 #endif // CMON_CMON_HASHMAP_H

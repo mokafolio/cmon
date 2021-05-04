@@ -499,11 +499,27 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
     }
     else if (kind == cmon_astk_type_ptr)
     {
-        cmon_idx pt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_ptr_type(ast, _ast_idx));
-        if (!cmon_is_valid_idx(pt))
-            return CMON_INVALID_IDX;
-        ret =
-            cmon_types_find_ptr(_fr->resolver->types, pt, cmon_ast_type_ptr_is_mut(ast, _ast_idx));
+        cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_ptr_type(ast, _ast_idx));
+        ret = cmon_is_valid_idx(rt) ? cmon_types_find_ptr(_fr->resolver->types,
+                                                          rt,
+                                                          cmon_ast_type_ptr_is_mut(ast, _ast_idx))
+                                    : CMON_INVALID_IDX;
+    }
+    else if (kind == cmon_astk_type_view)
+    {
+        cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_view_type(ast, _ast_idx));
+        ret = cmon_is_valid_idx(rt) ? cmon_types_find_view(_fr->resolver->types,
+                                                           rt,
+                                                           cmon_ast_type_view_is_mut(ast, _ast_idx))
+                                    : CMON_INVALID_IDX;
+    }
+    else if (kind == cmon_astk_type_array)
+    {
+        cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_array_type(ast, _ast_idx));
+        ret = cmon_is_valid_idx(rt)
+                  ? cmon_types_find_array(
+                        _fr->resolver->types, rt, cmon_ast_type_array_count(ast, _ast_idx))
+                  : CMON_INVALID_IDX;
     }
     else if (kind == cmon_astk_type_fn)
     {
@@ -1110,7 +1126,7 @@ static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
         _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), rti, type);
     }
 
-    return cmon_types_find_array(_fr->resolver->types, type, count);
+    return cmon_types_find_array(_fr->resolver->types, type, count + 1);
 }
 
 static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,

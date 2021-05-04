@@ -80,7 +80,7 @@ static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmo
     s.name = _name;
     cmon_dyn_arr_init(&s.symbols, _s->alloc, 16);
     cmon_dyn_arr_init(&s.children, _s->alloc, 4);
-    cmon_hashmap_init(&s.name_map, _s->alloc, _str_view_hash, _str_view_cmp);
+    cmon_hashmap_init(&s.name_map, _s->alloc, _str_view_hash, _str_view_cmp, NULL);
     cmon_dyn_arr_append(&_s->scopes, s);
     if (cmon_is_valid_idx(_parent_scope))
     {
