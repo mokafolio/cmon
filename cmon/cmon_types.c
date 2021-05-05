@@ -678,3 +678,10 @@ cmon_idx cmon_types_remove_ptr(cmon_types * _t, cmon_idx _idx)
         _idx = cmon_types_ptr_type(_t, _idx);
     return _idx;
 }
+
+cmon_bool cmon_types_is_implicit(cmon_types * _t, cmon_idx _idx)
+{
+    cmon_typek kind = cmon_types_kind(_t, _idx);
+    return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_ptr ||
+           kind == cmon_typek_fn;
+}

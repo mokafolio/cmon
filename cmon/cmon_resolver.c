@@ -26,6 +26,7 @@ typedef struct
     cmon_idx src_file_idx;
     cmon_idx_buf_mng * idx_buf_mng;
     cmon_dyn_arr(_ast_type_pair) type_decls; // types declared in the file
+    cmon_dyn_arr(cmon_idx) implicit_types;   // view, arrays, tuples used in the file etc.
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_dyn_arr(cmon_idx) global_alias_decls;
     cmon_idx * resolved_types; // maps ast expr idx to type
@@ -367,6 +368,24 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
     return cmon_false;
 }
 
+static inline void _add_unique_idx(cmon_dyn_arr(cmon_idx) * _arr, cmon_idx _idx)
+{
+    size_t i;
+    for (i = 0; i < cmon_dyn_arr_count(_arr); ++i)
+    {
+        if ((*_arr)[i] == _idx)
+        {
+            return;
+        }
+    }
+    cmon_dyn_arr_append(_arr, _idx);
+}
+
+static inline void _add_implicit_type(_file_resolver * _fr, cmon_idx _type_idx)
+{
+    _add_unique_idx(&_fr->implicit_types, _type_idx);
+}
+
 static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx)
@@ -549,6 +568,13 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
                                  cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
         cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
+    }
+
+    cmon_typek rk = cmon_types_kind(_fr->resolver->types, ret);
+    if (rk == cmon_typek_ptr || rk == cmon_typek_array || rk == cmon_typek_view ||
+        rk == cmon_typek_fn)
+    {
+        _add_implicit_type(_fr, ret);
     }
 
     _fr->resolved_types[_ast_idx] = ret;
@@ -1638,6 +1664,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
         cmon_allocator_free(
             _r->alloc,
             (cmon_mem_blk){ fr->resolved_types, sizeof(cmon_idx) * cmon_ast_count(_fr_ast(fr)) });
+        cmon_dyn_arr_dealloc(&fr->implicit_types);
         cmon_dyn_arr_dealloc(&fr->global_alias_decls);
         cmon_dyn_arr_dealloc(&fr->global_var_decls);
         cmon_dyn_arr_dealloc(&fr->type_decls);
@@ -1700,6 +1727,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.global_alias_decls, _r->alloc, 16);
+        cmon_dyn_arr_init(&fr.implicit_types, _r->alloc, 16);
         fr.resolved_types =
             cmon_allocator_alloc(_r->alloc, sizeof(cmon_idx) * cmon_ast_count(ast)).ptr;
         memset(fr.resolved_types, (int)CMON_INVALID_IDX, sizeof(cmon_idx) * cmon_ast_count(ast));
@@ -1983,6 +2011,27 @@ err_end:
     return cmon_err_handler_count(fr->err_handler) > 0;
 }
 
+static void _add_type_dep(cmon_resolver * _r, cmon_dyn_arr(cmon_idx) * _deps, cmon_idx _dep)
+{
+    cmon_typek kind = cmon_types_kind(_r->types, _dep);
+    //@TODO: add optional and variant etc.
+    if (kind == cmon_typek_array)
+    {
+        _add_type_dep(_r, _deps, cmon_types_array_type(_r->types, _dep));
+    }
+    // else if (_dep->kind == cmon_type_tuple)
+    // {
+    //     size_t i;
+    //     cmon_type_info_tuple * tti = _dep->data;
+    //     for (i = 0; i < cmon_dyn_arr_count(tti->types); ++i)
+    //         _add_type_dep(_mod, _arr, tti->types[i]);
+    // }
+    else
+    {
+        _add_unique_idx(_deps, _dep);
+    }
+}
+
 cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
 {
     size_t i, j, k;
@@ -2001,7 +2050,11 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
             for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j].type_idx);
                  ++k)
             {
-                cmon_dyn_arr_append(
+                // _add_unique_idx(
+                //     &_r->dep_buffer,
+                //     cmon_types_struct_field_type(_r->types, fr->type_decls[j].type_idx, k));
+                _add_type_dep(
+                    _r,
                     &_r->dep_buffer,
                     cmon_types_struct_field_type(_r->types, fr->type_decls[j].type_idx, k));
             }
@@ -2010,6 +2063,20 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
                                &_r->dep_buffer[0],
                                cmon_dyn_arr_count(&_r->dep_buffer));
         }
+
+        // for (j = 0; j < cmon_dyn_arr_count(&fr->implicit_types); ++j)
+        // {
+        //     if (cmon_types_kind(_r->types, fr->implicit_types[j]) == cmon_typek_array)
+        //     {
+        //         cmon_dyn_arr_clear(&_r->dep_buffer);
+        //         cmon_dyn_arr_append(&_r->dep_buffer,
+        //                             cmon_types_array_type(_r->types, fr->implicit_types[j]));
+        //         cmon_dep_graph_add(_r->dep_graph,
+        //                            fr->implicit_types[j],
+        //                            &_r->dep_buffer[0],
+        //                            cmon_dyn_arr_count(&_r->dep_buffer));
+        //     }
+        // }
     }
 
     result = cmon_dep_graph_resolve(_r->dep_graph);
