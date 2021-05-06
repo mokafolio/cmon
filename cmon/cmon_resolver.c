@@ -46,6 +46,8 @@ typedef struct cmon_resolver
     cmon_dep_graph * dep_graph;
     cmon_dyn_arr(_file_resolver) file_resolvers;
     cmon_dyn_arr(cmon_idx) dep_buffer;
+    // all types used by the module in dependency order
+    cmon_dyn_arr(cmon_idx) sorted_types;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     cmon_err_handler * err_handler;
@@ -605,11 +607,6 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
         else if (skind == cmon_symk_var)
         {
             cmon_idx ret = cmon_symbols_var_type(_fr->resolver->symbols, sym);
-            // if (!cmon_is_valid_idx(ret))
-            // {
-            //     assert(_fr->resolver->global_type_pass);
-            //     _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "typechecking loop");
-            // }
             if (!cmon_is_valid_idx(ret) && _fr->resolver->global_type_pass)
             {
                 size_t i;
@@ -626,6 +623,7 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
                     _fr, _fr->file_scope, cmon_symbols_ast(_fr->resolver->symbols, sym));
                 ret = cmon_symbols_var_type(_fr->resolver->symbols, sym);
             }
+
             assert(cmon_is_valid_idx(ret));
             return ret;
         }
@@ -1648,6 +1646,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     ret->global_type_pass = cmon_false;
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
+    cmon_dyn_arr_init(&ret->sorted_types, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
     ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
@@ -1674,6 +1673,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     cmon_dyn_arr_dealloc(&_r->globals_pass_stack);
     cmon_err_handler_destroy(_r->err_handler);
     cmon_dyn_arr_dealloc(&_r->errs);
+    cmon_dyn_arr_dealloc(&_r->sorted_types);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
     cmon_dep_graph_destroy(_r->dep_graph);
@@ -2050,9 +2050,6 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
             for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j].type_idx);
                  ++k)
             {
-                // _add_unique_idx(
-                //     &_r->dep_buffer,
-                //     cmon_types_struct_field_type(_r->types, fr->type_decls[j].type_idx, k));
                 _add_type_dep(
                     _r,
                     &_r->dep_buffer,
@@ -2063,20 +2060,6 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
                                &_r->dep_buffer[0],
                                cmon_dyn_arr_count(&_r->dep_buffer));
         }
-
-        // for (j = 0; j < cmon_dyn_arr_count(&fr->implicit_types); ++j)
-        // {
-        //     if (cmon_types_kind(_r->types, fr->implicit_types[j]) == cmon_typek_array)
-        //     {
-        //         cmon_dyn_arr_clear(&_r->dep_buffer);
-        //         cmon_dyn_arr_append(&_r->dep_buffer,
-        //                             cmon_types_array_type(_r->types, fr->implicit_types[j]));
-        //         cmon_dep_graph_add(_r->dep_graph,
-        //                            fr->implicit_types[j],
-        //                            &_r->dep_buffer[0],
-        //                            cmon_dyn_arr_count(&_r->dep_buffer));
-        //     }
-        // }
     }
 
     result = cmon_dep_graph_resolve(_r->dep_graph);
@@ -2109,6 +2092,62 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         }
     err_end:
         return cmon_true;
+    }
+
+    // do a second pass with all types, including implicit types to figure out the order of all
+    // types used by the module
+    cmon_dep_graph_clear(_r->dep_graph);
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        fr = &_r->file_resolvers[i];
+        for (j = 0; j < cmon_dyn_arr_count(&fr->type_decls); ++j)
+        {
+            // the only user defined type can be a struct for now
+            assert(cmon_types_kind(_r->types, fr->type_decls[j].type_idx) == cmon_typek_struct);
+            cmon_dyn_arr_clear(&_r->dep_buffer);
+            for (k = 0; k < cmon_types_struct_field_count(_r->types, fr->type_decls[j].type_idx);
+                 ++k)
+            {
+                //@NOTE: We are not using add_type_dep here because we want to add the actual,
+                // unmodified types
+                _add_unique_idx(
+                    &_r->dep_buffer,
+                    cmon_types_struct_field_type(_r->types, fr->type_decls[j].type_idx, k));
+            }
+            cmon_dep_graph_add(_r->dep_graph,
+                               fr->type_decls[j].type_idx,
+                               &_r->dep_buffer[0],
+                               cmon_dyn_arr_count(&_r->dep_buffer));
+        }
+
+        for (j = 0; j < cmon_dyn_arr_count(&fr->implicit_types); ++j)
+        {
+            if (cmon_types_kind(_r->types, fr->implicit_types[j]) == cmon_typek_array)
+            {
+                cmon_dyn_arr_clear(&_r->dep_buffer);
+                cmon_dyn_arr_append(&_r->dep_buffer,
+                                    cmon_types_array_type(_r->types, fr->implicit_types[j]));
+                cmon_dep_graph_add(_r->dep_graph,
+                                   fr->implicit_types[j],
+                                   &_r->dep_buffer[0],
+                                   cmon_dyn_arr_count(&_r->dep_buffer));
+            }
+            else
+            {
+                cmon_dep_graph_add(_r->dep_graph, fr->implicit_types[j], NULL, 0);
+            }
+        }
+    }
+
+    // this should never fail during the second pass.
+    result = cmon_dep_graph_resolve(_r->dep_graph);
+    assert(result.array);
+
+    // store the sorted types
+    cmon_dyn_arr_resize(&_r->sorted_types, result.count);
+    for (i = 0; i < result.count; ++i)
+    {
+        _r->sorted_types[i] = result.array[i];
     }
 
     return cmon_false;
@@ -2156,19 +2195,115 @@ err_end:
     return cmon_resolver_has_errors(_r);
 }
 
+// static void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx _ast_expr);
+// static void _check_init_loop_stmt(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx
+// _ast_stmt);
+
+static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx _ast_idx)
+{
+    cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
+    if (kind == cmon_astk_ident)
+    {
+        cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
+        assert(cmon_is_valid_idx(sym));
+        if (sym == _global_sym)
+        {
+            cmon_str_view name = cmon_symbols_name(_fr->resolver->symbols, sym);
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                    "initialization loop for '%.*s'",
+                    name.end - name.begin,
+                    name.begin);
+        }
+        else
+        {
+            cmon_idx var_decl_ast = cmon_symbols_ast(_fr->resolver->symbols, sym);
+            assert(cmon_is_valid_idx(var_decl_ast));
+            _check_init_loop(_fr, _global_sym, cmon_ast_var_decl_expr(_fr_ast(_fr), var_decl_ast));
+        }
+    }
+    else if (kind == cmon_astk_addr)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_addr_expr(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_deref)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_prefix)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_binary)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_binary_left(_fr_ast(_fr), _ast_idx));
+        _check_init_loop(_fr, _global_sym, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_call)
+    {
+        cmon_idx idx;
+        cmon_ast_iter it = cmon_ast_call_args_iter(_fr_ast(_fr), _ast_idx);
+        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        {
+            _check_init_loop(_fr, _global_sym, idx);
+        }
+        _check_init_loop(_fr, _global_sym, cmon_ast_call_left(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_index)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_index_expr(_fr_ast(_fr), _ast_idx));
+        _check_init_loop(_fr, _global_sym, cmon_ast_index_left(_fr_ast(_fr), _ast_idx));
+    }
+    else if (kind == cmon_astk_array_init)
+    {
+        cmon_idx idx;
+        cmon_ast_iter it = cmon_ast_array_init_exprs_iter(_fr_ast(_fr), _ast_idx);
+        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        {
+            _check_init_loop(_fr, _global_sym, idx);
+        }
+    }
+    else if (kind == cmon_astk_struct_init)
+    {
+        cmon_idx idx;
+        cmon_ast_iter it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
+        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        {
+            _check_init_loop(_fr, _global_sym, cmon_ast_struct_field_expr(_fr_ast(_fr), idx));
+        }
+    }
+    else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal || kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal || kind == cmon_astk_selector || kind == cmon_astk_fn_decl)
+    {
+        //these are the ones nothing needs to be done for.
+    }
+    else
+    {
+        //make sure we handled all of them
+        assert(0);
+    }
+}
+
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
     _set_err_jmp_goto(fr, err_end);
 
     size_t i;
-    // @NOTE: only thing left to do is to iterate over all global variables again and resolve their
-    // expressions.
+    // iterate over all global variables again and resolve their expressions (for the ones that were
+    // not already done doing globals type pass).
     for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
     {
         cmon_idx var_ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[i]);
         assert(cmon_is_valid_idx(var_ast_idx));
         _resolve_var_decl(fr, fr->file_scope, var_ast_idx);
+    }
+
+    for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
+    {
+        cmon_idx var_decl_ast = cmon_symbols_ast(fr->resolver->symbols, fr->global_var_decls[i]);
+        assert(cmon_is_valid_idx(var_decl_ast));
+        _check_init_loop(
+            fr, fr->global_var_decls[i], cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast));
     }
 
 err_end:
