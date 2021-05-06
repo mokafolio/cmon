@@ -296,7 +296,7 @@ static cmon_idx _parse_index(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
     cmon_idx expr;
     expr = _parse_expr(_p, _precedence_nil);
     _tok_check(_p, cmon_true, cmon_tokk_square_close);
-    return cmon_astb_add_selector(_p->ast_builder, _tok, _lhs, expr);
+    return cmon_astb_add_index(_p->ast_builder, _tok, _lhs, expr);
 }
 
 static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)

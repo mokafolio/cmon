@@ -1000,22 +1000,21 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
         {
             cmon_idx sym, type_idx, field_idx;
 
-            sym = cmon_ast_ident_sym(_fr_ast(_fr), left_expr);
-            assert(cmon_is_valid_idx(sym) &&
-                   cmon_symbols_kind(_fr->resolver->symbols, sym) == cmon_symk_var);
-            type_idx = cmon_symbols_var_type(_fr->resolver->symbols, sym);
-            field_idx =
-                cmon_types_struct_findv_field(_fr->resolver->types, type_idx, name_str_view);
+            // sym = cmon_ast_ident_sym(_fr_ast(_fr), left_expr);
+            // assert(cmon_is_valid_idx(sym) &&
+            //        cmon_symbols_kind(_fr->resolver->symbols, sym) == cmon_symk_var);
+            // type_idx = cmon_symbols_var_type(_fr->resolver->symbols, sym);
+            field_idx = cmon_types_struct_findv_field(_fr->resolver->types, tlhs, name_str_view);
             if (cmon_is_valid_idx(field_idx))
             {
-                return cmon_types_struct_field_type(_fr->resolver->types, type_idx, field_idx);
+                return cmon_types_struct_field_type(_fr->resolver->types, tlhs, field_idx);
             }
             else
             {
                 _fr_err(_fr,
                         name_tok,
                         "struct '%s' has no field '%.*s'",
-                        cmon_types_name(_fr->resolver->types, type_idx),
+                        cmon_types_name(_fr->resolver->types, tlhs),
                         name_str_view.end - name_str_view.begin,
                         name_str_view.begin);
                 return CMON_INVALID_IDX;
@@ -1456,7 +1455,6 @@ static inline cmon_idx _resolve_expr(_file_resolver * _fr,
     }
     else if (kind == cmon_astk_call)
     {
-        // assert(0);
         ret = _resolve_call(_fr, _scope, _ast_idx);
     }
     else if (kind == cmon_astk_index)
@@ -1967,8 +1965,7 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
         while (cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
         {
             cmon_astk kind = cmon_ast_kind(_fr_ast(fr), ast_idx);
-            cmon_idx parsed_type_idx;
-            cmon_idx def_expr;
+            cmon_idx parsed_type_idx, def_expr;
             if (kind == cmon_astk_struct_field)
             {
                 parsed_type_idx = cmon_ast_struct_field_type(_fr_ast(fr), ast_idx);
@@ -1980,16 +1977,6 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
             }
 
             cmon_idx type = _resolve_parsed_type(fr, fr->file_scope, parsed_type_idx);
-            if (cmon_is_valid_idx(def_expr) && cmon_is_valid_idx(type))
-            {
-                cmon_idx expr_type = _resolve_expr(fr, fr->file_scope, def_expr, type);
-                if (cmon_is_valid_idx(expr_type))
-                {
-                    _validate_conversion(
-                        fr, cmon_ast_token(_fr_ast(fr), def_expr), expr_type, type);
-                }
-            }
-
             if (kind == cmon_astk_struct_field)
             {
                 cmon_idx field_name_tok = cmon_ast_struct_field_name(_fr_ast(fr), ast_idx);
@@ -2008,6 +1995,55 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 
 err_end:
     cmon_idx_buf_mng_return(fr->idx_buf_mng, name_tok_buf);
+    return cmon_err_handler_count(fr->err_handler) > 0;
+}
+
+cmon_bool cmon_resolver_usertypes_def_expr_pass(cmon_resolver * _r, cmon_idx _file_idx)
+{
+    _file_resolver * fr = &_r->file_resolvers[_file_idx];
+
+    _set_err_jmp_goto(fr, err_end);
+
+    size_t i, j;
+    for (i = 0; i < cmon_dyn_arr_count(&fr->type_decls); ++i)
+    {
+        cmon_idx struct_type_idx = cmon_ast_struct_type(_fr_ast(fr), fr->type_decls[i].ast_idx);
+        for (j = 0; j < cmon_types_struct_field_count(_r->types, struct_type_idx); ++j)
+        {
+            cmon_idx def_expr = cmon_types_struct_field_def_expr(_r->types, struct_type_idx, j);
+            cmon_idx field_type = cmon_types_struct_field_type(_r->types, struct_type_idx, j);
+            assert(cmon_is_valid_idx(field_type));
+            if (cmon_is_valid_idx(def_expr))
+            {
+                cmon_idx expr_type = _resolve_expr(fr, fr->file_scope, def_expr, field_type);
+                if (cmon_is_valid_idx(expr_type))
+                {
+                    _validate_conversion(
+                        fr, cmon_ast_token(_fr_ast(fr), def_expr), expr_type, field_type);
+                }
+            }
+        }
+
+        // while (cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
+        // {
+        //     cmon_astk kind = cmon_ast_kind(_fr_ast(fr), ast_idx);
+        //     assert(kind == cmon_astk_struct_field);
+
+        //     cmon_idx def_expr = cmon_ast_struct_field_expr(_fr_ast(fr), ast_idx);
+        //     cmon_idx field_type = cmon_types_struct_field_type(_r->types, struct_type_idx, j);
+        //     assert(cmon_is_valid_idx(field_type));
+
+        //     cmon_idx expr_type = _resolve_expr(fr, fr->file_scope, def_expr, field_type);
+        //     if (cmon_is_valid_idx(expr_type))
+        //     {
+        //         _validate_conversion(
+        //             fr, cmon_ast_token(_fr_ast(fr), def_expr), expr_type, field_type);
+        //     }
+        //     ++j;
+        // }
+    }
+
+err_end:
     return cmon_err_handler_count(fr->err_handler) > 0;
 }
 
@@ -2254,6 +2290,10 @@ static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, 
         _check_init_loop(_fr, _global_sym, cmon_ast_index_expr(_fr_ast(_fr), _ast_idx));
         _check_init_loop(_fr, _global_sym, cmon_ast_index_left(_fr_ast(_fr), _ast_idx));
     }
+    else if (kind == cmon_astk_selector)
+    {
+        _check_init_loop(_fr, _global_sym, cmon_ast_selector_left(_fr_ast(_fr), _ast_idx));
+    }
     else if (kind == cmon_astk_array_init)
     {
         cmon_idx idx;
@@ -2269,16 +2309,17 @@ static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, 
         cmon_ast_iter it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
         while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
         {
-            _check_init_loop(_fr, _global_sym, cmon_ast_struct_field_expr(_fr_ast(_fr), idx));
+            _check_init_loop(_fr, _global_sym, cmon_ast_struct_init_field_expr(_fr_ast(_fr), idx));
         }
     }
-    else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal || kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal || kind == cmon_astk_selector || kind == cmon_astk_fn_decl)
+    else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal ||
+             kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal || kind == cmon_astk_fn_decl)
     {
-        //these are the ones nothing needs to be done for.
+        // these are the ones nothing needs to be done for.
     }
     else
     {
-        //make sure we handled all of them
+        // make sure we handled all of them
         assert(0);
     }
 }

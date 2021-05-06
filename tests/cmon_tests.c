@@ -646,6 +646,7 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_arr_init02, "foo :[2]f32 = [1.0, 2.0]", cmon_true);
 // RESOLVE_TEST(resolve_arr_init03, "foo :[3]f64 = [1.0, -3.0]", cmon_false);
 // RESOLVE_TEST(resolve_arr_init04, "foo :[2]f64 = [-99.3, 0.3, 20.0]", cmon_false);
+// RESOLVE_TEST(resolve_index01, "a := [1, 2, 3]; b := a[0]", cmon_true);
 // RESOLVE_TEST(resolve_struct_init01,
 //              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }",
 //              cmon_true);
@@ -682,8 +683,16 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
 // RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
 // RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
-RESOLVE_TEST(resolve_init_loop01, "a : s32 = a", cmon_false);
-RESOLVE_TEST(resolve_init_loop02, "a : s32 = b; b := a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop01, "a : s32 = a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop02, "a : s32 = b; b := a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop03, "a : s32 = b; b := &a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop04, "a : s32 = c; b := &a; c := *a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop05, "a : s32 = b; b := -a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop06, "a : s32 = b; b := a + 3", cmon_false);
+// RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)", cmon_false);
+// RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
+RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
+// RESOLVE_TEST(resolve_init_loop09, "struct Foo{bar : s32}; a : s32 = Foo{1}.bar", cmon_true);
 
 // void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 // {

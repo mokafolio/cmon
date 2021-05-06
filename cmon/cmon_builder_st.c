@@ -228,10 +228,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     {
         printf("main pass names %lu\n", i);
         _per_module_data * pmd = &_b->mod_data[i];
-        if (cmon_resolver_globals_pass(pmd->resolver))
-        {
-            _add_resolver_errors(_b, pmd->resolver, cmon_true);
-        }
 
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
@@ -241,6 +237,19 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             }
         }
 
+        if (cmon_resolver_globals_pass(pmd->resolver))
+        {
+            _add_resolver_errors(_b, pmd->resolver, cmon_true);
+        }
+
+        for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
+        {
+            if (cmon_resolver_usertypes_def_expr_pass(pmd->resolver, j))
+            {
+                _add_resolver_errors(_b, pmd->resolver, cmon_true);
+            }
+        }
+        
         if (cmon_resolver_circ_pass(pmd->resolver))
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
