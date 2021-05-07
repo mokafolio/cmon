@@ -167,16 +167,19 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     // on
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
-        printf("top lvl names %lu\n", i);
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_resolver_set_input(pmd->resolver, _b->src, _b->types, _b->symbols, _b->mods, i);
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
-            printf("top lvl names02 %lu\n", j);
             if (cmon_resolver_top_lvl_pass(pmd->resolver, j))
             {
                 _add_resolver_errors(_b, pmd->resolver, cmon_false);
             }
+        }
+
+        if (cmon_resolver_finalize_top_lvl_names(pmd->resolver))
+        {
+            _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
     }
 
@@ -196,7 +199,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
     }
 
     cmon_dep_graph_result result = cmon_dep_graph_resolve(_b->dep_graph);
-    //ensure that there is no circular dependency
+    // ensure that there is no circular dependency
     if (!result.array)
     {
         cmon_idx a, b;
@@ -249,7 +252,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
                 _add_resolver_errors(_b, pmd->resolver, cmon_true);
             }
         }
-        
+
         if (cmon_resolver_circ_pass(pmd->resolver))
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);

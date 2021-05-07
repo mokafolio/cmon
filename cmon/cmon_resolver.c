@@ -457,7 +457,6 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         if (cmon_is_valid_idx(type_sym))
         {
             cmon_symk sk = cmon_symbols_kind(_fr->resolver->symbols, type_sym);
-
             // check if a global alias currently being resolved is recursive
             if (_fr->resolver->global_type_pass && sk == cmon_symk_alias &&
                 cmon_symbols_scope_is_file(_fr->resolver->symbols, _scope))
@@ -486,7 +485,9 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                 // do it.
                 if (!cmon_is_valid_idx(cmon_symbols_type(_fr->resolver->symbols, type_sym)))
                 {
+                    // assert(0);
                     _resolve_alias(_fr, _scope, cmon_symbols_ast(_fr->resolver->symbols, type_sym));
+                                                assert(0);
                 }
             }
 
@@ -1920,6 +1921,28 @@ err_end:
     return cmon_true;
 }
 
+cmon_bool cmon_resolver_finalize_top_lvl_names(cmon_resolver * _r)
+{
+    _r->global_type_pass = cmon_true;
+    // first resolve the types of all global aliases and make sure there is no recursion.
+    size_t i, j;
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        _file_resolver * fr = &_r->file_resolvers[i];
+
+        _set_err_jmp_goto(fr, err_end);
+
+        for (j = 0; j < cmon_dyn_arr_count(&fr->global_alias_decls); ++j)
+        {
+            cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
+            _resolve_alias(fr, fr->file_scope, ast_idx);
+        }
+    }
+err_end:
+    _r->global_type_pass = cmon_false;
+    return cmon_resolver_has_errors(_r);
+}
+
 static inline cmon_bool _check_field_name(_file_resolver * _fr,
                                           cmon_idx _name_tok_buf,
                                           cmon_idx _name_tok)
@@ -1949,12 +1972,31 @@ static inline cmon_bool _check_field_name(_file_resolver * _fr,
 
 cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
+    size_t i;
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
-
     _set_err_jmp_goto(fr, err_end);
 
+    // first resolve the types of all global aliases and make sure there is no recursion.
+    // for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    // {
+    //     _file_resolver * fr = &_r->file_resolvers[i];
+
+    //     _set_err_jmp_goto(fr, err_end);
+
+    //     for (j = 0; j < cmon_dyn_arr_count(&fr->global_alias_decls); ++j)
+    //     {
+    //         cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
+    //         _resolve_alias(fr, fr->file_scope, ast_idx);
+    //     }
+    // }
+
+    // for (i = 0; i < cmon_dyn_arr_count(&fr->global_alias_decls); ++i)
+    // {
+    //     cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[i]);
+    //     _resolve_alias(fr, fr->file_scope, ast_idx);
+    // }
+
     cmon_idx name_tok_buf = cmon_idx_buf_mng_get(fr->idx_buf_mng);
-    size_t i;
     for (i = 0; i < cmon_dyn_arr_count(&fr->type_decls); ++i)
     {
         assert(cmon_types_kind(_r->types, fr->type_decls[i].type_idx) == cmon_typek_struct);
@@ -2194,20 +2236,6 @@ cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r)
     size_t i, j;
     _r->global_type_pass = cmon_true;
 
-    // first resolve the types of all global aliases and make sure there is no recursion.
-    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
-    {
-        _file_resolver * fr = &_r->file_resolvers[i];
-
-        _set_err_jmp_goto(fr, err_end);
-
-        for (j = 0; j < cmon_dyn_arr_count(&fr->global_alias_decls); ++j)
-        {
-            cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
-            _resolve_alias(fr, fr->file_scope, ast_idx);
-        }
-    }
-
     //@NOTE: resolve var_decl will no what to do during this pass based on global_type_pass being
     // set.
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
@@ -2313,7 +2341,8 @@ static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, 
         }
     }
     else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal ||
-             kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal || kind == cmon_astk_fn_decl)
+             kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal ||
+             kind == cmon_astk_fn_decl)
     {
         // these are the ones nothing needs to be done for.
     }
