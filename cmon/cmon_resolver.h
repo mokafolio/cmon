@@ -7,8 +7,14 @@
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_types.h>
 
-typedef struct cmon_resolved_ast cmon_resolved_ast;
+typedef struct cmon_resolved_mod cmon_resolved_mod;
 typedef struct cmon_resolver cmon_resolver;
+
+typedef struct cmon_file_ast_pair
+{
+    cmon_idx src_file_idx;
+    cmon_idx ast_idx;
+} cmon_file_ast_pair;
 
 CMON_API cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors);
 CMON_API void cmon_resolver_destroy(cmon_resolver * _r);
@@ -27,6 +33,7 @@ CMON_API cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_usertypes_def_expr_pass(cmon_resolver * _r, cmon_idx _file_idx);
 CMON_API cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx);
+CMON_API cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r);
 
 // retrieve errors
 CMON_API cmon_bool cmon_resolver_has_errors(cmon_resolver * _r);
@@ -34,9 +41,14 @@ CMON_API cmon_bool cmon_resolver_errors(cmon_resolver * _r,
                                         cmon_err_report ** _out_errs,
                                         size_t * _out_count);
 
-//retrieve the resolved ast
-CMON_API cmon_resolved_ast * cmon_resolver_resolved_ast(cmon_resolver * _r, cmon_bool _copy);
-CMON_API void cmon_resolved_ast_destroy(cmon_resolved_ast * _ra);
-CMON_API size_t cmon_resolved_ast_type_count(cmon_resolved_ast * _ra);
+//retrieve the resolved module data
+// CMON_API cmon_resolved_mod * cmon_resolver_resolved_mod(cmon_resolver * _r);
+// CMON_API void cmon_resolved_mod_destroy(cmon_resolved_mod * _ra);
+CMON_API cmon_idx cmon_resolved_mod_type(cmon_resolved_mod * _ra, size_t _i);
+CMON_API size_t cmon_resolved_mod_type_count(cmon_resolved_mod * _ra);
+CMON_API cmon_file_ast_pair cmon_resolved_mod_global_fn(cmon_resolved_mod * _ra, size_t _i);
+CMON_API size_t cmon_resolved_mod_global_fn_count(cmon_resolved_mod * _ra);
+CMON_API cmon_file_ast_pair cmon_resolved_mod_local_fn(cmon_resolved_mod * _ra, size_t _i);
+CMON_API size_t cmon_resolved_mod_local_fn_count(cmon_resolved_mod * _ra);
 
 #endif // CMON_CMON_RESOLVER_H

@@ -590,108 +590,108 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
         EXPECT_EQ(!_should_pass, _resolve_test_fn(_name##_mod_adder_fn));                          \
     }
 
-RESOLVE_TEST(resolve_empty, "", cmon_true);
-RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
-RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
-RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
-RESOLVE_TEST(resolve_var_decl03, "boink : fn() -> s32 = fn()->s32{}", cmon_true);
-RESOLVE_TEST(resolve_var_decl04, "boink : fn() = fn() -> u32 {} ", cmon_false);
-RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
-RESOLVE_TEST(resolve_var_decl06, "foo := 1; foo := 2", cmon_false);
-RESOLVE_TEST(resolve_var_decl07, "bar := 1; fn bar() {}", cmon_false);
-RESOLVE_TEST(resolve_var_decl08, "struct Bar{}; Bar := 1;", cmon_false);
-RESOLVE_TEST(resolve_var_decl09, "boink : fn(f64, f64) -> f64 = fn(a : f64, b : f64) -> f64 {}", cmon_true);
-RESOLVE_TEST(resolve_var_decl10, "boink : fn(f64, f64) -> f64 = fn(a : f64) -> f64 {}", cmon_false);
-RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
-RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
-RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
-RESOLVE_TEST(resolve_fn_decl04, "mut woop : fn(s32, s32)->s32 = fn(a : s32, a : s32)->s32 {}", cmon_false);
-RESOLVE_TEST(resolve_addr01, "a := 1; b := &a", cmon_true);
-RESOLVE_TEST(resolve_addr02, "a : u32 = 1; b : *u32 = &a", cmon_true);
-RESOLVE_TEST(resolve_addr03, "fn main() { a : u32 = 1; b : *mut u32 = &a }", cmon_false);
-RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }", cmon_true);
-RESOLVE_TEST(resolve_deref01, "a := 1; b := &a; mut c : s32 = *b;", cmon_true);
-RESOLVE_TEST(resolve_assign01, "mut a := 1; fn main() { a = 2 }", cmon_true);
-RESOLVE_TEST(resolve_assign02, "a := 1; fn main() { a = 2 }", cmon_false);
-RESOLVE_TEST(resolve_assign03, "fn main() { mut a := 1; a = 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign04, "fn main() { mut a := 1; a += 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign05, "fn main() { mut a := 1; a -= 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign06, "fn main() { mut a := 1; a /= 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign07, "fn main() { mut a := 1; a *= 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign08, "fn main() { mut a := 1; a %= 3 }", cmon_true);
-RESOLVE_TEST(resolve_assign09, "fn main() { a := 1; a = 3 }", cmon_false);
-RESOLVE_TEST(resolve_assign10, "fn main() { a := 1; a += 3 }", cmon_false);
-RESOLVE_TEST(resolve_assign11, "fn main() { a := 1; a -= 3 }", cmon_false);
-RESOLVE_TEST(resolve_assign12, "fn main() { a := 1; a /= 3 }", cmon_false);
-RESOLVE_TEST(resolve_assign13, "fn main() { a := 1; a *= 3 }", cmon_false);
-RESOLVE_TEST(resolve_assign14, "fn main() { a := 1; a %= 3 }", cmon_false);
-RESOLVE_TEST(resolve_prefix01, "boink : s32 = -2", cmon_true);
-RESOLVE_TEST(resolve_binop01, "boink := 1 + 2", cmon_true);
-RESOLVE_TEST(resolve_binop02, "pub boop := 1.1 + 2.3", cmon_true);
-RESOLVE_TEST(resolve_binop03, "boink : s32 = 1 + 2.3", cmon_false);
-RESOLVE_TEST(resolve_binop04, "pub mut wee := 11 % 2", cmon_true);
-RESOLVE_TEST(resolve_binop05, "boink := 33 % 2.3", cmon_false);
-RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
-RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
-RESOLVE_TEST(resolve_struct01, "struct Foo{}", cmon_true);
-RESOLVE_TEST(resolve_struct02, "struct Foo{ bar : s32 }", cmon_true);
-RESOLVE_TEST(resolve_struct03, "struct Foo{ bar : s32; bat : s32 = 1 }", cmon_true);
-RESOLVE_TEST(resolve_struct04, "struct Foo{ bar : s32 bat : s32 }", cmon_false);
-RESOLVE_TEST(resolve_struct05, "struct Boink{ bar : f32; bar : f64 }", cmon_false);
-RESOLVE_TEST(resolve_struct06, "struct Boink{ bar : Boink }", cmon_false);
-RESOLVE_TEST(resolve_struct07, "struct A{ b : B }; struct B{ a : A }", cmon_false);
-RESOLVE_TEST(resolve_struct08, "struct A{ a : [5]A }", cmon_false);
-RESOLVE_TEST(resolve_struct09, "struct A{ b : [2]B }; struct B{ a : A }", cmon_false);
-RESOLVE_TEST(resolve_arr_init01, "foo :[3]s32 = [1, 2, 3]", cmon_true);
-RESOLVE_TEST(resolve_arr_init02, "foo :[2]f32 = [1.0, 2.0]", cmon_true);
-RESOLVE_TEST(resolve_arr_init03, "foo :[3]f64 = [1.0, -3.0]", cmon_false);
-RESOLVE_TEST(resolve_arr_init04, "foo :[2]f64 = [-99.3, 0.3, 20.0]", cmon_false);
-RESOLVE_TEST(resolve_index01, "a := [1, 2, 3]; b := a[0]", cmon_true);
-RESOLVE_TEST(resolve_struct_init01,
-             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }",
-             cmon_true);
-RESOLVE_TEST(resolve_struct_init02,
-             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }",
-             cmon_false);
-RESOLVE_TEST(resolve_struct_init03,
-             "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }",
-             cmon_false);
-RESOLVE_TEST(resolve_struct_init04,
-             "struct Boink{ x : f32; y : f32 }; b := Boink{x: 1.0, y: 2.0}",
-             cmon_true);
-RESOLVE_TEST(resolve_struct_init05,
-             "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{1.0, y: 2.0}",
-             cmon_false);
-RESOLVE_TEST(resolve_struct_init06,
-             "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{x: 1.0, z: 2.0}",
-             cmon_false);
-RESOLVE_TEST(resolve_alias01,
-             "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{} }",
-             cmon_true);
-RESOLVE_TEST(resolve_alias02,
-             "alias Boop = Bar; struct Bar{}; mut man := Boop{}; mut bar_man : Bar = man",
-             cmon_true);
-RESOLVE_TEST(resolve_alias03, "alias Boop = f64", cmon_true);
-RESOLVE_TEST(resolve_alias04, "alias Boop = NoExist", cmon_false);
-RESOLVE_TEST(resolve_alias05, "alias Boop = no.Exist", cmon_false);
-RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
-RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
-RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
-RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
-RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
-RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
-RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
-RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
-RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
-RESOLVE_TEST(resolve_init_loop01, "a : s32 = a", cmon_false);
-RESOLVE_TEST(resolve_init_loop02, "a : s32 = b; b := a", cmon_false);
-RESOLVE_TEST(resolve_init_loop03, "a : s32 = b; b := &a", cmon_false);
-RESOLVE_TEST(resolve_init_loop04, "a : s32 = c; b := &a; c := *a", cmon_false);
-RESOLVE_TEST(resolve_init_loop05, "a : s32 = b; b := -a", cmon_false);
-RESOLVE_TEST(resolve_init_loop06, "a : s32 = b; b := a + 3", cmon_false);
-RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)", cmon_false);
-RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
-RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
+// RESOLVE_TEST(resolve_empty, "", cmon_true);
+// RESOLVE_TEST(resolve_import01, "import foo", cmon_false);
+// RESOLVE_TEST(resolve_var_decl01, "a : s32 = 1", cmon_true);
+// RESOLVE_TEST(resolve_var_decl02, "boink := \"test\"", cmon_true);
+// RESOLVE_TEST(resolve_var_decl03, "boink : fn() -> s32 = fn()->s32{}", cmon_true);
+// RESOLVE_TEST(resolve_var_decl04, "boink : fn() = fn() -> u32 {} ", cmon_false);
+// RESOLVE_TEST(resolve_var_decl05, "fn main() { a : s32 = 1 } ", cmon_true);
+// RESOLVE_TEST(resolve_var_decl06, "foo := 1; foo := 2", cmon_false);
+// RESOLVE_TEST(resolve_var_decl07, "bar := 1; fn bar() {}", cmon_false);
+// RESOLVE_TEST(resolve_var_decl08, "struct Bar{}; Bar := 1;", cmon_false);
+// RESOLVE_TEST(resolve_var_decl09, "boink : fn(f64, f64) -> f64 = fn(a : f64, b : f64) -> f64 {}", cmon_true);
+// RESOLVE_TEST(resolve_var_decl10, "boink : fn(f64, f64) -> f64 = fn(a : f64) -> f64 {}", cmon_false);
+// RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
+// RESOLVE_TEST(resolve_fn_decl04, "mut woop : fn(s32, s32)->s32 = fn(a : s32, a : s32)->s32 {}", cmon_false);
+// RESOLVE_TEST(resolve_addr01, "a := 1; b := &a", cmon_true);
+// RESOLVE_TEST(resolve_addr02, "a : u32 = 1; b : *u32 = &a", cmon_true);
+// RESOLVE_TEST(resolve_addr03, "fn main() { a : u32 = 1; b : *mut u32 = &a }", cmon_false);
+// RESOLVE_TEST(resolve_addr04, "fn main() { mut a : u32 = 1; b : *mut u32 = &a }", cmon_true);
+// RESOLVE_TEST(resolve_deref01, "a := 1; b := &a; mut c : s32 = *b;", cmon_true);
+// RESOLVE_TEST(resolve_assign01, "mut a := 1; fn main() { a = 2 }", cmon_true);
+// RESOLVE_TEST(resolve_assign02, "a := 1; fn main() { a = 2 }", cmon_false);
+// RESOLVE_TEST(resolve_assign03, "fn main() { mut a := 1; a = 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign04, "fn main() { mut a := 1; a += 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign05, "fn main() { mut a := 1; a -= 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign06, "fn main() { mut a := 1; a /= 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign07, "fn main() { mut a := 1; a *= 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign08, "fn main() { mut a := 1; a %= 3 }", cmon_true);
+// RESOLVE_TEST(resolve_assign09, "fn main() { a := 1; a = 3 }", cmon_false);
+// RESOLVE_TEST(resolve_assign10, "fn main() { a := 1; a += 3 }", cmon_false);
+// RESOLVE_TEST(resolve_assign11, "fn main() { a := 1; a -= 3 }", cmon_false);
+// RESOLVE_TEST(resolve_assign12, "fn main() { a := 1; a /= 3 }", cmon_false);
+// RESOLVE_TEST(resolve_assign13, "fn main() { a := 1; a *= 3 }", cmon_false);
+// RESOLVE_TEST(resolve_assign14, "fn main() { a := 1; a %= 3 }", cmon_false);
+// RESOLVE_TEST(resolve_prefix01, "boink : s32 = -2", cmon_true);
+// RESOLVE_TEST(resolve_binop01, "boink := 1 + 2", cmon_true);
+// RESOLVE_TEST(resolve_binop02, "pub boop := 1.1 + 2.3", cmon_true);
+// RESOLVE_TEST(resolve_binop03, "boink : s32 = 1 + 2.3", cmon_false);
+// RESOLVE_TEST(resolve_binop04, "pub mut wee := 11 % 2", cmon_true);
+// RESOLVE_TEST(resolve_binop05, "boink := 33 % 2.3", cmon_false);
+// RESOLVE_TEST(resolve_typecheck_loop01, "a := b; b := c; c := a", cmon_false);
+// RESOLVE_TEST(resolve_typecheck_loop02, "a := b; b := 1", cmon_true);
+// RESOLVE_TEST(resolve_struct01, "struct Foo{}", cmon_true);
+// RESOLVE_TEST(resolve_struct02, "struct Foo{ bar : s32 }", cmon_true);
+// RESOLVE_TEST(resolve_struct03, "struct Foo{ bar : s32; bat : s32 = 1 }", cmon_true);
+// RESOLVE_TEST(resolve_struct04, "struct Foo{ bar : s32 bat : s32 }", cmon_false);
+// RESOLVE_TEST(resolve_struct05, "struct Boink{ bar : f32; bar : f64 }", cmon_false);
+// RESOLVE_TEST(resolve_struct06, "struct Boink{ bar : Boink }", cmon_false);
+// RESOLVE_TEST(resolve_struct07, "struct A{ b : B }; struct B{ a : A }", cmon_false);
+// RESOLVE_TEST(resolve_struct08, "struct A{ a : [5]A }", cmon_false);
+// RESOLVE_TEST(resolve_struct09, "struct A{ b : [2]B }; struct B{ a : A }", cmon_false);
+// RESOLVE_TEST(resolve_arr_init01, "foo :[3]s32 = [1, 2, 3]", cmon_true);
+// RESOLVE_TEST(resolve_arr_init02, "foo :[2]f32 = [1.0, 2.0]", cmon_true);
+// RESOLVE_TEST(resolve_arr_init03, "foo :[3]f64 = [1.0, -3.0]", cmon_false);
+// RESOLVE_TEST(resolve_arr_init04, "foo :[2]f64 = [-99.3, 0.3, 20.0]", cmon_false);
+// RESOLVE_TEST(resolve_index01, "a := [1, 2, 3]; b := a[0]", cmon_true);
+// RESOLVE_TEST(resolve_struct_init01,
+//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0} }",
+//              cmon_true);
+// RESOLVE_TEST(resolve_struct_init02,
+//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0} }",
+//              cmon_false);
+// RESOLVE_TEST(resolve_struct_init03,
+//              "struct Boink{ x : f32; y : f32 }; fn main() { b := Boink{1.0, 2.0, 3.0} }",
+//              cmon_false);
+// RESOLVE_TEST(resolve_struct_init04,
+//              "struct Boink{ x : f32; y : f32 }; b := Boink{x: 1.0, y: 2.0}",
+//              cmon_true);
+// RESOLVE_TEST(resolve_struct_init05,
+//              "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{1.0, y: 2.0}",
+//              cmon_false);
+// RESOLVE_TEST(resolve_struct_init06,
+//              "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{x: 1.0, z: 2.0}",
+//              cmon_false);
+// RESOLVE_TEST(resolve_alias01,
+//              "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{} }",
+//              cmon_true);
+// RESOLVE_TEST(resolve_alias02,
+//              "alias Boop = Bar; struct Bar{}; mut man := Boop{}; mut bar_man : Bar = man",
+//              cmon_true);
+// RESOLVE_TEST(resolve_alias03, "alias Boop = f64", cmon_true);
+// RESOLVE_TEST(resolve_alias04, "alias Boop = NoExist", cmon_false);
+// RESOLVE_TEST(resolve_alias05, "alias Boop = no.Exist", cmon_false);
+// RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
+// RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
+// RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
+// RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
+// RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
+// RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
+// RESOLVE_TEST(resolve_call04, "fn foo(a : f32)->f32{}; bar := foo(99)", cmon_false);
+// RESOLVE_TEST(resolve_call05, "fn foo(a : f32)->f32{}; bar := foo(1.3, 99)", cmon_false);
+// RESOLVE_TEST(resolve_call06, "fn foo(a : f32)->f32{}; bar := foo()", cmon_false);
+// RESOLVE_TEST(resolve_init_loop01, "a : s32 = a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop02, "a : s32 = b; b := a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop03, "a : s32 = b; b := &a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop04, "a : s32 = c; b := &a; c := *a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop05, "a : s32 = b; b := -a", cmon_false);
+// RESOLVE_TEST(resolve_init_loop06, "a : s32 = b; b := a + 3", cmon_false);
+// RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)", cmon_false);
+// RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
+// RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
 
 // void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 // {
