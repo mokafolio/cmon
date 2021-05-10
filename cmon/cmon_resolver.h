@@ -45,6 +45,8 @@ CMON_API cmon_bool cmon_resolver_errors(cmon_resolver * _r,
 // CMON_API cmon_resolved_mod * cmon_resolver_resolved_mod(cmon_resolver * _r);
 // CMON_API void cmon_resolved_mod_destroy(cmon_resolved_mod * _ra);
 CMON_API cmon_idx cmon_resolved_mod_type(cmon_resolved_mod * _ra, size_t _i);
+CMON_API cmon_types * cmon_resolved_mod_types(cmon_resolved_mod * _ra);
+CMON_API cmon_src * cmon_resolved_mod_src(cmon_resolved_mod * _ra);
 CMON_API size_t cmon_resolved_mod_type_count(cmon_resolved_mod * _ra);
 CMON_API cmon_file_ast_pair cmon_resolved_mod_global_fn(cmon_resolved_mod * _ra, size_t _i);
 CMON_API size_t cmon_resolved_mod_global_fn_count(cmon_resolved_mod * _ra);

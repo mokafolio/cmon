@@ -454,7 +454,7 @@ static inline _struct_field * _get_struct_field(cmon_types * _t,
     return &_t->structs[_t->types[_struct_idx].data_idx].fields[_field_idx];
 }
 
-cmon_idx cmon_types_struct_field_count(cmon_types * _t, cmon_idx _struct_idx)
+size_t cmon_types_struct_field_count(cmon_types * _t, cmon_idx _struct_idx)
 {
     assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
     assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));

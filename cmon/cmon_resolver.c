@@ -2502,6 +2502,16 @@ cmon_bool cmon_resolver_errors(cmon_resolver * _r,
     return cmon_err_handler_count(_r->err_handler) > 0;
 }
 
+cmon_types * cmon_resolved_mod_types(cmon_resolved_mod * _ra)
+{
+    return _ra->types;
+}
+
+cmon_src * cmon_resolved_mod_src(cmon_resolved_mod * _ra)
+{
+    return _ra->src;
+}
+
 cmon_idx cmon_resolved_mod_type(cmon_resolved_mod * _ra, size_t _i)
 {
     assert(_i < _ra->sorted_types_count);

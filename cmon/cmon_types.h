@@ -62,7 +62,7 @@ CMON_API cmon_idx cmon_types_src_file(cmon_types * _tr, cmon_idx _type_idx);
 CMON_API cmon_idx cmon_types_name_tok(cmon_types * _tr, cmon_idx _type_idx);
 
 // struct specific getters
-CMON_API cmon_idx cmon_types_struct_field_count(cmon_types * _tr, cmon_idx _struct_idx);
+CMON_API size_t cmon_types_struct_field_count(cmon_types * _tr, cmon_idx _struct_idx);
 CMON_API const char * cmon_types_struct_field_name(cmon_types * _tr,
                                                    cmon_idx _struct_idx,
                                                    cmon_idx _field_idx);
