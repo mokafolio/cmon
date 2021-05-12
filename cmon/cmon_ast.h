@@ -185,31 +185,16 @@ CMON_API cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_right(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx);
 
-// simple iterator interface to iterate over ranges of ast nodes
-typedef struct cmon_ast_iter
-{
-    cmon_idx idx;
-    cmon_idx end;
-} cmon_ast_iter;
-
-CMON_API cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it);
-
 // module stmt specific getters
 CMON_API cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx);
 
 // import specific getters
-CMON_API cmon_idx cmon_ast_import_begin(cmon_ast * _ast, cmon_idx _import_idx);
-CMON_API cmon_idx cmon_ast_import_end(cmon_ast * _ast, cmon_idx _import_idx);
-CMON_API cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_idx);
 CMON_API size_t cmon_ast_import_pairs_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_import_pair(cmon_ast * _ast, cmon_idx _idx, size_t _pidx);
 CMON_API cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx);
-CMON_API cmon_idx cmon_ast_import_pair_path_begin(cmon_ast * _ast, cmon_idx _importp_idx);
-CMON_API cmon_idx cmon_ast_import_pair_path_end(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_idx cmon_ast_import_pair_path_first_tok(cmon_ast * _ast, cmon_idx _importp_idx);
-CMON_API cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _import_idx);
-CMON_API size_t cmon_ast_import_pair_token_count(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_import_pair_token(cmon_ast * _ast, cmon_idx _idx, size_t _tidx);
+CMON_API size_t cmon_ast_import_pair_path_token_count(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_import_pair_path_token(cmon_ast * _ast, cmon_idx _idx, size_t _tidx);
 CMON_API cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx);
 CMON_API cmon_idx cmon_ast_import_pair_ident(cmon_ast * _ast, cmon_idx _importp_idx);
 
@@ -228,9 +213,6 @@ CMON_API cmon_bool cmon_ast_type_view_is_mut(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_array_type(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API size_t cmon_ast_type_array_count(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx);
-CMON_API cmon_idx cmon_ast_type_fn_params_begin(cmon_ast * _ast, cmon_idx _tidx);
-CMON_API cmon_idx cmon_ast_type_fn_params_end(cmon_ast * _ast, cmon_idx _tidx);
-CMON_API cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx);
 CMON_API size_t cmon_ast_type_fn_params_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_type_fn_param(cmon_ast * _ast, cmon_idx _idx, size_t _pidx);
 
@@ -244,16 +226,10 @@ CMON_API void cmon_ast_var_decl_set_sym(cmon_ast * _ast, cmon_idx _vidx, cmon_id
 CMON_API cmon_idx cmon_ast_var_decl_sym(cmon_ast * _ast, cmon_idx _vidx);
 
 // block specific getters
-CMON_API cmon_idx cmon_ast_block_begin(cmon_ast * _ast, cmon_idx _block_idx);
-CMON_API cmon_idx cmon_ast_block_end(cmon_ast * _ast, cmon_idx _block_idx);
-CMON_API cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API size_t cmon_ast_block_child_count(cmon_ast * _ast, cmon_idx _block_idx);
 CMON_API cmon_idx cmon_ast_block_child(cmon_ast * _ast, cmon_idx _block_idx, size_t _idx);
 
 // fn specific getters
-CMON_API cmon_idx cmon_ast_fn_params_begin(cmon_ast * _ast, cmon_idx _fn_idx);
-CMON_API cmon_idx cmon_ast_fn_params_end(cmon_ast * _ast, cmon_idx _fn_idx);
-CMON_API cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API size_t cmon_ast_fn_params_count(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_ast_fn_param(cmon_ast * _ast, cmon_idx _fn_idx, size_t _param_idx);
 CMON_API cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx);
@@ -263,9 +239,6 @@ CMON_API cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_ast_struct_field_name(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_field_type(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_struct_fields_begin(cmon_ast * _ast, cmon_idx _struct_idx);
-CMON_API cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx);
-CMON_API cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API size_t cmon_ast_struct_fields_count(cmon_ast * _ast, cmon_idx _struct_idx);
 CMON_API cmon_idx cmon_ast_struct_field(cmon_ast * _ast, cmon_idx _struct_idx, size_t _field_idx);
 CMON_API cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx);
@@ -296,16 +269,10 @@ CMON_API cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
 
 // call specific getters
 CMON_API cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_call_args_begin(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_call_args_end(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_ast_iter cmon_ast_call_args_iter(cmon_ast * _ast, cmon_idx _idx);
 CMON_API size_t cmon_ast_call_args_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_call_arg(cmon_ast * _ast, cmon_idx _idx, size_t _arg_idx);
 
 // array init getters
-CMON_API cmon_idx cmon_ast_array_init_exprs_begin(cmon_ast * _ast, cmon_idx _ai_idx);
-CMON_API cmon_idx cmon_ast_array_init_exprs_end(cmon_ast * _ast, cmon_idx _ai_idx);
-CMON_API cmon_ast_iter cmon_ast_array_init_exprs_iter(cmon_ast * _ast, cmon_idx _ai_idx);
 CMON_API size_t cmon_ast_array_init_exprs_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_array_init_expr(cmon_ast * _ast, cmon_idx _idx, size_t _arg_idx);
 
@@ -317,9 +284,6 @@ CMON_API cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field_name_tok(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field_expr(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_struct_init_fields_begin(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_idx cmon_ast_struct_init_fields_end(cmon_ast * _ast, cmon_idx _idx);
-CMON_API cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx);
 CMON_API size_t cmon_ast_struct_init_fields_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field(cmon_ast * _ast, cmon_idx _idx, size_t _fidx);
 
