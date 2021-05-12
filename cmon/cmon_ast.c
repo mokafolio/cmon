@@ -432,6 +432,20 @@ static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
     return _ast->extra_data[_idx];
 }
 
+#define _extra_data_count_def(_name, _kind, _off)                                                  \
+    size_t _name(cmon_ast * _ast, cmon_idx _idx)                                                   \
+    {                                                                                              \
+        assert(_get_kind(_ast, _idx) == _kind);                                                    \
+        return _ast->left_right[_idx].right - (_ast, _ast->left_right[_idx].left + _off);          \
+    }
+
+#define _extra_data_getter_def(_name, _count_fn_name, _off)                                        \
+    cmon_idx _name(cmon_ast * _ast, cmon_idx _idx, size_t _gidx)                                   \
+    {                                                                                              \
+        assert(_gidx < _count_fn_name(_ast, _idx));                                                \
+        return _get_extra_data(_ast, _ast->left_right[_idx].left + _gidx + _off);                  \
+    }
+
 cmon_idx cmon_ast_root_block(cmon_ast * _ast)
 {
     return _ast->root_block_idx;
@@ -507,6 +521,9 @@ cmon_ast_iter cmon_ast_import_iter(cmon_ast * _ast, cmon_idx _import_idx)
                             cmon_ast_import_end(_ast, _import_idx) };
 }
 
+_extra_data_count_def(cmon_ast_import_pairs_count, cmon_astk_import, 0);
+_extra_data_getter_def(cmon_ast_import_pair, cmon_ast_import_pairs_count, 0);
+
 cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx)
 {
     cmon_str_view b, e;
@@ -541,6 +558,9 @@ cmon_ast_iter cmon_ast_import_pair_path_iter(cmon_ast * _ast, cmon_idx _importp_
     return (cmon_ast_iter){ cmon_ast_import_pair_path_begin(_ast, _importp_idx),
                             cmon_ast_import_pair_path_end(_ast, _importp_idx) };
 }
+
+_extra_data_count_def(cmon_ast_import_pair_path_token_count, cmon_astk_import_pair, 0);
+_extra_data_getter_def(cmon_ast_import_pair_path_token, cmon_ast_import_pair_path_token_count, 0);
 
 cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
 {
@@ -646,6 +666,9 @@ cmon_ast_iter cmon_ast_type_fn_params_iter(cmon_ast * _ast, cmon_idx _tidx)
                             cmon_ast_type_fn_params_end(_ast, _tidx) };
 }
 
+_extra_data_count_def(cmon_ast_type_fn_params_count, cmon_astk_type_fn, 0);
+_extra_data_getter_def(cmon_ast_type_fn_param, cmon_ast_type_fn_params_count, 0);
+
 cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx)
 {
     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
@@ -707,6 +730,9 @@ cmon_ast_iter cmon_ast_block_iter(cmon_ast * _ast, cmon_idx _block_idx)
                             cmon_ast_block_end(_ast, _block_idx) };
 }
 
+_extra_data_count_def(cmon_ast_block_child_count, cmon_astk_block, 0);
+_extra_data_getter_def(cmon_ast_block_child, cmon_ast_block_child_count, 0);
+
 cmon_idx cmon_ast_fn_params_begin(cmon_ast * _ast, cmon_idx _fn_idx)
 {
     assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
@@ -727,6 +753,20 @@ cmon_ast_iter cmon_ast_fn_params_iter(cmon_ast * _ast, cmon_idx _fn_idx)
     return (cmon_ast_iter){ cmon_ast_fn_params_begin(_ast, _fn_idx),
                             cmon_ast_fn_params_end(_ast, _fn_idx) };
 }
+
+_extra_data_count_def(cmon_ast_fn_params_count, cmon_astk_fn_decl, 2);
+_extra_data_getter_def(cmon_ast_fn_param, cmon_ast_fn_params_count, 2);
+// size_t cmon_ast_fn_params_count(cmon_ast * _ast, cmon_idx _fn_idx)
+// {
+//     assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+//     return _ast->left_right[_fn_idx].right - (_ast, _ast->left_right[_fn_idx].left + 2);
+// }
+
+// cmon_idx cmon_ast_fn_param(cmon_ast * _ast, cmon_idx _fn_idx, size_t _param_idx)
+// {
+//     assert(_param_idx < cmon_ast_fn_params_count(_ast, _fn_idx));
+//     return _get_extra_data(_ast, _ast->left_right[_fn_idx].left + _param_idx + 2);
+// }
 
 cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx)
 {
@@ -754,14 +794,24 @@ cmon_idx cmon_ast_struct_fields_end(cmon_ast * _ast, cmon_idx _struct_idx)
 
 cmon_ast_iter cmon_ast_struct_fields_iter(cmon_ast * _ast, cmon_idx _struct_idx)
 {
-    printf("NUM FIELDS %lu, %lu, %lu\n",
-           cmon_ast_struct_fields_end(_ast, _struct_idx),
-           cmon_ast_struct_fields_begin(_ast, _struct_idx),
-           cmon_ast_struct_fields_end(_ast, _struct_idx) -
-               cmon_ast_struct_fields_begin(_ast, _struct_idx));
     return (cmon_ast_iter){ cmon_ast_struct_fields_begin(_ast, _struct_idx),
                             cmon_ast_struct_fields_end(_ast, _struct_idx) };
 }
+
+_extra_data_count_def(cmon_ast_struct_fields_count, cmon_astk_struct_decl, 2);
+_extra_data_getter_def(cmon_ast_struct_field, cmon_ast_struct_fields_count, 2);
+
+// size_t cmon_ast_struct_fields_count(cmon_ast * _ast, cmon_idx _struct_idx)
+// {
+//     assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+//     return _ast->left_right[_struct_idx].right - (_ast->left_right[_struct_idx].left + 2);
+// }
+
+// cmon_idx cmon_ast_struct_field(cmon_ast * _ast, cmon_idx _struct_idx, size_t _field_idx)
+// {
+//     assert(_field_idx < cmon_ast_struct_fields_count(_ast, _struct_idx));
+//     return _get_extra_data(_ast, _ast->left_right[_struct_idx].left + _field_idx + 2);
+// }
 
 cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx)
 {
@@ -877,6 +927,21 @@ cmon_ast_iter cmon_ast_call_args_iter(cmon_ast * _ast, cmon_idx _idx)
                             cmon_ast_call_args_end(_ast, _idx) };
 }
 
+_extra_data_count_def(cmon_ast_call_args_count, cmon_astk_call, 1);
+_extra_data_getter_def(cmon_ast_call_arg, cmon_ast_call_args_count, 1);
+
+// size_t cmon_ast_call_args_count(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_call);
+//     return _ast->left_right[_idx].right - (_ast->left_right[_idx].left + 1);
+// }
+
+// cmon_idx cmon_ast_call_arg(cmon_ast * _ast, cmon_idx _idx, size_t _arg_idx)
+// {
+//     assert(_arg_idx < cmon_ast_call_args_count(_ast, _idx));
+//     return _get_extra_data(_ast, _ast->left_right[_idx].left + _arg_idx + 1);
+// }
+
 cmon_idx cmon_ast_array_init_exprs_begin(cmon_ast * _ast, cmon_idx _ai_idx)
 {
     assert(_get_kind(_ast, _ai_idx) == cmon_astk_array_init);
@@ -894,6 +959,21 @@ cmon_ast_iter cmon_ast_array_init_exprs_iter(cmon_ast * _ast, cmon_idx _ai_idx)
     return (cmon_ast_iter){ cmon_ast_array_init_exprs_begin(_ast, _ai_idx),
                             cmon_ast_array_init_exprs_end(_ast, _ai_idx) };
 }
+
+_extra_data_count_def(cmon_ast_array_init_exprs_count, cmon_astk_array_init, 0);
+_extra_data_getter_def(cmon_ast_array_init_expr, cmon_ast_array_init_exprs_count, 0);
+
+// size_t cmon_ast_array_init_exprs_count(cmon_ast * _ast, cmon_idx _idx)
+// {
+//     assert(_get_kind(_ast, _idx) == cmon_astk_array_init);
+//     return _ast->left_right[_idx].right - _ast->left_right[_idx].left;
+// }
+
+// cmon_idx cmon_ast_array_init_expr(cmon_ast * _ast, cmon_idx _idx, size_t _arg_idx)
+// {
+//     assert(_arg_idx < cmon_ast_array_init_exprs_count(_ast, _idx));
+//     return _get_extra_data(_ast, _ast->left_right[_idx].left + _arg_idx);
+// }
 
 cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx)
 {
@@ -960,6 +1040,9 @@ cmon_ast_iter cmon_ast_struct_init_fields_iter(cmon_ast * _ast, cmon_idx _idx)
     return (cmon_ast_iter){ cmon_ast_struct_init_fields_begin(_ast, _idx),
                             cmon_ast_struct_init_fields_end(_ast, _idx) };
 }
+
+_extra_data_count_def(cmon_ast_struct_init_fields_count, cmon_astk_struct_init, 1);
+_extra_data_getter_def(cmon_ast_struct_init_field, cmon_ast_struct_init_fields_count, 1);
 
 cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx)
 {

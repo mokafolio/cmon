@@ -41,6 +41,7 @@ typedef struct cmon_resolved_mod
     cmon_src * src;
     cmon_types * types;
     cmon_modules * mods;
+    cmon_idx mod_idx;
     cmon_idx * sorted_types;
     size_t sorted_types_count;
     cmon_file_ast_pair * global_fn_decls;
@@ -49,6 +50,7 @@ typedef struct cmon_resolved_mod
     size_t global_var_decls_count;
     cmon_file_ast_pair * local_fn_decls;
     size_t local_fn_decls_count;
+    cmon_idx ** resolved_types;
 } cmon_resolved_mod;
 
 typedef struct cmon_resolver
@@ -79,7 +81,9 @@ typedef struct cmon_resolver
     cmon_bool global_type_pass;
     cmon_dyn_arr(cmon_idx) globals_pass_stack;
     // this is filled in in cmon_resolver_resolved_mod
-    cmon_resolved_mod resolved_ast;
+    cmon_resolved_mod resolved_mod;
+    // this is a helper to store all resolved type arrays in one array to be used for cmon_resolved_mod
+    cmon_dyn_arr(cmon_idx*) ast_resolved_types;
 } cmon_resolver;
 
 static inline void _emit_err(cmon_str_builder * _str_builder,
@@ -1088,12 +1092,15 @@ static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon
         return CMON_INVALID_IDX;
     }
 
-    cmon_idx idx;
-    cmon_idx param_idx = 0;
-    cmon_ast_iter it = cmon_ast_call_args_iter(_fr_ast(_fr), _ast_idx);
-    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+    // cmon_idx idx;
+    // cmon_idx param_idx = 0;
+    // cmon_ast_iter it = cmon_ast_call_args_iter(_fr_ast(_fr), _ast_idx);
+    // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+    size_t i;
+    for(i=0; i<cmon_ast_call_args_count(_fr_ast(_fr), _ast_idx); ++i)
     {
-        cmon_idx param_type = cmon_types_fn_param(_fr->resolver->types, left_type, param_idx);
+        cmon_idx idx = cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i);
+        cmon_idx param_type = cmon_types_fn_param(_fr->resolver->types, left_type, i);
         cmon_idx arg_type = _resolve_expr(_fr, _scope, idx, param_type);
         _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), arg_type, param_type);
     }
@@ -1311,11 +1318,14 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
 
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
 
-    cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
+    // cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
     cmon_idx idx;
+    size_t i;
     cmon_bool param_err = cmon_false;
-    while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
+    // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
+    for(i = 0; i < cmon_ast_fn_params_count(_fr_ast(_fr), _ast_idx); ++i)
     {
+        idx = cmon_ast_fn_param(_fr_ast(_fr), _ast_idx, i);
         cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
         {
@@ -1324,10 +1334,7 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
             _fr->resolved_types[idx] = pt;
             if (!cmon_is_valid_idx(pt))
                 param_err = cmon_true;
-            printf("fu %lu %lu\n", idx_buf, pt);
             cmon_idx_buf_append(_fr->idx_buf_mng, idx_buf, pt);
-            printf("FOCKING PARAM COUNT 01 %lu\n\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
-            // assert(0);
         }
         else
         {
@@ -1685,6 +1692,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
     ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
+    cmon_dyn_arr_init(&ret->ast_resolved_types, _alloc, 8);
     return ret;
 }
 
@@ -1706,6 +1714,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
         cmon_idx_buf_mng_destroy(fr->idx_buf_mng);
         cmon_err_handler_destroy(fr->err_handler);
     }
+    cmon_dyn_arr_dealloc(&_r->ast_resolved_types);
     cmon_dyn_arr_dealloc(&_r->globals_pass_stack);
     cmon_err_handler_destroy(_r->err_handler);
     cmon_dyn_arr_dealloc(&_r->errs);
@@ -1750,7 +1759,10 @@ void cmon_resolver_set_input(cmon_resolver * _r,
                                     CMON_INVALID_IDX);
     }
 
-    for (i = 0; i < cmon_modules_src_file_count(_r->mods, _r->mod_idx); ++i)
+    size_t file_count = cmon_modules_src_file_count(_r->mods, _r->mod_idx);
+    cmon_dyn_arr_reserve(&_r->file_resolvers, file_count);
+    cmon_dyn_arr_reserve(&_r->ast_resolved_types, file_count);
+    for (i = 0; i < file_count; ++i)
     {
         _file_resolver fr;
         cmon_ast * ast;
@@ -1773,6 +1785,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         memset(fr.resolved_types, (int)CMON_INVALID_IDX, sizeof(cmon_idx) * cmon_ast_count(ast));
         fr.err_handler = cmon_err_handler_create(_r->alloc, _r->src, _r->max_errors);
         cmon_dyn_arr_append(&_r->file_resolvers, fr);
+        cmon_dyn_arr_append(&_r->ast_resolved_types, fr.resolved_types);
     }
 }
 
@@ -2025,7 +2038,7 @@ static inline cmon_bool _check_field_name(_file_resolver * _fr,
 
 cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
-    size_t i;
+    size_t i, j;
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
     _set_err_jmp_goto(fr, err_end);
 
@@ -2054,11 +2067,13 @@ cmon_bool cmon_resolver_usertypes_pass(cmon_resolver * _r, cmon_idx _file_idx)
     {
         assert(cmon_types_kind(_r->types, fr->type_decls[i].type_idx) == cmon_typek_struct);
         cmon_idx_buf_clear(fr->idx_buf_mng, name_tok_buf);
-        cmon_ast_iter field_it =
-            cmon_ast_struct_fields_iter(_fr_ast(fr), fr->type_decls[i].ast_idx);
-        cmon_idx ast_idx;
-        while (cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
+        // cmon_ast_iter field_it =
+        //     cmon_ast_struct_fields_iter(_fr_ast(fr), fr->type_decls[i].ast_idx);
+        // cmon_idx ast_idx;
+        // while (cmon_is_valid_idx(ast_idx = cmon_ast_iter_next(_fr_ast(fr), &field_it)))
+        for(j=0; j<cmon_ast_struct_fields_count(_fr_ast(fr), fr->type_decls[i].ast_idx); ++j)
         {
+            cmon_idx ast_idx = cmon_ast_struct_field(_fr_ast(fr), fr->type_decls[i].ast_idx, j);
             cmon_astk kind = cmon_ast_kind(_fr_ast(fr), ast_idx);
             cmon_idx parsed_type_idx, def_expr;
             if (kind == cmon_astk_struct_field)
@@ -2358,11 +2373,11 @@ static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, 
     }
     else if (kind == cmon_astk_call)
     {
-        cmon_idx idx;
         cmon_ast_iter it = cmon_ast_call_args_iter(_fr_ast(_fr), _ast_idx);
-        while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        size_t i;
+        for(i=0; i<cmon_ast_call_args_count(_fr_ast(_fr), _ast_idx); ++i)
         {
-            _check_init_loop(_fr, _global_sym, idx);
+            _check_init_loop(_fr, _global_sym, cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i));
         }
         _check_init_loop(_fr, _global_sym, cmon_ast_call_left(_fr_ast(_fr), _ast_idx));
     }
@@ -2435,18 +2450,20 @@ err_end:
 
 static inline cmon_resolved_mod * _resolved_mod(cmon_resolver * _r)
 {
-    _r->resolved_ast.src = _r->src;
-    _r->resolved_ast.types = _r->types;
-    _r->resolved_ast.mods = _r->mods;
-    _r->resolved_ast.sorted_types = _r->sorted_types;
-    _r->resolved_ast.sorted_types_count = cmon_dyn_arr_count(&_r->sorted_types);
-    _r->resolved_ast.global_fn_decls = _r->global_fns;
-    _r->resolved_ast.global_fn_decls_count = cmon_dyn_arr_count(&_r->global_fns);
-    _r->resolved_ast.global_var_decls = _r->global_vars;
-    _r->resolved_ast.global_var_decls_count = cmon_dyn_arr_count(&_r->global_vars);
-    _r->resolved_ast.local_fn_decls = _r->local_fns;
-    _r->resolved_ast.local_fn_decls_count = cmon_dyn_arr_count(&_r->local_fns);
-    return &_r->resolved_ast;
+    _r->resolved_mod.src = _r->src;
+    _r->resolved_mod.types = _r->types;
+    _r->resolved_mod.mods = _r->mods;
+    _r->resolved_mod.mod_idx = _r->mod_idx;
+    _r->resolved_mod.sorted_types = _r->sorted_types;
+    _r->resolved_mod.sorted_types_count = cmon_dyn_arr_count(&_r->sorted_types);
+    _r->resolved_mod.global_fn_decls = _r->global_fns;
+    _r->resolved_mod.global_fn_decls_count = cmon_dyn_arr_count(&_r->global_fns);
+    _r->resolved_mod.global_var_decls = _r->global_vars;
+    _r->resolved_mod.global_var_decls_count = cmon_dyn_arr_count(&_r->global_vars);
+    _r->resolved_mod.local_fn_decls = _r->local_fns;
+    _r->resolved_mod.local_fn_decls_count = cmon_dyn_arr_count(&_r->local_fns);
+    _r->resolved_mod.resolved_types = _r->ast_resolved_types;
+    return &_r->resolved_mod;
 }
 
 
@@ -2510,6 +2527,28 @@ cmon_types * cmon_resolved_mod_types(cmon_resolved_mod * _ra)
 cmon_src * cmon_resolved_mod_src(cmon_resolved_mod * _ra)
 {
     return _ra->src;
+}
+
+cmon_modules * cmon_resolved_mod_modules(cmon_resolved_mod * _ra)
+{
+    return _ra->mods;
+}
+
+cmon_idx cmon_resolved_mod_module_idx(cmon_resolved_mod * _ra)
+{
+    return _ra->mod_idx;
+}
+
+cmon_idx * cmon_resolved_mod_resolved_types(cmon_resolved_mod * _ra, cmon_idx _src_file_idx)
+{
+    assert(_src_file_idx < cmon_modules_src_file_count(_ra->mods, _ra->mod_idx));
+    return _ra->resolved_types[_src_file_idx];
+}
+
+cmon_idx cmon_resolved_mod_resolved_type(cmon_resolved_mod * _ra, cmon_idx _src_file_idx, cmon_idx _ast_idx)
+{
+    assert(_ast_idx < cmon_ast_count(cmon_src_ast(_ra->src, _src_file_idx)));
+    return cmon_resolved_mod_resolved_types(_ra, _src_file_idx)[_ast_idx];
 }
 
 cmon_idx cmon_resolved_mod_type(cmon_resolved_mod * _ra, size_t _i)
