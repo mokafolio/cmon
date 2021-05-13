@@ -485,18 +485,6 @@ cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx)
     return _ast->extra_data[_extra_idx];
 }
 
-cmon_idx cmon_ast_iter_next(cmon_ast * _ast, cmon_ast_iter * _it)
-{
-    cmon_idx idx = _it->idx;
-
-    if (_it->idx == _it->end)
-        return CMON_INVALID_IDX;
-
-    ++_it->idx;
-
-    return _ast->extra_data[idx];
-}
-
 cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx)
 {
     assert(_get_kind(_ast, _mod_idx) == cmon_astk_module);

@@ -2346,9 +2346,113 @@ err_end:
     return cmon_resolver_has_errors(_r);
 }
 
-// static void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx _ast_expr);
-// static void _check_init_loop_stmt(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx
-// _ast_stmt);
+// @TODO: Add a nested name find to symbols scope and an easy way to get the root scope of an
+// expression? Then we could simplify this mess a lot by 01. getting the root scope of a globals
+// expression and find its name occurances in there. If any of them matches the global symbol in
+// question, we have an init loop. This will do the trick for now.
+static inline void _add_global_init_dep(_file_resolver * _fr,
+                                        cmon_idx _global_sym,
+                                        cmon_idx _ast_idx,
+                                        cmon_dyn_arr(cmon_idx) * _out_deps)
+{
+    cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
+    if (kind == cmon_astk_ident)
+    {
+        cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
+        assert(cmon_is_valid_idx(sym));
+        cmon_dyn_arr_append(_out_deps, sym);
+        if (sym != _global_sym)
+        {
+            cmon_idx var_decl_ast = cmon_symbols_ast(_fr->resolver->symbols, sym);
+            _add_global_init_dep(
+                _fr, _global_sym, cmon_ast_var_decl_expr(_fr_ast(_fr), var_decl_ast), _out_deps);
+        }
+    }
+    else if (kind == cmon_astk_addr)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_addr_expr(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_deref)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_prefix)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_binary)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_binary_left(_fr_ast(_fr), _ast_idx), _out_deps);
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_call)
+    {
+        size_t i;
+        for (i = 0; i < cmon_ast_call_args_count(_fr_ast(_fr), _ast_idx); ++i)
+        {
+            _add_global_init_dep(
+                _fr, _global_sym, cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i), _out_deps);
+        }
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_call_left(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_index)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_index_expr(_fr_ast(_fr), _ast_idx), _out_deps);
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_index_left(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_selector)
+    {
+        _add_global_init_dep(
+            _fr, _global_sym, cmon_ast_selector_left(_fr_ast(_fr), _ast_idx), _out_deps);
+    }
+    else if (kind == cmon_astk_array_init)
+    {
+        // cmon_idx idx;
+        // cmon_ast_iter it = cmon_ast_array_init_exprs_iter(_fr_ast(_fr), _ast_idx);
+        // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        size_t i;
+        for (i = 0; i < cmon_ast_array_init_exprs_count(_fr_ast(_fr), _ast_idx); ++i)
+        {
+            _add_global_init_dep(
+                _fr, _global_sym, cmon_ast_array_init_expr(_fr_ast(_fr), _ast_idx, i), _out_deps);
+        }
+    }
+    else if (kind == cmon_astk_struct_init)
+    {
+        // cmon_idx idx;
+        // cmon_ast_iter it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
+        // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
+        size_t i;
+        for (i = 0; i < cmon_ast_struct_init_fields_count(_fr_ast(_fr), _ast_idx); ++i)
+        {
+            _add_global_init_dep(
+                _fr,
+                _global_sym,
+                cmon_ast_struct_init_field_expr(
+                    _fr_ast(_fr), cmon_ast_struct_init_field(_fr_ast(_fr), _ast_idx, i)),
+                _out_deps);
+        }
+    }
+    else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal ||
+             kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal ||
+             kind == cmon_astk_fn_decl)
+    {
+        // these are the ones nothing needs to be done for.
+    }
+    else
+    {
+        // make sure we handled all of them
+        assert(0);
+    }
+}
 
 static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx _ast_idx)
 {
@@ -2462,12 +2566,39 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         _resolve_var_decl(fr, fr->file_scope, var_ast_idx);
     }
 
+    cmon_dep_graph_clear(_r->dep_graph);
     for (i = 0; i < cmon_dyn_arr_count(&fr->global_var_decls); ++i)
     {
         cmon_idx var_decl_ast = cmon_symbols_ast(fr->resolver->symbols, fr->global_var_decls[i]);
         assert(cmon_is_valid_idx(var_decl_ast));
-        _check_init_loop(
-            fr, fr->global_var_decls[i], cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast));
+        cmon_dyn_arr_clear(&_r->dep_buffer);
+        _add_global_init_dep(fr,
+                             fr->global_var_decls[i],
+                             cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast),
+                             &_r->dep_buffer);
+
+        cmon_dep_graph_add(_r->dep_graph,
+                           fr->global_var_decls[i],
+                           &_r->dep_buffer[0],
+                           cmon_dyn_arr_count(&_r->dep_buffer));
+        // _check_init_loop(
+        //     fr, fr->global_var_decls[i], cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast));
+    }
+
+    cmon_dep_graph_result res = cmon_dep_graph_resolve(_r->dep_graph);
+    if (!res.array)
+    {
+        cmon_idx a = cmon_dep_graph_conflict_a(_r->dep_graph);
+        // cmon_idx b = cmon_dep_graph_conflict_b(_r->dep_graph);
+        cmon_idx file_idx = cmon_src_mod_src_idx(_r->src, cmon_symbols_src_file(_r->symbols, a));
+        _file_resolver * fr = &_r->file_resolvers[file_idx];
+        cmon_str_view name = cmon_symbols_name(_r->symbols, a);
+        _fr_err(fr,
+                cmon_ast_token(_fr_ast(fr), cmon_symbols_ast(_r->symbols, a)),
+                "initialization loop for '%.*s'",
+                name.end - name.begin,
+                name.begin);
+        // assert(0);
     }
 
 err_end:

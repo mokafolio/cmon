@@ -13,6 +13,7 @@ lib_src = [
     'cmon/cmon_err_report.c',
     'cmon/cmon_hashmap.c',
     'cmon/cmon_idx_buf_mng.c',
+    'cmon/cmon_ir.c',
     'cmon/cmon_modules.c',
     'cmon/cmon_parser.c',
     'cmon/cmon_resolver.c',

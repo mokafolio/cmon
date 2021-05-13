@@ -56,6 +56,12 @@ static inline void _write_type(_codegen_c * _cg, cmon_idx _idx)
     cmon_str_builder_append(_cg->str_builder, cmon_types_unique_name(_cg->types, _idx));
 }
 
+// helper to retrieve the type for an ast node and write it
+static inline void _write_ast_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
+{
+    _write_type(_cg, cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx));
+}
+
 static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
 {
     const char * pref = cmon_modules_prefix(_cg->mods, _cg->mod_idx);
@@ -69,16 +75,20 @@ static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx
 static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
 {
     assert(cmon_ast_kind(_ast(_cg, _file_idx), _ast_idx) == cmon_astk_var_decl);
-    cmon_idx fn = cmon_ast_var_decl_expr(_ast(_cg, _file_idx), _ast_idx);
-    cmon_idx ast_ret = cmon_ast_fn_ret_type(_ast(_cg, _file_idx), fn);
+    cmon_ast * ast = _ast(_cg, _file_idx);
+    cmon_tokens * toks = _tokens(_cg, _file_idx);
+    cmon_idx fn = cmon_ast_var_decl_expr(ast, _ast_idx);
+    cmon_idx ast_ret = cmon_ast_fn_ret_type(ast, fn);
     _write_type(_cg, _ast_resolved_type(_cg, _file_idx, ast_ret));
     _write_fn_name(_cg, _file_idx, _ast_idx);
     cmon_str_builder_append(_cg->str_builder, "(");
-    // cmon_ast_iter it = cmon_ast_fn_params_begin(_ast(_cg, _file_idx), _ast_idx);
-    // cmon_idx idx;
-    // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_ast(_cg, _file_idx), &it)))
-    // {
-        
+    // for (size_t i = 0; i < cmon_ast_fn_params_count(ast, fn); ++i)
+    // {   
+    //     cmon_idx param_idx = cmon_ast_fn_param(ast, fn, i);
+    //     cmon_idx ast_idx = cmon_ast_var_decl_type(ast, param_idx);
+    //     _write_ast_type(_cg, _file_idx, ast_idx);
+    //     cmon_str_view name = cmon_tokens_str_view(toks, cmon_ast_var_decl_type(ast, name));
+    //     cmon_str_builder_append_fmt(_cg->str_builder, " %.*s", );
     // }
     cmon_str_builder_append(_cg->str_builder, ")");
 }
