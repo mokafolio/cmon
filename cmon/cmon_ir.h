@@ -21,7 +21,6 @@ typedef enum
     cmon_irk_addr,
     cmon_irk_deref,
     cmon_irk_noinit,
-    cmon_irk_fn,
     cmon_irk_var_decl,
     cmon_irk_block,
     cmon_irk_alias,
@@ -66,12 +65,15 @@ CMON_API cmon_idx cmon_irb_add_call(cmon_irb * _b,
                                     size_t _count);
 
 //@NOTE: At this level, all the types fields expressions need to be passed in the order they are
-//defined in the struct, including default expressions.
+// defined in the struct, including default expressions.
 CMON_API cmon_idx cmon_irb_add_struct_init(cmon_irb * _b,
                                            cmon_idx _struct_type_idx,
                                            cmon_idx * _fields,
                                            size_t _count);
-CMON_API cmon_idx cmon_irb_add_array_init(cmon_irb * _b, cmon_idx _array_type_idx, cmon_idx * _exprs, size_t _count);
+CMON_API cmon_idx cmon_irb_add_array_init(cmon_irb * _b,
+                                          cmon_idx _array_type_idx,
+                                          cmon_idx * _exprs,
+                                          size_t _count);
 CMON_API cmon_idx cmon_irb_add_selector(cmon_irb * _b, cmon_idx _left, const char * _name);
 CMON_API cmon_idx cmon_irb_add_index(cmon_irb * _b, cmon_idx _lhs, cmon_idx _index_expr);
 
@@ -87,11 +89,9 @@ CMON_API cmon_idx cmon_irb_add_alias(cmon_irb * _b, const char * _name, cmon_idx
 CMON_API cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                                   const char * _name,
                                   cmon_idx _return_type,
+                                  cmon_idx * _params,
+                                  size_t _count,
                                   cmon_idx _body_block);
-CMON_API void cmon_irb_fn_add_param(cmon_irb * _b,
-                                    cmon_idx _fn,
-                                    const char * _name,
-                                    cmon_idx _type_idx);
 
 // global variables and aliases
 CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,

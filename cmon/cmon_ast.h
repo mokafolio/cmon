@@ -80,7 +80,7 @@ CMON_API cmon_idx cmon_astb_add_call(
 CMON_API cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                         cmon_idx _tok_idx,
                                         cmon_idx _ret_type,
-                                        cmon_idx * _params, // param and param lists
+                                        cmon_idx * _params,
                                         size_t _count,
                                         cmon_idx _block_idx);
 CMON_API cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
