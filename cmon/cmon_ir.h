@@ -106,9 +106,32 @@ CMON_API cmon_idx cmon_irb_add_global_alias(cmon_irb * _b,
                                             cmon_bool _is_pub,
                                             cmon_idx _type_idx);
 
-//getters
+// getters
 CMON_API cmon_ir * cmon_irb_ir(cmon_irb * _b);
+CMON_API const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx);
+CMON_API const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx);
+CMON_API const char * cmon_ir_int_lit_value(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_deref_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_deref_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API char cmon_ir_binary_op(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_binary_left(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_binary_right(cmon_ir * _ir, cmon_idx _idx);
+CMON_API char cmon_ir_prefix_op(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_prefix_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_paran_expr(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_call_left(cmon_ir * _ir, cmon_idx _idx);
+CMON_API size_t cmon_ir_call_arg_count(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_call_arg(cmon_ir * _ir, cmon_idx _idx, size_t _arg_idx);
 
-// CMON_API const char * cmon_
+CMON_API cmon_idx cmon_ir_struct_init_type(cmon_ir * _b, cmon_idx _idx);
+CMON_API size_t cmon_ir_struct_init_expr_count(cmon_ir * _b, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_struct_init_expr(cmon_ir * _b, cmon_idx _idx, size_t _expr_idx);
+
+CMON_API cmon_idx cmon_ir_array_init_type(cmon_ir * _b, cmon_idx _idx);
+CMON_API size_t cmon_ir_array_init_expr_count(cmon_ir * _b, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_array_init_expr(cmon_ir * _b, cmon_idx _idx, size_t _expr_idx);
 
 #endif // CMON_CMON_IR_H

@@ -26,7 +26,7 @@ typedef struct
 // init etc.)
 typedef struct
 {
-    cmon_idx type;
+    cmon_idx type_idx;
     cmon_idx exprs_begin;
     cmon_idx exprs_end;
 } _init;
@@ -65,6 +65,8 @@ typedef struct
 typedef struct cmon_ir
 {
     cmon_allocator * alloc;
+    const char * str_buf;
+    size_t str_buf_count;
     cmon_idx * types;
     size_t types_count;
     cmon_irk * kinds;
@@ -169,41 +171,6 @@ void cmon_irb_destroy(cmon_irb * _b)
     cmon_str_buf_destroy(_b->str_buf);
     cmon_str_builder_destroy(_b->str_builder);
     CMON_DESTROY(_b->alloc, _b);
-}
-
-cmon_ir * cmon_irb_ir(cmon_irb * _b)
-{
-    cmon_ir * ret = &_b->ir;
-    ret->alloc = NULL;
-    ret->types = _b->types;
-    ret->types_count = cmon_dyn_arr_count(&_b->types);
-    ret->kinds = _b->kinds;
-    ret->kinds_count = cmon_dyn_arr_count(&_b->kinds);
-    ret->data = _b->data;
-    ret->data_count = cmon_dyn_arr_count(&_b->data);
-    ret->binops = _b->binops;
-    ret->binops_count = cmon_dyn_arr_count(&_b->binops);
-    ret->prefixes = _b->prefixes;
-    ret->prefixes_count = cmon_dyn_arr_count(&_b->prefixes);
-    ret->calls = _b->calls;
-    ret->calls_count = cmon_dyn_arr_count(&_b->calls);
-    ret->inits = _b->inits;
-    ret->inits_count = cmon_dyn_arr_count(&_b->inits);
-    ret->idx_pairs = _b->idx_pairs;
-    ret->idx_pairs_count = cmon_dyn_arr_count(&_b->idx_pairs);
-    ret->var_decls = _b->var_decls;
-    ret->var_decls_count = cmon_dyn_arr_count(&_b->var_decls);
-    ret->alias_decls = _b->alias_decls;
-    ret->alias_decls_count = cmon_dyn_arr_count(&_b->alias_decls);
-    ret->fns = _b->fns;
-    ret->fns_count = cmon_dyn_arr_count(&_b->fns);
-    ret->idx_buffer = _b->idx_buffer;
-    ret->idx_buffer_count = cmon_dyn_arr_count(&_b->idx_buffer);
-    ret->global_vars = _b->global_vars;
-    ret->global_vars_count = cmon_dyn_arr_count(&_b->global_vars);
-    ret->global_aliases = _b->global_aliases;
-    ret->global_aliases_count = cmon_dyn_arr_count(&_b->global_aliases);
-    return ret;
 }
 
 void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx)
@@ -418,4 +385,197 @@ cmon_idx cmon_irb_add_global_alias(cmon_irb * _b,
     cmon_idx ret = _add_alias(_b, _name, _is_pub, _type_idx);
     cmon_dyn_arr_append(&_b->global_aliases, ret);
     return ret;
+}
+
+cmon_ir * cmon_irb_ir(cmon_irb * _b)
+{
+    cmon_ir * ret = &_b->ir;
+    ret->alloc = NULL;
+    ret->str_buf = cmon_str_buf_get(_b->str_buf, 0);
+    ret->str_buf_count = cmon_str_buf_count(_b->str_buf);
+    ret->types = _b->types;
+    ret->types_count = cmon_dyn_arr_count(&_b->types);
+    ret->kinds = _b->kinds;
+    ret->kinds_count = cmon_dyn_arr_count(&_b->kinds);
+    ret->data = _b->data;
+    ret->data_count = cmon_dyn_arr_count(&_b->data);
+    ret->binops = _b->binops;
+    ret->binops_count = cmon_dyn_arr_count(&_b->binops);
+    ret->prefixes = _b->prefixes;
+    ret->prefixes_count = cmon_dyn_arr_count(&_b->prefixes);
+    ret->calls = _b->calls;
+    ret->calls_count = cmon_dyn_arr_count(&_b->calls);
+    ret->inits = _b->inits;
+    ret->inits_count = cmon_dyn_arr_count(&_b->inits);
+    ret->idx_pairs = _b->idx_pairs;
+    ret->idx_pairs_count = cmon_dyn_arr_count(&_b->idx_pairs);
+    ret->var_decls = _b->var_decls;
+    ret->var_decls_count = cmon_dyn_arr_count(&_b->var_decls);
+    ret->alias_decls = _b->alias_decls;
+    ret->alias_decls_count = cmon_dyn_arr_count(&_b->alias_decls);
+    ret->fns = _b->fns;
+    ret->fns_count = cmon_dyn_arr_count(&_b->fns);
+    ret->idx_buffer = _b->idx_buffer;
+    ret->idx_buffer_count = cmon_dyn_arr_count(&_b->idx_buffer);
+    ret->global_vars = _b->global_vars;
+    ret->global_vars_count = cmon_dyn_arr_count(&_b->global_vars);
+    ret->global_aliases = _b->global_aliases;
+    ret->global_aliases_count = cmon_dyn_arr_count(&_b->global_aliases);
+    return ret;
+}
+
+static inline cmon_idx _idx_buf_get(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_idx < _ir->idx_buffer_count);
+    return _ir->idx_buffer[_idx];
+}
+
+static inline const char * _ir_str(cmon_ir * _ir, size_t _str_off)
+{
+    assert(_str_off < _ir->str_buf_count);
+    return &_ir->str_buf[_str_off];
+}
+
+static inline cmon_idx _ir_data(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_idx < _ir->data_count);
+    return _ir->data[_idx];
+}
+
+static inline cmon_irk _ir_kind(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_idx < _ir->kinds_count);
+    return _ir->kinds[_idx];
+}
+
+const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_ident);
+    return _ir_str(_ir, _ir_data(_ir, _idx));
+}
+
+cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_bool_lit);
+    return (cmon_bool)_ir_data(_ir, _idx);
+}
+
+const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_float_lit);
+    return _ir_str(_ir, _ir_data(_ir, _idx));
+}
+
+const char * cmon_ir_int_lit_value(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_int_lit);
+    return _ir_str(_ir, _ir_data(_ir, _idx));
+}
+
+const char * cmon_ir_string_lit_value(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_string_lit);
+    return _ir_str(_ir, _ir_data(_ir, _idx));
+}
+
+cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_addr);
+    return _ir_data(_ir, _idx);
+}
+
+cmon_idx cmon_ir_deref_expr(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_deref);
+    return _ir_data(_ir, _idx);
+}
+
+char cmon_ir_binary_op(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    return _ir->binops[_ir_data(_ir, _idx)].op;
+}
+
+cmon_idx cmon_ir_binary_left(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    return _ir->binops[_ir_data(_ir, _idx)].left;
+}
+
+cmon_idx cmon_ir_binary_right(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    return _ir->binops[_ir_data(_ir, _idx)].right;
+}
+
+char cmon_ir_prefix_op(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_prefix);
+    return _ir->prefixes[_ir_data(_ir, _idx)].op;
+}
+
+cmon_idx cmon_ir_prefix_expr(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_prefix);
+    return _ir->prefixes[_ir_data(_ir, _idx)].right;
+}
+
+cmon_idx cmon_ir_paran_expr(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_paran_expr);
+    return _ir_data(_ir, _idx);
+}
+
+cmon_idx cmon_ir_call_left(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
+    return _ir->calls[_ir_data(_ir, _idx)].left;
+}
+
+size_t cmon_ir_call_arg_count(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
+    return _ir->calls[_ir_data(_ir, _idx)].args_end - _ir->calls[_ir_data(_ir, _idx)].args_begin;
+}
+
+cmon_idx cmon_ir_call_arg(cmon_ir * _ir, cmon_idx _idx, size_t _arg_idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
+    return _idx_buf_get(_ir, _ir->calls[_ir_data(_ir, _idx)].args_begin + _arg_idx);
+}
+
+cmon_idx cmon_ir_struct_init_type(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    return _ir->inits[_ir_data(_ir, _idx)].type_idx;
+}
+
+size_t cmon_ir_struct_init_expr_count(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    return _ir->inits[_ir_data(_ir, _idx)].exprs_end - _ir->inits[_ir_data(_ir, _idx)].exprs_begin;
+}
+
+cmon_idx cmon_ir_struct_init_expr(cmon_ir * _ir, cmon_idx _idx, size_t _expr_idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    return _idx_buf_get(_ir, _ir->inits[_ir_data(_ir, _idx)].exprs_begin + _expr_idx);
+}
+
+cmon_idx cmon_ir_array_init_type(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    return _ir->inits[_ir_data(_ir, _idx)].type_idx;
+}
+
+size_t cmon_ir_array_init_expr_count(cmon_ir * _ir, cmon_idx _idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    return _ir->inits[_ir_data(_ir, _idx)].exprs_end - _ir->inits[_ir_data(_ir, _idx)].exprs_begin;
+}
+
+cmon_idx cmon_ir_array_init_expr(cmon_ir * _ir, cmon_idx _idx, size_t _expr_idx)
+{
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    return _idx_buf_get(_ir, _ir->inits[_ir_data(_ir, _idx)].exprs_begin + _expr_idx);
 }

@@ -127,6 +127,11 @@ const char * cmon_str_buf_get(cmon_str_buf * _s, size_t _offset)
     return &_s->buf[_offset];
 }
 
+size_t cmon_str_buf_count(cmon_str_buf * _s)
+{
+    return cmon_dyn_arr_count(&_s->buf);
+}
+
 void cmon_str_buf_clear(cmon_str_buf * _s)
 {
     cmon_dyn_arr_clear(&_s->buf);
