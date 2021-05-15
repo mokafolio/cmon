@@ -106,4 +106,9 @@ CMON_API cmon_idx cmon_irb_add_global_alias(cmon_irb * _b,
                                             cmon_bool _is_pub,
                                             cmon_idx _type_idx);
 
+//getters
+CMON_API cmon_ir * cmon_irb_ir(cmon_irb * _b);
+
+// CMON_API const char * cmon_
+
 #endif // CMON_CMON_IR_H
