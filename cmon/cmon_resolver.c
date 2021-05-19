@@ -2471,103 +2471,6 @@ static inline void _add_global_init_dep(_file_resolver * _fr,
     }
 }
 
-static inline void _check_init_loop(_file_resolver * _fr, cmon_idx _global_sym, cmon_idx _ast_idx)
-{
-    cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
-    if (kind == cmon_astk_ident)
-    {
-        cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
-        assert(cmon_is_valid_idx(sym));
-        if (sym == _global_sym)
-        {
-            cmon_str_view name = cmon_symbols_name(_fr->resolver->symbols, sym);
-            _fr_err(_fr,
-                    cmon_ast_token(_fr_ast(_fr), _ast_idx),
-                    "initialization loop for '%.*s'",
-                    name.end - name.begin,
-                    name.begin);
-        }
-        else
-        {
-            cmon_idx var_decl_ast = cmon_symbols_ast(_fr->resolver->symbols, sym);
-            assert(cmon_is_valid_idx(var_decl_ast));
-            _check_init_loop(_fr, _global_sym, cmon_ast_var_decl_expr(_fr_ast(_fr), var_decl_ast));
-        }
-    }
-    else if (kind == cmon_astk_addr)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_addr_expr(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_deref)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_prefix)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_binary)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_binary_left(_fr_ast(_fr), _ast_idx));
-        _check_init_loop(_fr, _global_sym, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_call)
-    {
-        size_t i;
-        for (i = 0; i < cmon_ast_call_args_count(_fr_ast(_fr), _ast_idx); ++i)
-        {
-            _check_init_loop(_fr, _global_sym, cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i));
-        }
-        _check_init_loop(_fr, _global_sym, cmon_ast_call_left(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_index)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_index_expr(_fr_ast(_fr), _ast_idx));
-        _check_init_loop(_fr, _global_sym, cmon_ast_index_left(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_selector)
-    {
-        _check_init_loop(_fr, _global_sym, cmon_ast_selector_left(_fr_ast(_fr), _ast_idx));
-    }
-    else if (kind == cmon_astk_array_init)
-    {
-        // cmon_idx idx;
-        // cmon_ast_iter it = cmon_ast_array_init_exprs_iter(_fr_ast(_fr), _ast_idx);
-        // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
-        size_t i;
-        for (i = 0; i < cmon_ast_array_init_exprs_count(_fr_ast(_fr), _ast_idx); ++i)
-        {
-            _check_init_loop(_fr, _global_sym, cmon_ast_array_init_expr(_fr_ast(_fr), _ast_idx, i));
-        }
-    }
-    else if (kind == cmon_astk_struct_init)
-    {
-        // cmon_idx idx;
-        // cmon_ast_iter it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
-        // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &it)))
-        size_t i;
-        for (i = 0; i < cmon_ast_struct_init_fields_count(_fr_ast(_fr), _ast_idx); ++i)
-        {
-            _check_init_loop(
-                _fr,
-                _global_sym,
-                cmon_ast_struct_init_field_expr(
-                    _fr_ast(_fr), cmon_ast_struct_init_field(_fr_ast(_fr), _ast_idx, i)));
-        }
-    }
-    else if (kind == cmon_astk_int_literal || kind == cmon_astk_float_literal ||
-             kind == cmon_astk_bool_literal || kind == cmon_astk_string_literal ||
-             kind == cmon_astk_fn_decl)
-    {
-        // these are the ones nothing needs to be done for.
-    }
-    else
-    {
-        // make sure we handled all of them
-        assert(0);
-    }
-}
-
 cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
 {
     _file_resolver * fr = &_r->file_resolvers[_file_idx];
@@ -2598,8 +2501,6 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
                            fr->global_var_decls[i],
                            &_r->dep_buffer[0],
                            cmon_dyn_arr_count(&_r->dep_buffer));
-        // _check_init_loop(
-        //     fr, fr->global_var_decls[i], cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast));
     }
 
     cmon_dep_graph_result res = cmon_dep_graph_resolve(_r->dep_graph);
