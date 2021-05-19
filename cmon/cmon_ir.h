@@ -23,7 +23,6 @@ typedef enum
     cmon_irk_noinit,
     cmon_irk_var_decl,
     cmon_irk_block,
-    cmon_irk_alias,
     cmon_irk_paran_expr
 } cmon_irk;
 
@@ -35,15 +34,12 @@ CMON_API cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
                                     size_t _type_count,
                                     size_t _fn_count,
                                     size_t _global_var_count,
-                                    size_t _global_alias_count,
                                     size_t _node_count_estimate);
 CMON_API void cmon_irb_destroy(cmon_irb * _b);
 
 // Types (see cmon_types).
 // Must be added in dependency order!
 CMON_API void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx);
-CMON_API size_t cmon_irb_type_count(cmon_irb * _b);
-CMON_API cmon_idx cmon_irb_type(cmon_irb * _b, size_t _idx);
 
 // expressions
 CMON_API cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name);
@@ -81,7 +77,6 @@ CMON_API cmon_idx cmon_irb_add_index(cmon_irb * _b, cmon_idx _lhs, cmon_idx _ind
 CMON_API cmon_idx cmon_irb_add_block(cmon_irb * _b, cmon_idx * _stmt_indices, size_t _count);
 CMON_API cmon_idx cmon_irb_add_var_decl(
     cmon_irb * _b, const char * _name, cmon_bool _is_mut, cmon_idx _type_idx, cmon_idx _expr);
-CMON_API cmon_idx cmon_irb_add_alias(cmon_irb * _b, const char * _name, cmon_idx _type_idx);
 
 // functions
 // @NOTE: If body block is CMON_INVALID_IDX, the function will be extern (i.e. defined in another
@@ -91,9 +86,11 @@ CMON_API cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                                   cmon_idx _return_type,
                                   cmon_idx * _params,
                                   size_t _count,
-                                  cmon_idx _body_block);
+                                  cmon_idx _body_block,
+                                  cmon_bool _is_main_fn);
 
-// global variables and aliases
+// global variables
+//@NOTE: If _expr is CMON_INVALID_IDX the variable will be extern, meaning it will be defined in a separate module (and thus compilation unit)
 CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
                                                const char * _name,
                                                cmon_bool _is_pub,
@@ -101,13 +98,13 @@ CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
                                                cmon_idx _type_idx,
                                                cmon_idx _expr);
 
-CMON_API cmon_idx cmon_irb_add_global_alias(cmon_irb * _b,
-                                            const char * _name,
-                                            cmon_bool _is_pub,
-                                            cmon_idx _type_idx);
-
 // getters
 CMON_API cmon_ir * cmon_irb_ir(cmon_irb * _b);
+CMON_API size_t cmon_ir_type_count(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx);
+CMON_API size_t cmon_ir_fn_count(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_main_fn(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx);
 CMON_API const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx);
@@ -141,8 +138,6 @@ CMON_API const char * cmon_ir_var_decl_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_bool cmon_ir_var_decl_is_mut(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_var_decl_type(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_var_decl_expr(cmon_ir * _ir, cmon_idx _idx);
-CMON_API const char * cmon_ir_alias_name(cmon_ir * _ir, cmon_idx _idx);
-CMON_API cmon_idx cmon_ir_alias_type(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_fn_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_fn_return_type(cmon_ir * _ir, cmon_idx _idx);
 CMON_API size_t cmon_ir_fn_param_count(cmon_ir * _ir, cmon_idx _idx);

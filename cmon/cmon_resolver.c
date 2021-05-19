@@ -21,6 +21,12 @@ typedef struct
 
 typedef struct
 {
+    cmon_idx first;
+    cmon_idx second;
+} _idx_pair;
+
+typedef struct
+{
     cmon_resolver * resolver;
     cmon_idx file_scope;
     cmon_idx src_file_idx;
@@ -29,7 +35,8 @@ typedef struct
     cmon_dyn_arr(cmon_idx) implicit_types;   // view, arrays, tuples used in the file etc.
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_dyn_arr(cmon_idx) global_alias_decls;
-    // all function declarations in the module, including local ones
+    cmon_dyn_arr(cmon_idx) external_variables; // external variables and functions used
+    // all local function declarations in the file (i.e. not top lvl)
     cmon_dyn_arr(cmon_file_ast_pair) local_fns;
     cmon_idx * resolved_types; // maps ast expr idx to type
     cmon_err_handler * err_handler;
@@ -72,6 +79,8 @@ typedef struct cmon_resolver
     cmon_dyn_arr(cmon_file_ast_pair) global_fns;
     // holds all other global variables that are not functions
     cmon_dyn_arr(cmon_file_ast_pair) global_vars;
+    // holds all other global variables that are not functions
+    cmon_dyn_arr(cmon_idx) global_aliases;
     // all function declarations in the module, including local ones
     cmon_dyn_arr(cmon_file_ast_pair) local_fns;
     cmon_dyn_arr(cmon_err_report) errs;
@@ -80,6 +89,8 @@ typedef struct cmon_resolver
     // flag that is set to true during global variable type resolve pass
     cmon_bool global_type_pass;
     cmon_dyn_arr(cmon_idx) globals_pass_stack;
+    // ir builder to generate IR
+    cmon_irb * ir_builder;
     // this is filled in in cmon_resolver_resolved_mod
     cmon_resolved_mod resolved_mod;
     // this is a helper to store all resolved type arrays in one array to be used for
@@ -1023,6 +1034,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
                 skind = cmon_symbols_kind(_fr->resolver->symbols, selected_sym);
                 if (skind == cmon_symk_var)
                 {
+                    cmon_dyn_arr_append(&_fr->external_variables, selected_sym);
                     return cmon_symbols_var_type(_fr->resolver->symbols, selected_sym);
                 }
             }
@@ -1706,6 +1718,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
     cmon_dyn_arr_init(&ret->ast_resolved_types, _alloc, 8);
+    ret->ir_builder = NULL;
     return ret;
 }
 
@@ -1721,6 +1734,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
             (cmon_mem_blk){ fr->resolved_types, sizeof(cmon_idx) * cmon_ast_count(_fr_ast(fr)) });
         cmon_dyn_arr_dealloc(&fr->local_fns);
         cmon_dyn_arr_dealloc(&fr->implicit_types);
+        cmon_dyn_arr_dealloc(&fr->external_variables);
         cmon_dyn_arr_dealloc(&fr->global_alias_decls);
         cmon_dyn_arr_dealloc(&fr->global_var_decls);
         cmon_dyn_arr_dealloc(&fr->type_decls);
@@ -1788,9 +1802,11 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         fr.src_file_idx = src_file_idx;
         fr.resolver = _r;
         fr.file_scope = cmon_symbols_scope_begin(_r->symbols, _r->global_scope);
+        //@TODO: More educated guesses based on the ast to allocated correcty to begin with?
         cmon_dyn_arr_init(&fr.type_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.global_var_decls, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.global_alias_decls, _r->alloc, 16);
+        cmon_dyn_arr_init(&fr.external_variables, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.implicit_types, _r->alloc, 16);
         cmon_dyn_arr_init(&fr.local_fns, _r->alloc, 16);
         fr.resolved_types =
@@ -2021,6 +2037,7 @@ cmon_bool cmon_resolver_finalize_top_lvl_names(cmon_resolver * _r)
         {
             cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
             _resolve_alias(fr, fr->file_scope, ast_idx);
+
         }
     }
 err_end:
@@ -2626,6 +2643,10 @@ static inline cmon_resolved_mod * _resolved_mod(cmon_resolver * _r)
 cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r)
 {
     size_t i, j;
+
+    cmon_dyn_arr(cmon_idx) external_vars;
+    cmon_dyn_arr_init(&external_vars, _r->alloc, 16);
+
     // merge all local functions from each file into the module array
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
@@ -2635,8 +2656,23 @@ cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r)
         {
             cmon_dyn_arr_append(&_r->local_fns, fr->local_fns[j]);
         }
+
+        for (j = 0; j < cmon_dyn_arr_count(&fr->external_variables); ++j)
+        {
+            _add_unique_idx(&external_vars, fr->external_variables[j]);
+        }
     }
 
+    assert(!_r->ir_builder);
+    // _r->ir_builder =
+    //     cmon_irb_create(_r->alloc,
+    //                     cmon_types_count(_r->types),
+    //                     cmon_dyn_arr_count(&_r->global_fns) + cmon_dyn_arr_count(&_r->local_fns),
+    //                     cmon_dyn_arr_count(&_r->global_vars) + cmon_dyn_arr_count(&external_vars),
+    //                     cmon_dyn_arr_count(&_r->global_alias_decls),
+    //                     1024);
+
+    cmon_dyn_arr_dealloc(&external_vars);
     return _resolved_mod(_r);
 }
 

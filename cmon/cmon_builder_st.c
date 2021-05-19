@@ -266,11 +266,11 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             }
         }
 
-        cmon_resolved_mod * rm = cmon_resolver_finalize(pmd->resolver);
-        if(!rm)
-        {
-            _add_resolver_errors(_b, pmd->resolver, cmon_true);
-        }
+        // cmon_resolved_mod * rm = cmon_resolver_finalize(pmd->resolver);
+        // if(!rm)
+        // {
+        //     _add_resolver_errors(_b, pmd->resolver, cmon_true);
+        // }
     }
 
     return cmon_false;

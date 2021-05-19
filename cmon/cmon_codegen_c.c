@@ -4,9 +4,8 @@
 typedef struct
 {
     cmon_allocator * alloc;
-    cmon_resolved_mod * resolved_mod;
+    cmon_ir * ir;
     cmon_types * types;
-    cmon_src * src;
     cmon_modules * mods;
     cmon_idx mod_idx;
     cmon_str_builder * str_builder;
@@ -26,20 +25,21 @@ static inline const char * _top_code()
            "typedef uint64_t u64;\n\n";
 }
 
-static inline cmon_tokens * _tokens(_codegen_c * _cg, cmon_idx _file_idx)
-{
-    return cmon_src_tokens(_cg->src, _file_idx);
-}
+// static inline cmon_tokens * _tokens(_codegen_c * _cg, cmon_idx _file_idx)
+// {
+//     return cmon_src_tokens(_cg->src, _file_idx);
+// }
 
-static inline cmon_ast * _ast(_codegen_c * _cg, cmon_idx _file_idx)
-{
-    return cmon_src_ast(_cg->src, _file_idx);
-}
+// static inline cmon_ast * _ast(_codegen_c * _cg, cmon_idx _file_idx)
+// {
+//     return cmon_src_ast(_cg->src, _file_idx);
+// }
 
-static inline cmon_idx _ast_resolved_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
-{
-    return cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx);
-}
+// static inline cmon_idx _ast_resolved_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx
+// _ast_idx)
+// {
+//     return cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx);
+// }
 
 static inline void _write_indent(_codegen_c * _cg, size_t _indent)
 {
@@ -57,58 +57,69 @@ static inline void _write_type(_codegen_c * _cg, cmon_idx _idx)
 }
 
 // helper to retrieve the type for an ast node and write it
-static inline void _write_ast_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
+// static inline void _write_ast_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
+// {
+//     _write_type(_cg, cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx));
+// }
+
+static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _idx)
 {
-    _write_type(_cg, cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx));
+    cmon_str_builder_append(_cg->str_builder, cmon_ir_fn_name(_cg->ir, _idx));
 }
 
-static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
+static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _idx)
 {
-    const char * pref = cmon_modules_prefix(_cg->mods, _cg->mod_idx);
-    cmon_tokens * toks = _tokens(_cg, _file_idx);
-    cmon_ast * ast = _ast(_cg, _file_idx);
-    cmon_str_view name = cmon_tokens_str_view(toks, cmon_ast_var_decl_name_tok(ast, _ast_idx));
-    cmon_str_builder_append_fmt(
-        _cg->str_builder, "%s_%.*s", pref, name.end - name.begin, name.begin);
-}
+    // assert(cmon_ast_kind(_ast(_cg, _file_idx), _ast_idx) == cmon_astk_var_decl);
+    // cmon_ast * ast = _ast(_cg, _file_idx);
+    // cmon_tokens * toks = _tokens(_cg, _file_idx);
+    // cmon_idx fn = cmon_ast_var_decl_expr(ast, _ast_idx);
+    // cmon_idx ast_ret = cmon_ast_fn_ret_type(ast, fn);
+    // _write_type(_cg, _ast_resolved_type(_cg, _file_idx, ast_ret));
+    // _write_fn_name(_cg, _file_idx, _ast_idx);
+    // cmon_str_builder_append(_cg->str_builder, "(");
+    // // for (size_t i = 0; i < cmon_ast_fn_params_count(ast, fn); ++i)
+    // // {
+    // //     cmon_idx param_idx = cmon_ast_fn_param(ast, fn, i);
+    // //     cmon_idx ast_idx = cmon_ast_var_decl_type(ast, param_idx);
+    // //     _write_ast_type(_cg, _file_idx, ast_idx);
+    // //     cmon_str_view name = cmon_tokens_str_view(toks, cmon_ast_var_decl_type(ast, name));
+    // //     cmon_str_builder_append_fmt(_cg->str_builder, " %.*s", );
+    // // }
+    // cmon_str_builder_append(_cg->str_builder, ")");
 
-static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx _ast_idx)
-{
-    assert(cmon_ast_kind(_ast(_cg, _file_idx), _ast_idx) == cmon_astk_var_decl);
-    cmon_ast * ast = _ast(_cg, _file_idx);
-    cmon_tokens * toks = _tokens(_cg, _file_idx);
-    cmon_idx fn = cmon_ast_var_decl_expr(ast, _ast_idx);
-    cmon_idx ast_ret = cmon_ast_fn_ret_type(ast, fn);
-    _write_type(_cg, _ast_resolved_type(_cg, _file_idx, ast_ret));
-    _write_fn_name(_cg, _file_idx, _ast_idx);
+    _write_type(_cg, cmon_ir_fn_return_type(_cg->ir, _idx));
+    _write_fn_name(_cg, _idx);
     cmon_str_builder_append(_cg->str_builder, "(");
-    // for (size_t i = 0; i < cmon_ast_fn_params_count(ast, fn); ++i)
-    // {   
-    //     cmon_idx param_idx = cmon_ast_fn_param(ast, fn, i);
-    //     cmon_idx ast_idx = cmon_ast_var_decl_type(ast, param_idx);
-    //     _write_ast_type(_cg, _file_idx, ast_idx);
-    //     cmon_str_view name = cmon_tokens_str_view(toks, cmon_ast_var_decl_type(ast, name));
-    //     cmon_str_builder_append_fmt(_cg->str_builder, " %.*s", );
-    // }
+    size_t pcount = cmon_ir_fn_param_count(_cg->ir, _idx);
+    for (size_t i = 0; i < pcount; ++i)
+    {
+        cmon_idx decl = cmon_ir_fn_param(_cg->ir, _idx, i);
+        _write_type(_cg, cmon_ir_var_decl_type(_cg->ir, decl));
+        cmon_str_builder_append_fmt(_cg->str_builder, " %s", cmon_ir_var_decl_name(_cg->ir, decl));
+        if(i < pcount - 1)
+        {
+            cmon_str_builder_append(_cg->str_builder, ", ");
+        }
+    }
     cmon_str_builder_append(_cg->str_builder, ")");
 }
 
-static inline cmon_bool _codegen_c_gen_fn(void * _cg, cmon_resolved_mod * _mod)
+static inline cmon_bool _codegen_c_gen_fn(
+    void * _cg, cmon_modules * _mods, cmon_idx _mod_idx, cmon_types * _types, cmon_ir * _ir)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
-    cg->resolved_mod = _mod;
-    cg->types = cmon_resolved_mod_types(_mod);
-    cg->src = cmon_resolved_mod_src(_mod);
-    cg->mods = cmon_resolved_mod_modules(_mod);
-    cg->mod_idx = cmon_resolved_mod_module_idx(_mod);
+    cg->ir = _ir;
+    cg->types = _types;
+    cg->mods = _mods;
+    cg->mod_idx = _mod_idx;
     cmon_str_builder_append(cg->str_builder, _top_code());
 
     // forward declare all types used by the module
     size_t i, j, type_count;
-    type_count = cmon_resolved_mod_type_count(_mod);
+    type_count = cmon_ir_type_count(_ir);
     for (i = 0; i < type_count; ++i)
     {
-        cmon_idx tidx = cmon_resolved_mod_type(_mod, i);
+        cmon_idx tidx = cmon_ir_type(_ir, i);
         cmon_typek kind = cmon_types_kind(cg->types, tidx);
         if (kind != cmon_typek_ptr)
         {
@@ -120,7 +131,7 @@ static inline cmon_bool _codegen_c_gen_fn(void * _cg, cmon_resolved_mod * _mod)
     // full type definitions
     for (i = 0; i < type_count; ++i)
     {
-        cmon_idx tidx = cmon_resolved_mod_type(_mod, i);
+        cmon_idx tidx = cmon_ir_type(_ir, i);
         cmon_typek kind = cmon_types_kind(cg->types, tidx);
         const char * uname = cmon_types_unique_name(cg->types, tidx);
         if (kind == cmon_typek_struct)
@@ -147,9 +158,18 @@ static inline cmon_bool _codegen_c_gen_fn(void * _cg, cmon_resolved_mod * _mod)
         }
     }
 
-    // declare all global functions
+    // declare all functions
+    for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
+    {
+        _write_fn_head(cg, (cmon_idx)i);
+        cmon_str_builder_append(cg->str_builder, ";\n");
+    }
 
-    // define all global functions
+    //declare all global variables
+
+    // define all functions
+
+    //define all globals in dependency order
 
     return cmon_false;
 }
@@ -170,9 +190,9 @@ cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc)
     _codegen_c * cgen = CMON_CREATE(_alloc, cgen);
     cgen->alloc = _alloc;
     cgen->str_builder = cmon_str_builder_create(_alloc, 2048);
-    cgen->resolved_mod = NULL;
+    cgen->ir = NULL;
     cgen->types = NULL;
-    cgen->src = NULL;
+    // cgen->src = NULL;
     cgen->mods = NULL;
     return (cmon_codegen){ cgen, _codegen_c_gen_fn, _codegen_c_shutdown_fn, _codegen_c_err_msg_fn };
 }

@@ -1,6 +1,7 @@
 #include <cmon/cmon_codegen.h>
 
-static inline cmon_bool _empty(void * _obj, cmon_resolved_mod * _rm)
+static inline cmon_bool _empty(
+    void * _obj, cmon_modules * _mods, cmon_idx _mod_idx, cmon_types * _types, cmon_ir * _ir)
 {
     return cmon_false;
 }
@@ -20,10 +21,14 @@ cmon_codegen cmon_codegen_make_empty()
     return ret;
 }
 
-cmon_bool cmon_codegen_gen(cmon_codegen * _cg, cmon_resolved_mod * _rm)
+cmon_bool cmon_codegen_gen(cmon_codegen * _cg,
+                                    cmon_modules * _mods,
+                                    cmon_idx _mod_idx,
+                                    cmon_types * _types,
+                                    cmon_ir * _ir)
 {
     assert(_cg->fn);
-    return _cg->fn(_cg->obj, _rm);
+    return _cg->fn(_cg->obj, _mods, _mod_idx, _types, _ir);
 }
 
 const char * cmon_codegen_err_msg(cmon_codegen * _cg)

@@ -41,13 +41,6 @@ typedef struct
 {
     size_t name_off;
     cmon_bool is_pub;
-    cmon_idx type_idx;
-} _alias;
-
-typedef struct
-{
-    size_t name_off;
-    cmon_bool is_pub;
     cmon_bool is_mut;
     cmon_idx type_idx;
     cmon_idx expr_idx;
@@ -67,6 +60,7 @@ typedef struct cmon_ir
     cmon_allocator * alloc;
     const char * str_buf;
     size_t str_buf_count;
+    cmon_idx main_fn_idx;
     cmon_idx * types;
     size_t types_count;
     cmon_irk * kinds;
@@ -85,16 +79,12 @@ typedef struct cmon_ir
     size_t idx_pairs_count;
     _var_decl * var_decls;
     size_t var_decls_count;
-    _alias * alias_decls;
-    size_t alias_decls_count;
     _fn_decl * fns;
     size_t fns_count;
     cmon_idx * idx_buffer;
     size_t idx_buffer_count;
     cmon_idx * global_vars;
     size_t global_vars_count;
-    cmon_idx * global_aliases;
-    size_t global_aliases_count;
 } cmon_ir;
 
 typedef struct cmon_irb
@@ -102,6 +92,7 @@ typedef struct cmon_irb
     cmon_allocator * alloc;
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
+    cmon_idx main_fn_idx;
     cmon_dyn_arr(cmon_idx) types;
     cmon_dyn_arr(cmon_irk) kinds;
     cmon_dyn_arr(cmon_idx) data;
@@ -111,11 +102,9 @@ typedef struct cmon_irb
     cmon_dyn_arr(_init) inits;
     cmon_dyn_arr(_idx_pair) idx_pairs;
     cmon_dyn_arr(_var_decl) var_decls;
-    cmon_dyn_arr(_alias) alias_decls;
     cmon_dyn_arr(_fn_decl) fns;
     cmon_dyn_arr(cmon_idx) idx_buffer;
     cmon_dyn_arr(cmon_idx) global_vars;
-    cmon_dyn_arr(cmon_idx) global_aliases;
     cmon_ir ir; // filled in in cmon_irb_ir
 } cmon_irb;
 
@@ -123,13 +112,13 @@ cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
                            size_t _type_count,
                            size_t _fn_count,
                            size_t _global_var_count,
-                           size_t _global_alias_count,
                            size_t _node_count_estimate)
 {
     cmon_irb * ret = CMON_CREATE(_alloc, cmon_irb);
     ret->alloc = _alloc;
     ret->str_builder = cmon_str_builder_create(_alloc, 512);
     ret->str_buf = cmon_str_buf_create(_alloc, 1024);
+    ret->main_fn_idx = CMON_INVALID_IDX;
     cmon_dyn_arr_init(&ret->types, _alloc, _type_count);
     cmon_dyn_arr_init(&ret->kinds, _alloc, _node_count_estimate);
     cmon_dyn_arr_init(&ret->data, _alloc, _node_count_estimate);
@@ -139,12 +128,10 @@ cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
     cmon_dyn_arr_init(&ret->inits, _alloc, 16);
     cmon_dyn_arr_init(&ret->idx_pairs, _alloc, 16);
     cmon_dyn_arr_init(&ret->var_decls, _alloc, 32);
-    cmon_dyn_arr_init(&ret->alias_decls, _alloc, 16);
     cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
     cmon_dyn_arr_init(&ret->idx_buffer, _alloc, _node_count_estimate / 8);
-    // cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
+    cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
     cmon_dyn_arr_init(&ret->global_vars, _alloc, _global_var_count);
-    cmon_dyn_arr_init(&ret->global_aliases, _alloc, _global_alias_count);
     return ret;
 }
 
@@ -153,12 +140,10 @@ void cmon_irb_destroy(cmon_irb * _b)
     if (!_b)
         return;
 
-    cmon_dyn_arr_dealloc(&_b->global_aliases);
     cmon_dyn_arr_dealloc(&_b->global_vars);
     // cmon_dyn_arr_dealloc(&_b->fns);
     cmon_dyn_arr_dealloc(&_b->idx_buffer);
     cmon_dyn_arr_dealloc(&_b->fns);
-    cmon_dyn_arr_dealloc(&_b->alias_decls);
     cmon_dyn_arr_dealloc(&_b->var_decls);
     cmon_dyn_arr_dealloc(&_b->idx_pairs);
     cmon_dyn_arr_dealloc(&_b->inits);
@@ -176,17 +161,6 @@ void cmon_irb_destroy(cmon_irb * _b)
 void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx)
 {
     cmon_dyn_arr_append(&_b->types, _type_idx);
-}
-
-size_t cmon_irb_type_count(cmon_irb * _b)
-{
-    return cmon_dyn_arr_count(&_b->types);
-}
-
-cmon_idx cmon_irb_type(cmon_irb * _b, size_t _idx)
-{
-    assert(_idx < cmon_irb_type_count(_b));
-    return _b->types[_idx];
 }
 
 static inline cmon_idx _add_node(cmon_irb * _b, cmon_irk _kind, cmon_idx _data_idx)
@@ -333,36 +307,29 @@ cmon_idx cmon_irb_add_var_decl(
     return _add_var_decl(_b, _name, cmon_false, _is_mut, _type_idx, _expr);
 }
 
-static inline cmon_idx _add_alias(cmon_irb * _b,
-                                  const char * _name,
-                                  cmon_bool _is_pub,
-                                  cmon_idx _type_idx)
-{
-    cmon_dyn_arr_append(&_b->alias_decls,
-                        ((_alias){ cmon_str_buf_append(_b->str_buf, _name), _is_pub, _type_idx }));
-    return _add_node(_b, cmon_irk_var_decl, cmon_dyn_arr_count(&_b->alias_decls) - 1);
-}
-
-cmon_idx cmon_irb_add_alias(cmon_irb * _b, const char * _name, cmon_idx _type_idx)
-{
-    return _add_alias(_b, _name, cmon_false, _type_idx);
-}
-
 cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                          const char * _name,
                          cmon_idx _return_type,
                          cmon_idx * _params,
                          size_t _count,
-                         cmon_idx _body_block)
+                         cmon_idx _body_block,
+                                  cmon_bool _is_main_fn)
 {
     cmon_idx params_begin = _add_indices(_b, _params, _count);
+    cmon_idx ret = cmon_dyn_arr_count(&_b->fns);
     cmon_dyn_arr_append(&_b->fns,
                         ((_fn_decl){ cmon_str_buf_append(_b->str_buf, _name),
                                      _return_type,
                                      params_begin,
                                      cmon_dyn_arr_count(&_b->idx_buffer),
                                      _body_block }));
-    return cmon_dyn_arr_count(&_b->fns) - 1;
+
+    if(_is_main_fn)
+    {
+        assert(!cmon_is_valid_idx(_b->main_fn_idx));
+        _b->main_fn_idx = ret;
+    }
+    return ret;
 }
 
 cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
@@ -377,22 +344,13 @@ cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
     return ret;
 }
 
-cmon_idx cmon_irb_add_global_alias(cmon_irb * _b,
-                                   const char * _name,
-                                   cmon_bool _is_pub,
-                                   cmon_idx _type_idx)
-{
-    cmon_idx ret = _add_alias(_b, _name, _is_pub, _type_idx);
-    cmon_dyn_arr_append(&_b->global_aliases, ret);
-    return ret;
-}
-
 cmon_ir * cmon_irb_ir(cmon_irb * _b)
 {
     cmon_ir * ret = &_b->ir;
     ret->alloc = NULL;
     ret->str_buf = cmon_str_buf_get(_b->str_buf, 0);
     ret->str_buf_count = cmon_str_buf_count(_b->str_buf);
+    ret->main_fn_idx = _b->main_fn_idx;
     ret->types = _b->types;
     ret->types_count = cmon_dyn_arr_count(&_b->types);
     ret->kinds = _b->kinds;
@@ -411,16 +369,12 @@ cmon_ir * cmon_irb_ir(cmon_irb * _b)
     ret->idx_pairs_count = cmon_dyn_arr_count(&_b->idx_pairs);
     ret->var_decls = _b->var_decls;
     ret->var_decls_count = cmon_dyn_arr_count(&_b->var_decls);
-    ret->alias_decls = _b->alias_decls;
-    ret->alias_decls_count = cmon_dyn_arr_count(&_b->alias_decls);
     ret->fns = _b->fns;
     ret->fns_count = cmon_dyn_arr_count(&_b->fns);
     ret->idx_buffer = _b->idx_buffer;
     ret->idx_buffer_count = cmon_dyn_arr_count(&_b->idx_buffer);
     ret->global_vars = _b->global_vars;
     ret->global_vars_count = cmon_dyn_arr_count(&_b->global_vars);
-    ret->global_aliases = _b->global_aliases;
-    ret->global_aliases_count = cmon_dyn_arr_count(&_b->global_aliases);
     return ret;
 }
 
@@ -446,6 +400,27 @@ static inline cmon_irk _ir_kind(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_idx < _ir->kinds_count);
     return _ir->kinds[_idx];
+}
+
+size_t cmon_ir_type_count(cmon_ir * _ir)
+{
+    return _ir->types_count;
+}
+
+cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx)
+{
+    assert(_idx < cmon_ir_type_count(_ir));
+    return _ir->types[_idx];
+}
+
+size_t cmon_ir_fn_count(cmon_ir * _ir)
+{
+    return _ir->fns_count;
+}
+
+cmon_idx cmon_ir_main_fn(cmon_ir * _ir)
+{
+    return _ir->main_fn_idx;
 }
 
 const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
@@ -612,7 +587,7 @@ size_t cmon_ir_block_child_count(cmon_ir * _ir, cmon_idx _idx)
 
 cmon_idx cmon_ir_block_child(cmon_ir * _ir, cmon_idx _idx, size_t _child_idx)
 {
-        
+
     return _idx_buf_get(_ir, _ir->idx_pairs[_ir_data(_ir, _idx)].left + _child_idx);
 }
 
@@ -636,20 +611,8 @@ cmon_idx cmon_ir_var_decl_type(cmon_ir * _ir, cmon_idx _idx)
 
 cmon_idx cmon_ir_var_decl_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-        assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
     return _ir->var_decls[_idx].expr_idx;
-}
-
-const char * cmon_ir_alias_name(cmon_ir * _ir, cmon_idx _idx)
-{
-    assert(_ir_kind(_ir, _idx) == cmon_irk_alias);
-    return _ir_str(_ir, _ir->alias_decls[_idx].name_off);
-}
-
-cmon_idx cmon_ir_alias_type(cmon_ir * _ir, cmon_idx _idx)
-{
-    assert(_ir_kind(_ir, _idx) == cmon_irk_alias);
-    return _ir->alias_decls[_idx].type_idx;
 }
 
 static inline _fn_decl * _get_fn(cmon_ir * _ir, cmon_idx _idx)
@@ -682,4 +645,3 @@ cmon_idx cmon_ir_fn_block(cmon_ir * _ir, cmon_idx _idx)
 {
     return _get_fn(_ir, _idx)->block_idx;
 }
-

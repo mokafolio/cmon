@@ -3,6 +3,7 @@
 
 #include <cmon/cmon_ast.h>
 #include <cmon/cmon_err_report.h>
+#include <cmon/cmon_ir.h>
 #include <cmon/cmon_modules.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_types.h>
