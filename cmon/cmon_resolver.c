@@ -33,11 +33,12 @@ typedef struct
     cmon_idx_buf_mng * idx_buf_mng;
     cmon_dyn_arr(_ast_type_pair) type_decls; // types declared in the file
     cmon_dyn_arr(cmon_idx) implicit_types;   // view, arrays, tuples used in the file etc.
+    // these are all symbol indices
     cmon_dyn_arr(cmon_idx) global_var_decls;
     cmon_dyn_arr(cmon_idx) global_alias_decls;
     cmon_dyn_arr(cmon_idx) external_variables; // external variables and functions used
     // all local function declarations in the file (i.e. not top lvl)
-    cmon_dyn_arr(cmon_file_ast_pair) local_fns;
+    cmon_dyn_arr(cmon_idx) local_fns;
     cmon_idx * resolved_types; // maps ast expr idx to type
     cmon_err_handler * err_handler;
     jmp_buf err_jmp;
@@ -70,19 +71,18 @@ typedef struct cmon_resolver
     cmon_modules * mods;
     cmon_idx mod_idx;
     cmon_dep_graph * dep_graph;
+    cmon_idx_buf_mng * idx_buf_mng;
     cmon_dyn_arr(_file_resolver) file_resolvers;
     cmon_dyn_arr(cmon_idx) dep_buffer;
     // all types used by the module in dependency order
     cmon_dyn_arr(cmon_idx) sorted_types;
-    // all global functions defined in the module. Even though they are technically variable
-    // declarations, we keep track of them separately to simplify code generation in the next step.
-    cmon_dyn_arr(cmon_file_ast_pair) global_fns;
-    // holds all other global variables that are not functions
-    cmon_dyn_arr(cmon_file_ast_pair) global_vars;
-    // holds all other global variables that are not functions
-    cmon_dyn_arr(cmon_idx) global_aliases;
-    // all function declarations in the module, including local ones
-    cmon_dyn_arr(cmon_file_ast_pair) local_fns;
+    // // all global functions defined in the module. Even though they are technically variable
+    // // declarations, we keep track of them separately to simplify code generation in the next
+    // step. cmon_dyn_arr(cmon_idx) global_fns;
+    // // holds all other global variables that are not functions
+    // cmon_dyn_arr(cmon_idx) global_vars;
+    // // all function declarations in the module, including local ones
+    // cmon_dyn_arr(cmon_idx) local_fns;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     cmon_err_handler * err_handler;
@@ -1398,14 +1398,15 @@ static inline cmon_bool _add_fn_param_sym(
     {
         //@NOTE: The type of the parameter must have been resolved in _resolve_fn_sig
         assert(cmon_is_valid_idx(_fr->resolved_types[_ast_idx]));
-        CMON_UNUSED(cmon_symbols_scope_add_var(_fr->resolver->symbols,
-                                               _scope,
-                                               str_view,
-                                               _fr->resolved_types[_ast_idx],
-                                               cmon_false,
-                                               _is_mut,
-                                               _fr->src_file_idx,
-                                               _ast_idx));
+        cmon_idx sym = cmon_symbols_scope_add_var(_fr->resolver->symbols,
+                                                  _scope,
+                                                  str_view,
+                                                  _fr->resolved_types[_ast_idx],
+                                                  cmon_false,
+                                                  _is_mut,
+                                                  _fr->src_file_idx,
+                                                  _ast_idx);
+        cmon_ast_var_decl_set_sym(_fr_ast(_fr), _ast_idx, sym);
     }
     return cmon_false;
 }
@@ -1446,12 +1447,6 @@ static inline cmon_idx _resolve_fn(_file_resolver * _fr, cmon_idx _scope, cmon_i
     if (!_fr->resolver->global_type_pass)
     {
         _resolve_fn_body(_fr, _scope, _ast_idx);
-    }
-
-    // global fns are already bufferd during top lvl pass, so we just save local ones here
-    if (!cmon_symbols_scope_is_file(_fr->resolver->symbols, _scope))
-    {
-        cmon_dyn_arr_append(&_fr->local_fns, ((cmon_file_ast_pair){ _fr->src_file_idx, _ast_idx }));
     }
 
     return ret;
@@ -1606,7 +1601,7 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
     // if its not a global being resolved, create the symbol.
     if (!is_global)
     {
-        CMON_UNUSED(cmon_symbols_scope_add_var(
+        cmon_idx sym = cmon_symbols_scope_add_var(
             _fr->resolver->symbols,
             _scope,
             cmon_tokens_str_view(_fr_tokens(_fr),
@@ -1615,7 +1610,12 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
             cmon_false,
             cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
             _fr->src_file_idx,
-            _ast_idx));
+            _ast_idx);
+
+        if (cmon_ast_kind(_fr_ast(_fr), expr_idx) == cmon_astk_fn_decl)
+        {
+            cmon_dyn_arr_append(&_fr->local_fns, sym);
+        }
     }
     // only set the globals symbol type if it was not set above yet
     else if (!cmon_is_valid_idx(parsed_type_idx))
@@ -1706,14 +1706,15 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     ret->mods = NULL;
     ret->mod_idx = CMON_INVALID_IDX;
     ret->dep_graph = cmon_dep_graph_create(_alloc);
+    ret->idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
     ret->max_errors = _max_errors;
     ret->global_type_pass = cmon_false;
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->sorted_types, _alloc, 32);
-    cmon_dyn_arr_init(&ret->global_fns, _alloc, 16);
-    cmon_dyn_arr_init(&ret->global_vars, _alloc, 16);
-    cmon_dyn_arr_init(&ret->local_fns, _alloc, 32);
+    // cmon_dyn_arr_init(&ret->global_fns, _alloc, 16);
+    // cmon_dyn_arr_init(&ret->global_vars, _alloc, 16);
+    // cmon_dyn_arr_init(&ret->local_fns, _alloc, 32);
     cmon_dyn_arr_init(&ret->errs, _alloc, 16);
     ret->err_handler = cmon_err_handler_create(_alloc, NULL, _max_errors);
     cmon_dyn_arr_init(&ret->globals_pass_stack, _alloc, 8);
@@ -1745,12 +1746,13 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     cmon_dyn_arr_dealloc(&_r->globals_pass_stack);
     cmon_err_handler_destroy(_r->err_handler);
     cmon_dyn_arr_dealloc(&_r->errs);
-    cmon_dyn_arr_dealloc(&_r->local_fns);
-    cmon_dyn_arr_dealloc(&_r->global_vars);
-    cmon_dyn_arr_dealloc(&_r->global_fns);
+    // cmon_dyn_arr_dealloc(&_r->local_fns);
+    // cmon_dyn_arr_dealloc(&_r->global_vars);
+    // cmon_dyn_arr_dealloc(&_r->global_fns);
     cmon_dyn_arr_dealloc(&_r->sorted_types);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
+    cmon_idx_buf_mng_destroy(_r->idx_buf_mng);
     cmon_dep_graph_destroy(_r->dep_graph);
     CMON_DESTROY(_r->alloc, _r);
 }
@@ -1950,24 +1952,22 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             }
             else if (kind == cmon_astk_var_decl)
             {
-                _add_global_var_name(_r,
-                                     fr,
-                                     cmon_ast_var_decl_name_tok(ast, idx),
-                                     cmon_ast_var_decl_is_pub(ast, idx),
-                                     cmon_ast_var_decl_is_mut(ast, idx),
-                                     idx);
-                cmon_astk kind =
-                    cmon_ast_kind(ast, _remove_paran(fr, cmon_ast_var_decl_expr(ast, idx)));
-                if (kind == cmon_astk_fn_decl)
-                {
-                    cmon_dyn_arr_append(&_r->global_fns,
-                                        ((cmon_file_ast_pair){ fr->src_file_idx, idx }));
-                }
-                else
-                {
-                    cmon_dyn_arr_append(&_r->global_vars,
-                                        ((cmon_file_ast_pair){ fr->src_file_idx, idx }));
-                }
+                cmon_idx sym = _add_global_var_name(_r,
+                                                    fr,
+                                                    cmon_ast_var_decl_name_tok(ast, idx),
+                                                    cmon_ast_var_decl_is_pub(ast, idx),
+                                                    cmon_ast_var_decl_is_mut(ast, idx),
+                                                    idx);
+                // cmon_astk kind =
+                //     cmon_ast_kind(ast, _remove_paran(fr, cmon_ast_var_decl_expr(ast, idx)));
+                // if (kind == cmon_astk_fn_decl)
+                // {
+                //     cmon_dyn_arr_append(&_r->global_fns, sym);
+                // }
+                // else
+                // {
+                //     cmon_dyn_arr_append(&_r->global_vars, sym);
+                // }
             }
             else if (kind == cmon_astk_alias)
             {
@@ -2037,7 +2037,6 @@ cmon_bool cmon_resolver_finalize_top_lvl_names(cmon_resolver * _r)
         {
             cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, fr->global_alias_decls[j]);
             _resolve_alias(fr, fr->file_scope, ast_idx);
-
         }
     }
 err_end:
@@ -2516,7 +2515,6 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 "initialization loop for '%.*s'",
                 name.end - name.begin,
                 name.begin);
-        // assert(0);
     }
 
 err_end:
@@ -2525,54 +2523,183 @@ err_end:
 
 static inline cmon_resolved_mod * _resolved_mod(cmon_resolver * _r)
 {
-    _r->resolved_mod.src = _r->src;
-    _r->resolved_mod.types = _r->types;
-    _r->resolved_mod.mods = _r->mods;
-    _r->resolved_mod.mod_idx = _r->mod_idx;
-    _r->resolved_mod.sorted_types = _r->sorted_types;
-    _r->resolved_mod.sorted_types_count = cmon_dyn_arr_count(&_r->sorted_types);
-    _r->resolved_mod.global_fn_decls = _r->global_fns;
-    _r->resolved_mod.global_fn_decls_count = cmon_dyn_arr_count(&_r->global_fns);
-    _r->resolved_mod.global_var_decls = _r->global_vars;
-    _r->resolved_mod.global_var_decls_count = cmon_dyn_arr_count(&_r->global_vars);
-    _r->resolved_mod.local_fn_decls = _r->local_fns;
-    _r->resolved_mod.local_fn_decls_count = cmon_dyn_arr_count(&_r->local_fns);
-    _r->resolved_mod.resolved_types = _r->ast_resolved_types;
+    // _r->resolved_mod.src = _r->src;
+    // _r->resolved_mod.types = _r->types;
+    // _r->resolved_mod.mods = _r->mods;
+    // _r->resolved_mod.mod_idx = _r->mod_idx;
+    // _r->resolved_mod.sorted_types = _r->sorted_types;
+    // _r->resolved_mod.sorted_types_count = cmon_dyn_arr_count(&_r->sorted_types);
+    // _r->resolved_mod.global_fn_decls = _r->global_fns;
+    // _r->resolved_mod.global_fn_decls_count = cmon_dyn_arr_count(&_r->global_fns);
+    // _r->resolved_mod.global_var_decls = _r->global_vars;
+    // _r->resolved_mod.global_var_decls_count = cmon_dyn_arr_count(&_r->global_vars);
+    // _r->resolved_mod.local_fn_decls = _r->local_fns;
+    // _r->resolved_mod.local_fn_decls_count = cmon_dyn_arr_count(&_r->local_fns);
+    // _r->resolved_mod.resolved_types = _r->ast_resolved_types;
     return &_r->resolved_mod;
+}
+
+// careful, tmp string is only valid till the next call to _tmp_str
+#define _tmp_str(_r, _fmt, ...)                                                                    \
+    (cmon_str_builder_clear(_r->str_builder),                                                      \
+     cmon_str_builder_append_fmt(_r->str_builder, ##__VA_ARGS__),                                  \
+     cmon_str_builder_c_str(_r->str_builder))
+
+static inline void _ir_add_fn(cmon_resolver * _r, const char * _prefix, cmon_idx _var_sym)
+{
+    cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+
+    // add all the params to the ir
+    // CMON_API cmon_idx cmon_irb_add_var_decl(
+    // cmon_irb * _b, const char * _name, cmon_bool _is_mut, cmon_idx _type_idx, cmon_idx _expr);
+
+    cmon_idx src_file_idx = cmon_symbols_src_file(_r->symbols, _var_sym);
+    _file_resolver * fr = &_r->file_resolvers[src_file_idx];
+    cmon_idx fn_ast = cmon_ast_var_decl_expr(_fr_ast(fr), cmon_symbols_ast(_r->symbols, _var_sym));
+    for (size_t i = 0; i < cmon_ast_fn_params_count(_fr_ast(fr), fn_ast); ++i)
+    {
+        // cmon_idx_buf_append(_r->idx_buf_mng, idx_buf, cmon_irb_add_var_decl(_r->ir_builder, _tmp_str("%.*s", )));
+    }
+
+    // add the function
+    // cmon_irb_add_fn(
+    //     _r->ir_builder,
+    //     _tmp_str(_r, "%s_%s", _prefix, cmon_symbols_name(_r->symbols, _var_sym)), );
+
+    cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
 }
 
 cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r)
 {
     size_t i, j;
 
+    //@TODO: we could minimize the copying around to all these tmp arrays a bunch if we tried. We
+    // could at least allocate the external_vars external_fns arrays to the correct size to begin
+    // with :).
     cmon_dyn_arr(cmon_idx) external_vars;
+    cmon_dyn_arr(cmon_idx) external_fns;
     cmon_dyn_arr_init(&external_vars, _r->alloc, 16);
+    cmon_dyn_arr_init(&external_fns, _r->alloc, 16);
 
-    // merge all local functions from each file into the module array
+    // figure out the initialization order or all globals
+    cmon_dep_graph_clear(_r->dep_graph);
+
+    // count global vars and fns
+    size_t globals_count = 0;
+    size_t fns_count = 0;
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
         _file_resolver * fr = &_r->file_resolvers[i];
-
-        for (j = 0; j < cmon_dyn_arr_count(&fr->local_fns); ++j)
+        for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
         {
-            cmon_dyn_arr_append(&_r->local_fns, fr->local_fns[j]);
+            cmon_typek kind = cmon_types_kind(
+                _r->types, cmon_symbols_var_type(_r->symbols, fr->global_var_decls[j]));
+            if (kind == cmon_typek_fn)
+            {
+                ++fns_count;
+            }
+            else
+            {
+                ++globals_count;
+            }
         }
 
+        // uniquely merge all external variables into two arrays separated by functions vs regular
+        // vars
         for (j = 0; j < cmon_dyn_arr_count(&fr->external_variables); ++j)
         {
-            _add_unique_idx(&external_vars, fr->external_variables[j]);
+            assert(cmon_symbols_kind(_r->symbols, fr->external_variables[j]) == cmon_symk_var);
+            cmon_idx type_idx = cmon_symbols_var_type(_r->symbols, fr->external_variables[j]);
+            if (cmon_types_kind(_r->types, type_idx) == cmon_typek_fn)
+            {
+                _add_unique_idx(&external_fns, fr->external_variables[j]);
+            }
+            else
+            {
+                _add_unique_idx(&external_vars, fr->external_variables[j]);
+            }
+        }
+
+        fns_count += cmon_dyn_arr_count(&fr->local_fns);
+    }
+
+    fns_count += cmon_dyn_arr_count(&external_fns);
+    globals_count += cmon_dyn_arr_count(&external_vars);
+
+    // create the IR builder
+    assert(!_r->ir_builder);
+    _r->ir_builder = cmon_irb_create(
+        _r->alloc, cmon_dyn_arr_count(&_r->sorted_types), fns_count, globals_count, 1024);
+
+    // add sorted types to ir builder
+    for (i = 0; i < cmon_dyn_arr_count(&_r->sorted_types); ++i)
+    {
+        cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
+    }
+
+    const char * mod_pref = cmon_modules_prefix(_r->mods, _r->mod_idx);
+    for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
+    {
+        _file_resolver * fr = &_r->file_resolvers[i];
+        _set_err_jmp_goto(fr, err_end);
+
+        for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
+        {
+            cmon_idx var_decl_ast =
+                cmon_symbols_ast(fr->resolver->symbols, fr->global_var_decls[j]);
+            assert(cmon_is_valid_idx(var_decl_ast));
+            cmon_dyn_arr_clear(&_r->dep_buffer);
+            _add_global_init_dep(fr,
+                                 fr->global_var_decls[j],
+                                 cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast),
+                                 &_r->dep_buffer);
+
+            cmon_dep_graph_add(_r->dep_graph,
+                               fr->global_var_decls[j],
+                               &_r->dep_buffer[0],
+                               cmon_dyn_arr_count(&_r->dep_buffer));
+
+            for (j = 0; j < cmon_dyn_arr_count(&fr->global_var_decls); ++j)
+            {
+                cmon_typek kind = cmon_types_kind(
+                    _r->types, cmon_symbols_var_type(_r->symbols, fr->global_var_decls[j]));
+                if (kind == cmon_typek_fn)
+                {
+                }
+                else
+                {
+                    ++globals_count;
+                }
+            }
+
+            // cmon_typek kind = cmon_types_kind(_r->types, cmon_symbols_var_type(_r->symbols,
+            // fr->global_var_decls[i])); if(kind)
         }
     }
 
-    assert(!_r->ir_builder);
-    // _r->ir_builder =
-    //     cmon_irb_create(_r->alloc,
-    //                     cmon_types_count(_r->types),
-    //                     cmon_dyn_arr_count(&_r->global_fns) + cmon_dyn_arr_count(&_r->local_fns),
-    //                     cmon_dyn_arr_count(&_r->global_vars) + cmon_dyn_arr_count(&external_vars),
-    //                     cmon_dyn_arr_count(&_r->global_alias_decls),
-    //                     1024);
+    cmon_dep_graph_result res = cmon_dep_graph_resolve(_r->dep_graph);
+    if (!res.array)
+    {
+        cmon_idx a = cmon_dep_graph_conflict_a(_r->dep_graph);
+        // cmon_idx b = cmon_dep_graph_conflict_b(_r->dep_graph);
+        cmon_idx file_idx = cmon_src_mod_src_idx(_r->src, cmon_symbols_src_file(_r->symbols, a));
+        _file_resolver * fr = &_r->file_resolvers[file_idx];
+        cmon_str_view name = cmon_symbols_name(_r->symbols, a);
+        _fr_err(fr,
+                cmon_ast_token(_fr_ast(fr), cmon_symbols_ast(_r->symbols, a)),
+                "initialization loop for '%.*s'",
+                name.end - name.begin,
+                name.begin);
+    }
 
+    // add global functions to ir builder
+
+    // add local functions to ir builder
+
+    // add sorted globals to ir builder
+
+err_end:
+    cmon_dyn_arr_dealloc(&external_fns);
     cmon_dyn_arr_dealloc(&external_vars);
     return _resolved_mod(_r);
 }

@@ -1,6 +1,7 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_src.h>
+#include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_util.h>
 
@@ -28,6 +29,7 @@ typedef struct
     cmon_idx ast_idx;
     cmon_idx scope_idx;
     cmon_idx redecl_idx;
+    size_t uname_str_off;
     union
     {
         cmon_idx idx;
@@ -40,6 +42,8 @@ typedef struct cmon_symbols
     cmon_allocator * alloc;
     cmon_src * src;
     cmon_modules * mods;
+    cmon_str_builder * str_builder;
+    cmon_str_buf * str_buf;
     cmon_dyn_arr(_symbol) symbols;
     cmon_dyn_arr(_scope) scopes;
 } cmon_symbols;
@@ -114,6 +118,18 @@ static inline cmon_idx _add_symbol(cmon_symbols * _s,
     if (cmon_is_valid_idx(existing))
         s.redecl_idx = _get_symbol(_s, existing)->redecl_idx + 1;
 
+    cmon_str_builder_clear(_s->str_builder);
+
+    if(s.redecl_idx > 0)
+    {
+        cmon_str_builder_append_fmt(_s->str_builder, "%.*s%lu", _name.end-_name.begin, _name.begin, s.redecl_idx);
+    }
+    else
+    {
+        cmon_str_builder_append_fmt(_s->str_builder, "%.*s", _name.end-_name.begin, _name.begin);
+    }
+
+    s.uname_str_off = cmon_str_buf_append(_s->str_buf, cmon_str_builder_c_str(_s->str_builder));
     _scope * scope = _get_scope(_s, _scp);
     cmon_dyn_arr_append(&scope->symbols, cmon_dyn_arr_count(&_s->symbols));
     cmon_dyn_arr_append(&_s->symbols, s);
@@ -127,6 +143,8 @@ cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc, cmon_src * _src, cmo
     ret->alloc = _alloc;
     ret->src = _src;
     ret->mods = _mods;
+    ret->str_builder = cmon_str_builder_create(_alloc, 128);
+    ret->str_buf = cmon_str_buf_create(_alloc, 512);
     cmon_dyn_arr_init(&ret->symbols, _alloc, 256);
     cmon_dyn_arr_init(&ret->scopes, _alloc, 256);
     return ret;
@@ -141,6 +159,8 @@ void cmon_symbols_destroy(cmon_symbols * _s)
         cmon_dyn_arr_dealloc(&_s->scopes[i].children);
         cmon_dyn_arr_dealloc(&_s->scopes[i].symbols);
     }
+    cmon_str_buf_destroy(_s->str_buf);
+    cmon_str_builder_destroy(_s->str_builder);
     cmon_dyn_arr_dealloc(&_s->scopes);
     cmon_dyn_arr_dealloc(&_s->symbols);
     CMON_DESTROY(_s->alloc, _s);
@@ -297,6 +317,11 @@ cmon_idx cmon_symbols_scope(cmon_symbols * _s, cmon_idx _sym)
 cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym)
 {
     return _get_symbol(_s, _sym)->name;
+}
+
+const char * cmon_symbols_unique_name(cmon_symbols * _s, cmon_idx _sym)
+{
+    return cmon_str_buf_get(_s->str_buf, _get_symbol(_s, _sym)->uname_str_off);
 }
 
 cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym)

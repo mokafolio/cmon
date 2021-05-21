@@ -79,6 +79,7 @@ CMON_API cmon_idx cmon_symbols_find(cmon_symbols * _s, cmon_idx _scope, cmon_str
 CMON_API cmon_symk cmon_symbols_kind(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_scope(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym);
+CMON_API const char * cmon_symbols_unique_name(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym);
