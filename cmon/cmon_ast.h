@@ -280,12 +280,15 @@ CMON_API cmon_idx cmon_ast_array_init_expr(cmon_ast * _ast, cmon_idx _idx, size_
 CMON_API cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx);
 
-// struct init specific getters
+// struct init specific setters/getters
 CMON_API cmon_idx cmon_ast_struct_init_field_name_tok(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field_expr(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx);
 CMON_API size_t cmon_ast_struct_init_fields_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field(cmon_ast * _ast, cmon_idx _idx, size_t _fidx);
+//used by resolver to set an index buffer that holds the sorted field expressions to initialize the struct.
+CMON_API void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx, cmon_idx _idx_buf);
+CMON_API cmon_idx cmon_ast_struct_init_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx);
 
 // alias specific getters
 CMON_API cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx);

@@ -90,7 +90,8 @@ CMON_API cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                                   cmon_bool _is_main_fn);
 
 // global variables
-//@NOTE: If _expr is CMON_INVALID_IDX the variable will be extern, meaning it will be defined in a separate module (and thus compilation unit)
+//@NOTE: If _expr is CMON_INVALID_IDX the variable will be extern, meaning it will be defined in a
+//separate module (and thus compilation unit)
 CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
                                                const char * _name,
                                                cmon_bool _is_pub,

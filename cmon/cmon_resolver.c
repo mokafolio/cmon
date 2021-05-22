@@ -21,12 +21,6 @@ typedef struct
 
 typedef struct
 {
-    cmon_idx first;
-    cmon_idx second;
-} _idx_pair;
-
-typedef struct
-{
     cmon_resolver * resolver;
     cmon_idx file_scope;
     cmon_idx src_file_idx;
@@ -77,13 +71,6 @@ typedef struct cmon_resolver
     cmon_dyn_arr(cmon_idx) dep_buffer;
     // all types used by the module in dependency order
     cmon_dyn_arr(cmon_idx) sorted_types;
-    // // all global functions defined in the module. Even though they are technically variable
-    // // declarations, we keep track of them separately to simplify code generation in the next
-    // step. cmon_dyn_arr(cmon_idx) global_fns;
-    // // holds all other global variables that are not functions
-    // cmon_dyn_arr(cmon_idx) global_vars;
-    // // all function declarations in the module, including local ones
-    // cmon_dyn_arr(cmon_idx) local_fns;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     cmon_err_handler * err_handler;
@@ -1300,17 +1287,24 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
     {
         if (!cmon_is_valid_idx(cmon_idx_buf_at(_fr->idx_buf_mng, field_initialized_buf, i)))
         {
-            if (!cmon_is_valid_idx(cmon_types_struct_field_def_expr(_fr->resolver->types, type, i)))
+            cmon_idx def_expr = cmon_types_struct_field_def_expr(_fr->resolver->types, type, i);
+            if (!cmon_is_valid_idx(def_expr))
             {
                 _fr_err(_fr,
                         cmon_ast_token(_fr_ast(_fr), _ast_idx),
                         "field '%s' is not initialized",
                         cmon_types_struct_field_name(_fr->resolver->types, type, i));
             }
+            else
+            {
+                cmon_idx_buf_set(_fr->idx_buf_mng, field_initialized_buf, i, def_expr);
+            }
         }
     }
 
-    cmon_idx_buf_mng_return(_fr->idx_buf_mng, field_initialized_buf);
+    // instead of returning the field idx buffer, we cache it for IR generation
+    cmon_ast_struct_init_set_resolved_field_idx_buf(_fr_ast(_fr), _ast_idx, field_initialized_buf);
+    // cmon_idx_buf_mng_return(_fr->idx_buf_mng, field_initialized_buf);
 
     return type;
 }
@@ -2542,6 +2536,7 @@ static inline cmon_resolved_mod * _resolved_mod(cmon_resolver * _r)
      cmon_str_builder_append_fmt(_r->str_builder, ##__VA_ARGS__),                                  \
      cmon_str_builder_c_str(_r->str_builder))
 
+// functions to generate the IR after everything is done
 static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx);
 static inline cmon_idx _ir_add_block(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx);
 
@@ -2628,7 +2623,6 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     }
     else if (kind == cmon_astk_selector)
     {
-
     }
     else if (kind == cmon_astk_call)
     {
@@ -2672,20 +2666,22 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     }
     else if (kind == cmon_astk_struct_init)
     {
-        // cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
-        // for (size_t i = 0; i < cmon_ast_struct_init_fields_count(_fr_ast(_fr), _ast_idx); ++i)
-        // {
-        //     cmon_idx_buf_append(
-        //         _r->idx_buf_mng,
-        //         idx_buf,
-        //         _ir_add(_r, _fr, cmon_ast_array_init_expr(_fr_ast(_fr), _ast_idx, i)));
-        // }
-        // cmon_idx ret = cmon_irb_add_array_init(_r->ir_builder,
-        //                                        _fr->resolved_types[_ast_idx],
-        //                                        cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
-        //                                        cmon_idx_buf_count(_r->idx_buf_mng, idx_buf));
-        // cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
-        // return ret;
+        cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+        cmon_idx field_expr_idx_buf =
+            cmon_ast_struct_init_resolved_field_idx_buf(_fr_ast(_fr), _ast_idx);
+        for (size_t i = 0; i < cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf); ++i)
+        {
+            cmon_idx_buf_append(_r->idx_buf_mng,
+                                idx_buf,
+                                _ir_add(_r, _fr, cmon_idx_buf_get(_fr->idx_buf_mng, idx_buf, i)));
+        }
+
+        cmon_idx ret = cmon_irb_add_struct_init(_r->ir_builder,
+                                                _fr->resolved_types[_ast_idx],
+                                                cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
+                                                cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+        cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+        return ret;
     }
     else if (kind == cmon_astk_paran_expr)
     {

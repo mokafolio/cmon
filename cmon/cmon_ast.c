@@ -214,6 +214,8 @@ cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
                                    size_t _count)
 {
     cmon_idx left = _add_extra_data(_b, _parsed_type_idx);
+    // reserve one extra index for cmon_ast_struct_init_set_resolved_field_idx_buf
+    _add_extra_data(_b, CMON_INVALID_IDX);
     _add_extra_data_arr(_b, _fields, _count);
     return _add_node(_b,
                      cmon_astk_struct_init,
@@ -436,7 +438,7 @@ static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
     size_t _name(cmon_ast * _ast, cmon_idx _idx)                                                   \
     {                                                                                              \
         assert(_get_kind(_ast, _idx) == _kind);                                                    \
-        return _ast->left_right[_idx].right - (_ast->left_right[_idx].left + _off);                  \
+        return _ast->left_right[_idx].right - (_ast->left_right[_idx].left + _off);                \
     }
 
 #define _extra_data_getter_def(_name, _count_fn_name, _off)                                        \
@@ -817,8 +819,22 @@ cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx)
     return _ast->left_right[_idx].right;
 }
 
-_extra_data_count_def(cmon_ast_struct_init_fields_count, cmon_astk_struct_init, 1);
-_extra_data_getter_def(cmon_ast_struct_init_field, cmon_ast_struct_init_fields_count, 1);
+_extra_data_count_def(cmon_ast_struct_init_fields_count, cmon_astk_struct_init, 2);
+_extra_data_getter_def(cmon_ast_struct_init_field, cmon_ast_struct_init_fields_count, 2);
+
+void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast,
+                                                     cmon_idx _idx,
+                                                     cmon_idx _idx_buf)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    _ast->extra_data[_ast->left_right[_idx].left + 1] = _idx_buf;
+}
+
+cmon_idx cmon_ast_struct_init_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx)
+{
+    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
+}
 
 cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx)
 {
