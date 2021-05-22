@@ -72,6 +72,7 @@ typedef struct cmon_resolver
     cmon_idx mod_idx;
     cmon_dep_graph * dep_graph;
     cmon_idx_buf_mng * idx_buf_mng;
+    cmon_str_builder * str_builder;
     cmon_dyn_arr(_file_resolver) file_resolvers;
     cmon_dyn_arr(cmon_idx) dep_buffer;
     // all types used by the module in dependency order
@@ -1210,7 +1211,6 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
                                             cmon_idx _scope,
                                             cmon_idx _ast_idx)
 {
-    printf("_resolve_struct_init asas\n");
     cmon_idx type =
         _resolve_parsed_type(_fr, _scope, cmon_ast_struct_init_parsed_type(_fr_ast(_fr), _ast_idx));
 
@@ -1238,12 +1238,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         cmon_idx_buf_append(_fr->idx_buf_mng, field_initialized_buf, CMON_INVALID_IDX);
     }
 
-    // cmon_ast_iter field_it = cmon_ast_struct_init_fields_iter(_fr_ast(_fr), _ast_idx);
-    // cmon_bool first = cmon_true;
     cmon_bool expect_field_names;
-    // cmon_idx idx;
-    // cmon_idx counter = 0;
-    // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &field_it)))
     for (size_t i = 0; i < cmon_ast_struct_init_fields_count(_fr_ast(_fr), _ast_idx); ++i)
     {
         cmon_idx idx = cmon_ast_struct_init_field(_fr_ast(_fr), _ast_idx, i);
@@ -1707,6 +1702,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     ret->mod_idx = CMON_INVALID_IDX;
     ret->dep_graph = cmon_dep_graph_create(_alloc);
     ret->idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
+    ret->str_builder = cmon_str_builder_create(_alloc, 256);
     ret->max_errors = _max_errors;
     ret->global_type_pass = cmon_false;
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
@@ -1752,6 +1748,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     cmon_dyn_arr_dealloc(&_r->sorted_types);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
+    cmon_str_builder_destroy(_r->str_builder);
     cmon_idx_buf_mng_destroy(_r->idx_buf_mng);
     cmon_dep_graph_destroy(_r->dep_graph);
     CMON_DESTROY(_r->alloc, _r);
@@ -2545,28 +2542,216 @@ static inline cmon_resolved_mod * _resolved_mod(cmon_resolver * _r)
      cmon_str_builder_append_fmt(_r->str_builder, ##__VA_ARGS__),                                  \
      cmon_str_builder_c_str(_r->str_builder))
 
-static inline void _ir_add_fn(cmon_resolver * _r, const char * _prefix, cmon_idx _var_sym)
+static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx);
+static inline cmon_idx _ir_add_block(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx);
+
+static inline cmon_idx _ir_add_var_decl(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx)
+{
+    cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
+    return cmon_irb_add_var_decl(_r->ir_builder,
+                                 cmon_symbols_unique_name(_r->symbols, sym),
+                                 cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
+                                 cmon_symbols_var_type(_r->symbols, sym),
+                                 _ir_add(_r, _fr, cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx)));
+}
+
+static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx)
+{
+    cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), _ast_idx);
+
+    if (kind == cmon_astk_block)
+    {
+        return _ir_add_block(_r, _fr, _ast_idx);
+    }
+    else if (kind == cmon_astk_var_decl)
+    {
+        return _ir_add_var_decl(_r, _fr, _ast_idx);
+    }
+    else if (kind == cmon_astk_int_literal)
+    {
+        cmon_str_view sv =
+            cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx));
+        return cmon_irb_add_int_lit(_r->ir_builder,
+                                    _tmp_str(_r, "%.*s", sv.end - sv.begin, sv.begin));
+    }
+    else if (kind == cmon_astk_float_literal)
+    {
+        cmon_str_view sv =
+            cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx));
+        return cmon_irb_add_float_lit(_r->ir_builder,
+                                      _tmp_str(_r, "%.*s", sv.end - sv.begin, sv.begin));
+    }
+    else if (kind == cmon_astk_bool_literal)
+    {
+        return cmon_irb_add_bool_lit(
+            _r->ir_builder,
+            cmon_str_view_c_str_cmp(
+                cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx)),
+                "true") == 0
+                ? cmon_true
+                : cmon_false);
+    }
+    else if (kind == cmon_astk_string_literal)
+    {
+        cmon_str_view sv =
+            cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_token(_fr_ast(_fr), _ast_idx));
+        return cmon_irb_add_string_lit(_r->ir_builder,
+                                       _tmp_str(_r, "%.*s", sv.end - sv.begin, sv.begin));
+    }
+    else if (kind == cmon_astk_ident)
+    {
+        cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
+        return cmon_irb_add_ident(_r->ir_builder, cmon_symbols_unique_name(_r->symbols, sym));
+    }
+    else if (kind == cmon_astk_addr)
+    {
+        return cmon_irb_add_addr(_r->ir_builder,
+                                 _ir_add(_r, _fr, cmon_ast_addr_expr(_fr_ast(_fr), _ast_idx)));
+    }
+    else if (kind == cmon_astk_deref)
+    {
+        return cmon_irb_add_deref(_r->ir_builder,
+                                  _ir_add(_r, _fr, cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx)));
+    }
+    else if (kind == cmon_astk_prefix)
+    {
+        return cmon_irb_add_prefix(_r->ir_builder,
+                                   cmon_ast_prefix_op_tok(_fr_ast(_fr), _ast_idx),
+                                   _ir_add(_r, _fr, cmon_ast_deref_expr(_fr_ast(_fr), _ast_idx)));
+    }
+    else if (kind == cmon_astk_binary)
+    {
+        return cmon_irb_add_binary(_r->ir_builder,
+                                   cmon_ast_binary_op_tok(_fr_ast(_fr), _ast_idx),
+                                   _ir_add(_r, _fr, cmon_ast_binary_left(_fr_ast(_fr), _ast_idx)),
+                                   _ir_add(_r, _fr, cmon_ast_binary_right(_fr_ast(_fr), _ast_idx)));
+    }
+    else if (kind == cmon_astk_selector)
+    {
+
+    }
+    else if (kind == cmon_astk_call)
+    {
+        cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+        for (size_t i = 0; i < cmon_ast_call_args_count(_fr_ast(_fr), _ast_idx); ++i)
+        {
+            cmon_idx_buf_append(_r->idx_buf_mng,
+                                idx_buf,
+                                _ir_add(_r, _fr, cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i)));
+        }
+        cmon_idx ret =
+            cmon_irb_add_call(_r->ir_builder,
+                              _ir_add(_r, _fr, cmon_ast_call_left(_fr_ast(_fr), _ast_idx)),
+                              cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
+                              cmon_idx_buf_count(_r->idx_buf_mng, idx_buf));
+        cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+        return ret;
+    }
+    else if (kind == cmon_astk_index)
+    {
+        return cmon_irb_add_index(_r->ir_builder,
+                                  _ir_add(_r, _fr, cmon_ast_index_left(_fr_ast(_fr), _ast_idx)),
+                                  _ir_add(_r, _fr, cmon_ast_index_expr(_fr_ast(_fr), _ast_idx)));
+    }
+    else if (kind == cmon_astk_array_init)
+    {
+        cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+        for (size_t i = 0; i < cmon_ast_array_init_exprs_count(_fr_ast(_fr), _ast_idx); ++i)
+        {
+            cmon_idx_buf_append(
+                _r->idx_buf_mng,
+                idx_buf,
+                _ir_add(_r, _fr, cmon_ast_array_init_expr(_fr_ast(_fr), _ast_idx, i)));
+        }
+        cmon_idx ret = cmon_irb_add_array_init(_r->ir_builder,
+                                               _fr->resolved_types[_ast_idx],
+                                               cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
+                                               cmon_idx_buf_count(_r->idx_buf_mng, idx_buf));
+        cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+        return ret;
+    }
+    else if (kind == cmon_astk_struct_init)
+    {
+        // cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+        // for (size_t i = 0; i < cmon_ast_struct_init_fields_count(_fr_ast(_fr), _ast_idx); ++i)
+        // {
+        //     cmon_idx_buf_append(
+        //         _r->idx_buf_mng,
+        //         idx_buf,
+        //         _ir_add(_r, _fr, cmon_ast_array_init_expr(_fr_ast(_fr), _ast_idx, i)));
+        // }
+        // cmon_idx ret = cmon_irb_add_array_init(_r->ir_builder,
+        //                                        _fr->resolved_types[_ast_idx],
+        //                                        cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
+        //                                        cmon_idx_buf_count(_r->idx_buf_mng, idx_buf));
+        // cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+        // return ret;
+    }
+    else if (kind == cmon_astk_paran_expr)
+    {
+        return cmon_irb_add_paran(_r->ir_builder,
+                                  _ir_add(_r, _fr, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx)));
+    }
+    else
+    {
+        assert(0);
+    }
+    return CMON_INVALID_IDX;
+}
+
+static inline cmon_idx _ir_add_block(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx)
 {
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
+    for (size_t i = 0; i < cmon_ast_block_child_count(_fr_ast(_fr), _ast_idx); ++i)
+    {
+        cmon_idx_buf_append(_r->idx_buf_mng,
+                            idx_buf,
+                            _ir_add(_r, _fr, cmon_ast_block_child(_fr_ast(_fr), _ast_idx, i)));
+    }
+    cmon_idx ret = cmon_irb_add_block(_r->ir_builder,
+                                      cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
+                                      cmon_idx_buf_count(_r->idx_buf_mng, idx_buf));
+    cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+    return ret;
+}
 
-    // add all the params to the ir
-    // CMON_API cmon_idx cmon_irb_add_var_decl(
-    // cmon_irb * _b, const char * _name, cmon_bool _is_mut, cmon_idx _type_idx, cmon_idx _expr);
-
+static inline cmon_idx _ir_add_fn(cmon_resolver * _r, const char * _prefix, cmon_idx _var_sym)
+{
+    cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
     cmon_idx src_file_idx = cmon_symbols_src_file(_r->symbols, _var_sym);
     _file_resolver * fr = &_r->file_resolvers[src_file_idx];
     cmon_idx fn_ast = cmon_ast_var_decl_expr(_fr_ast(fr), cmon_symbols_ast(_r->symbols, _var_sym));
+
+    // generate params IR
     for (size_t i = 0; i < cmon_ast_fn_params_count(_fr_ast(fr), fn_ast); ++i)
     {
-        // cmon_idx_buf_append(_r->idx_buf_mng, idx_buf, cmon_irb_add_var_decl(_r->ir_builder, _tmp_str("%.*s", )));
+        cmon_idx_buf_append(
+            _r->idx_buf_mng,
+            idx_buf,
+            cmon_irb_add_var_decl(
+                _r->ir_builder,
+                cmon_symbols_unique_name(_r->symbols, _var_sym),
+                cmon_ast_var_decl_is_mut(_fr_ast(fr), cmon_ast_fn_param(_fr_ast(fr), fn_ast, i)),
+                cmon_symbols_var_type(_r->symbols, _var_sym),
+                CMON_INVALID_IDX));
     }
 
+    // add the body to the IR
+    cmon_idx body = _ir_add_block(_r, fr, cmon_ast_fn_block(_fr_ast(fr), fn_ast));
+
     // add the function
-    // cmon_irb_add_fn(
-    //     _r->ir_builder,
-    //     _tmp_str(_r, "%s_%s", _prefix, cmon_symbols_name(_r->symbols, _var_sym)), );
+    cmon_idx ret = cmon_irb_add_fn(
+        _r->ir_builder,
+        _tmp_str(_r, "%s_%s", _prefix, cmon_symbols_unique_name(_r->symbols, _var_sym)),
+        cmon_ast_fn_ret_type(_fr_ast(fr), fn_ast),
+        cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
+        cmon_idx_buf_count(_r->idx_buf_mng, idx_buf),
+        body,
+        cmon_false);
 
     cmon_idx_buf_mng_return(_r->idx_buf_mng, idx_buf);
+
+    return ret;
 }
 
 cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r)
