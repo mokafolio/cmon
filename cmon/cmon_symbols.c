@@ -120,13 +120,14 @@ static inline cmon_idx _add_symbol(cmon_symbols * _s,
 
     cmon_str_builder_clear(_s->str_builder);
 
-    if(s.redecl_idx > 0)
+    if (s.redecl_idx > 0)
     {
-        cmon_str_builder_append_fmt(_s->str_builder, "%.*s%lu", _name.end-_name.begin, _name.begin, s.redecl_idx);
+        cmon_str_builder_append_fmt(
+            _s->str_builder, "%.*s%lu", _name.end - _name.begin, _name.begin, s.redecl_idx);
     }
     else
     {
-        cmon_str_builder_append_fmt(_s->str_builder, "%.*s", _name.end-_name.begin, _name.begin);
+        cmon_str_builder_append_fmt(_s->str_builder, "%.*s", _name.end - _name.begin, _name.begin);
     }
 
     s.uname_str_off = cmon_str_buf_append(_s->str_buf, cmon_str_builder_c_str(_s->str_builder));
@@ -367,6 +368,17 @@ cmon_bool cmon_symbols_var_is_mut(cmon_symbols * _s, cmon_idx _sym)
 size_t cmon_symbols_scope_symbol_count(cmon_symbols * _s, cmon_idx _scope)
 {
     return cmon_dyn_arr_count(&_get_scope(_s, _scope)->symbols);
+}
+
+size_t cmon_symbols_scope_recursive_symbol_count(cmon_symbols * _s, cmon_idx _scope)
+{
+    size_t ret = cmon_symbols_scope_symbol_count(_s, _scope);
+    for (size_t i = 0; i < cmon_symbols_scope_child_count(_s, _scope); ++i)
+    {
+        ret +=
+            cmon_symbols_scope_recursive_symbol_count(_s, cmon_symbols_scope_child(_s, _scope, i));
+    }
+    return ret;
 }
 
 cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx)

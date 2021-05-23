@@ -2623,6 +2623,20 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     }
     else if (kind == cmon_astk_selector)
     {
+        cmon_typek tkind = cmon_types_kind(_r->types, _fr->resolved_types[_ast_idx]);
+        if (tkind == cmon_typek_modident)
+        {
+            //@TODO: Just add the global var name/function name as an ident to IR? I think so
+        }
+        else
+        {
+            cmon_str_view sv = cmon_tokens_str_view(
+                _fr_tokens(_fr), cmon_ast_selector_name_tok(_fr_ast(_fr), _ast_idx));
+            return cmon_irb_add_selector(
+                _r->ir_builder,
+                _ir_add(_r, _fr, cmon_ast_selector_left(_fr_ast(_fr), _ast_idx)),
+                _tmp_str(_r, "%.*s", sv.end - sv.begin, sv.begin));
+        }
     }
     else if (kind == cmon_astk_call)
     {

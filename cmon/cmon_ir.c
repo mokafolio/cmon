@@ -181,9 +181,14 @@ static inline cmon_idx _add_indices(cmon_irb * _b, cmon_idx * _indices, size_t _
     return ret;
 }
 
-cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name)
+// cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name)
+// {
+//     return _add_node(_b, cmon_irk_ident, cmon_str_buf_append(_b->str_buf, _name));
+// }
+
+cmon_idx cmon_irb_add_ident(cmon_irb * _b, cmon_idx _ref_idx)
 {
-    return _add_node(_b, cmon_irk_string_lit, cmon_str_buf_append(_b->str_buf, _name));
+    return _add_node(_b, cmon_irk_ident, _ref_idx);
 }
 
 cmon_idx cmon_irb_add_bool_lit(cmon_irb * _b, cmon_bool _value)
@@ -426,6 +431,19 @@ cmon_idx cmon_ir_main_fn(cmon_ir * _ir)
 const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_ident);
+    cmon_irk kind = _ir_kind(_ir, _ir_data(_ir, _idx));
+    if(kind == cmon_irk_var_decl)
+    {
+        return cmon_ir_var_decl_name(_ir, _ir_data(_ir, _idx));
+    }
+    else if(kind == cmon_irk_var_decl)
+    {
+
+    }
+    else
+    {
+        assert(0);
+    }
     return _ir_str(_ir, _ir_data(_ir, _idx));
 }
 

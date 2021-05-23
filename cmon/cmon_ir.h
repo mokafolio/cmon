@@ -42,7 +42,8 @@ CMON_API void cmon_irb_destroy(cmon_irb * _b);
 CMON_API void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx);
 
 // expressions
-CMON_API cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name);
+// CMON_API cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name);
+CMON_API cmon_idx cmon_irb_add_ident(cmon_irb * _b, cmon_idx _ref_idx);
 CMON_API cmon_idx cmon_irb_add_bool_lit(cmon_irb * _b, cmon_bool _value);
 CMON_API cmon_idx cmon_irb_add_float_lit(cmon_irb * _b, const char * _value);
 CMON_API cmon_idx cmon_irb_add_int_lit(cmon_irb * _b, const char * _value);
