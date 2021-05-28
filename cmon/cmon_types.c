@@ -53,6 +53,8 @@ typedef struct
     // data idx for additional type information that gets interpreted based on kind.
     // i.e. for structs this is the index into the structs array.
     cmon_idx data_idx;
+    // array the size of all modules being compiled to indicate if the type is used by the module
+    cmon_dyn_arr(cmon_bool) mod_map;
 } _type;
 
 typedef struct cmon_types
@@ -103,12 +105,13 @@ typedef struct cmon_types
 
 #define _get_type(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->types)), _t->types[_idx])
 
-#define _return_if_found(_t, _name)                                                                \
+#define _return_if_found(_t, _name, _mod_idx)                                                      \
     do                                                                                             \
     {                                                                                              \
         cmon_idx _idx;                                                                             \
         if (cmon_is_valid_idx(_idx = cmon_types_find(_t, _name)))                                  \
         {                                                                                          \
+            _t->types[_idx].mod_map[_mod_idx] = cmon_true;                                         \
             return _idx;                                                                           \
         }                                                                                          \
     } while (0)
@@ -138,6 +141,7 @@ static inline cmon_idx _add_type(cmon_types * _t,
                                  const char * _name,
                                  const char * _unique,
                                  const char * _full,
+                                 cmon_idx _mod_idx,
                                  cmon_idx _src_file_idx,
                                  cmon_idx _name_tok,
                                  cmon_idx _extra_data)
@@ -150,6 +154,13 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.unique_name_str = _unique;
     t.full_name_str = _full;
     t.data_idx = _extra_data;
+    cmon_dyn_arr_init(&t.mod_map, _t->alloc, cmon_modules_count(_t->mods));
+    cmon_dyn_arr_resize(&t.mod_map, cmon_modules_count(_t->mods));
+    memset(&t.mod_map[0], cmon_false, cmon_dyn_arr_count(&t.mod_map) * sizeof(cmon_bool));
+    if(cmon_is_valid_idx(_mod_idx))
+    {
+        t.mod_map[_mod_idx] = cmon_true;
+    }
 
     printf("ADDING FOCKING TYPE %s\n", _unique);
 
@@ -165,7 +176,7 @@ static inline cmon_idx _add_builtin(cmon_types * _t,
 {
     const char * name = _intern_c_str(_t, _name);
     cmon_idx ret = _add_type(
-        _t, _kind, name, name, name, CMON_INVALID_IDX, CMON_INVALID_IDX, CMON_INVALID_IDX);
+        _t, _kind, name, name, name, CMON_INVALID_IDX, CMON_INVALID_IDX, CMON_INVALID_IDX, CMON_INVALID_IDX);
     if (!_hidden)
     {
         cmon_dyn_arr_append(&_t->builtins, ret);
@@ -222,6 +233,11 @@ void cmon_types_destroy(cmon_types * _t)
     cmon_dyn_arr_dealloc(&_t->name_buf);
     cmon_dyn_arr_dealloc(&_t->builtins);
     cmon_hashmap_dealloc(&_t->name_map);
+
+    for (i = 0; i < cmon_dyn_arr_count(&_t->types); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_t->types[i].mod_map);
+    }
     cmon_dyn_arr_dealloc(&_t->types);
     cmon_dyn_arr_dealloc(&_t->arrays);
     cmon_dyn_arr_dealloc(&_t->views);
@@ -237,6 +253,11 @@ void cmon_types_destroy(cmon_types * _t)
     }
     cmon_dyn_arr_dealloc(&_t->structs);
     CMON_DESTROY(_t->alloc, _t);
+}
+
+size_t cmon_types_count(cmon_types * _t)
+{
+    return cmon_dyn_arr_count(&_t->types);
 }
 
 cmon_idx cmon_types_add_struct(
@@ -256,13 +277,17 @@ cmon_idx cmon_types_add_struct(
                     _name.begin),
         _intern_str(
             _t, "%s.%.*s", cmon_modules_name(_t->mods, _mod), _name.end - _name.begin, _name.begin),
+        _mod,
         _src_file_idx,
         _name_tok,
         cmon_dyn_arr_count(&_t->structs) - 1);
 }
 
-cmon_idx cmon_types_struct_add_field(
-    cmon_types * _t, cmon_idx _struct, cmon_str_view _name, cmon_idx _type, cmon_idx _def_expr_ast)
+cmon_idx cmon_types_struct_add_field(cmon_types * _t,
+                                     cmon_idx _struct,
+                                     cmon_str_view _name,
+                                     cmon_idx _type,
+                                     cmon_idx _def_expr_ast)
 {
     printf("DA STRUCKT %lu\n", _struct);
     cmon_dyn_arr_append(
@@ -272,13 +297,13 @@ cmon_idx cmon_types_struct_add_field(
     return cmon_dyn_arr_count(&_t->structs[_get_type(_t, _struct).data_idx].fields) - 1;
 }
 
-cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
+cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut, cmon_idx _mod_idx)
 {
     _ptr ptr;
     const char * unique_name;
     unique_name = cmon_str_builder_tmp_str(
         _t->str_builder, "Ptr%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
-    _return_if_found(_t, unique_name);
+    _return_if_found(_t, unique_name, _mod_idx);
 
     ptr.is_mut = _is_mut;
     ptr.type = _type;
@@ -290,18 +315,19 @@ cmon_idx cmon_types_find_ptr(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
         _intern_c_str(_t, unique_name),
         _intern_str(_t, "*%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
+        _mod_idx,
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         cmon_dyn_arr_count(&_t->ptrs) - 1);
 }
 
-cmon_idx cmon_types_find_view(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut)
+cmon_idx cmon_types_find_view(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut, cmon_idx _mod_idx)
 {
     _view view;
     const char * unique_name;
     unique_name = cmon_str_builder_tmp_str(
         _t->str_builder, "View%s_%s", _is_mut ? "Mut" : "", cmon_types_unique_name(_t, _type));
-    _return_if_found(_t, unique_name);
+    _return_if_found(_t, unique_name, _mod_idx);
 
     view.is_mut = _is_mut;
     view.type = _type;
@@ -314,19 +340,20 @@ cmon_idx cmon_types_find_view(cmon_types * _t, cmon_idx _type, cmon_bool _is_mut
         _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_name(_t, _type)),
         unique_name,
         _intern_str(_t, "[]%s %s", _is_mut ? "mut" : "", cmon_types_full_name(_t, _type)),
+        _mod_idx,
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         cmon_dyn_arr_count(&_t->views) - 1);
 }
 
-cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size)
+cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size, cmon_idx _mod_idx)
 {
     _array arr;
     const char * unique_name;
     unique_name = cmon_str_builder_tmp_str(
         _t->str_builder, "Array%lu_%s", _size, cmon_types_unique_name(_t, _type));
     printf("ARRAY BRUH %s\n", unique_name);
-    _return_if_found(_t, unique_name);
+    _return_if_found(_t, unique_name, _mod_idx);
     printf("ARRAY BRUH020202020 %s\n", unique_name);
     arr.count = _size;
     arr.type = _type;
@@ -338,6 +365,7 @@ cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size)
                      _intern_str(_t, "[%lu]%s", _size, cmon_types_name(_t, _type)),
                      unique_name,
                      _intern_str(_t, "[%lu]%s", _size, cmon_types_full_name(_t, _type)),
+                     _mod_idx,
                      CMON_INVALID_IDX,
                      CMON_INVALID_IDX,
                      cmon_dyn_arr_count(&_t->arrays) - 1);
@@ -362,10 +390,8 @@ static inline const char * _fn_name(cmon_types * _t,
     return cmon_str_builder_c_str(_t->str_builder);
 }
 
-cmon_idx cmon_types_find_fn(cmon_types * _t,
-                            cmon_idx _ret_type,
-                            cmon_idx * _params,
-                            size_t _param_count)
+cmon_idx cmon_types_find_fn(
+    cmon_types * _t, cmon_idx _ret_type, cmon_idx * _params, size_t _param_count, cmon_idx _mod_idx)
 {
     _fn_sig sig;
     const char * unique_name;
@@ -373,7 +399,7 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
     unique_name = _fn_name(_t, _ret_type, _params, _param_count, cmon_types_unique_name);
     printf("FINDING FN %s %lu\n", unique_name, _param_count);
 
-    _return_if_found(_t, unique_name);
+    _return_if_found(_t, unique_name, _mod_idx);
 
     printf("ADDING FN %s\n", unique_name);
     cmon_dyn_arr_init(&sig.params, _t->alloc, _param_count);
@@ -394,6 +420,7 @@ cmon_idx cmon_types_find_fn(cmon_types * _t,
         _intern_str(_t, _fn_name(_t, _ret_type, _params, _param_count, cmon_types_name)),
         unique_name,
         _intern_str(_t, _fn_name(_t, _ret_type, _params, _param_count, cmon_types_full_name)),
+        _mod_idx,
         CMON_INVALID_IDX,
         CMON_INVALID_IDX,
         cmon_dyn_arr_count(&_t->fns) - 1);
@@ -684,4 +711,9 @@ cmon_bool cmon_types_is_implicit(cmon_types * _t, cmon_idx _idx)
     cmon_typek kind = cmon_types_kind(_t, _idx);
     return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_ptr ||
            kind == cmon_typek_fn;
+}
+
+cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx)
+{
+    return _get_type(_tr, _idx).mod_map[_mod_idx];
 }

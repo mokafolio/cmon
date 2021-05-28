@@ -188,6 +188,7 @@ static inline cmon_idx _add_indices(cmon_irb * _b, cmon_idx * _indices, size_t _
 
 cmon_idx cmon_irb_add_ident(cmon_irb * _b, cmon_idx _ref_idx)
 {
+    assert(_ref_idx < cmon_dyn_arr_count(_b->kinds));
     return _add_node(_b, cmon_irk_ident, _ref_idx);
 }
 
@@ -436,15 +437,8 @@ const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
     {
         return cmon_ir_var_decl_name(_ir, _ir_data(_ir, _idx));
     }
-    else if(kind == cmon_irk_var_decl)
-    {
-
-    }
-    else
-    {
-        assert(0);
-    }
-    return _ir_str(_ir, _ir_data(_ir, _idx));
+    assert(0);
+    return "";
 }
 
 cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx)

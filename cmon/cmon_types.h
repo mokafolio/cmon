@@ -38,6 +38,7 @@ typedef struct cmon_types cmon_types;
 
 CMON_API cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods);
 CMON_API void cmon_types_destroy(cmon_types * _tr);
+CMON_API size_t cmon_types_count(cmon_types * _tr);
 CMON_API cmon_idx cmon_types_add_struct(
     cmon_types * _tr, cmon_idx _mod, cmon_str_view _name, cmon_idx _src_idx, cmon_idx _name_tok);
 CMON_API cmon_idx cmon_types_struct_add_field(cmon_types * _tr,
@@ -45,15 +46,20 @@ CMON_API cmon_idx cmon_types_struct_add_field(cmon_types * _tr,
                                               cmon_str_view _name,
                                               cmon_idx _type,
                                               cmon_idx _def_expr_ast);
-CMON_API cmon_idx cmon_types_find_ptr(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut);
-CMON_API cmon_idx cmon_types_find_view(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut);
-CMON_API cmon_idx cmon_types_find_array(cmon_types * _tr, cmon_idx _type, size_t _size);
+
+//these will either find implicit types or create them if they don't exist yet
+CMON_API cmon_idx cmon_types_find_ptr(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut, cmon_idx _mod_idx);
+CMON_API cmon_idx cmon_types_find_view(cmon_types * _tr, cmon_idx _type, cmon_bool _is_mut, cmon_idx _mod_idx);
+CMON_API cmon_idx cmon_types_find_array(cmon_types * _tr, cmon_idx _type, size_t _size, cmon_idx _mod_idx);
 CMON_API cmon_idx cmon_types_find_fn(cmon_types * _tr,
                                      cmon_idx _ret_type,
                                      cmon_idx * _params,
-                                     size_t _param_count);
+                                     size_t _param_count, cmon_idx _mod_idx);
+
+//find a type by unique name
 CMON_API cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name);
 
+//basic getters
 CMON_API const char * cmon_types_unique_name(cmon_types * _tr, cmon_idx _type_idx);
 CMON_API const char * cmon_types_name(cmon_types * _tr, cmon_idx _type_idx);
 CMON_API const char * cmon_types_full_name(cmon_types * _tr, cmon_idx _type_idx);
@@ -124,5 +130,6 @@ CMON_API cmon_bool cmon_types_is_float(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_numeric(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_idx cmon_types_remove_ptr(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_implicit(cmon_types * _tr, cmon_idx _idx);
+CMON_API cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx);
 
 #endif // CMON_CMON_TYPES_H

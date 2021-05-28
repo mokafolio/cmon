@@ -243,7 +243,9 @@ cmon_idx cmon_astb_add_selector(cmon_astb * _b,
                                 cmon_idx _left,
                                 cmon_idx _name_tok)
 {
-    return _add_node(_b, cmon_astk_selector, _tok_idx, _left, _name_tok);
+    cmon_idx right = _add_extra_data(_b, _name_tok);
+    _add_extra_data(_b, CMON_INVALID_IDX);
+    return _add_node(_b, cmon_astk_selector, _tok_idx, _left, right);
 }
 
 cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
@@ -757,7 +759,17 @@ cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx)
 cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
 {
     assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
-    return _ast->left_right[_sel_idx].right;
+    return _get_extra_data(_ast, _ast->left_right[_sel_idx].right);
+}
+
+void cmon_ast_selector_set_sym(cmon_ast * _ast, cmon_idx _sel_idx, cmon_idx _sym)
+{
+    _ast->extra_data[_ast->left_right[_sel_idx].right + 1] = _sym;
+}
+
+cmon_idx cmon_ast_selector_sym(cmon_ast * _ast, cmon_idx _sel_idx)
+{
+    return _get_extra_data(_ast, _ast->left_right[_sel_idx].right + 1);
 }
 
 cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx)

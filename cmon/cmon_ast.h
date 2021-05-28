@@ -263,9 +263,11 @@ CMON_API cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_
 // paran expression specific getters
 CMON_API cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx);
 
-// selector specific getters
+// selector specific setters/getters
 CMON_API cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx);
 CMON_API cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx);
+CMON_API void cmon_ast_selector_set_sym(cmon_ast * _ast, cmon_idx _sel_idx, cmon_idx _sym);
+CMON_API cmon_idx cmon_ast_selector_sym(cmon_ast * _ast, cmon_idx _sel_idx);
 
 // call specific getters
 CMON_API cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx);

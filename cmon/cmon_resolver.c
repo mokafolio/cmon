@@ -71,6 +71,7 @@ typedef struct cmon_resolver
     cmon_dyn_arr(cmon_idx) dep_buffer;
     // all types used by the module in dependency order
     cmon_dyn_arr(cmon_idx) sorted_types;
+    cmon_dyn_arr(cmon_idx) symbol_ir_map;
     cmon_dyn_arr(cmon_err_report) errs;
     size_t max_errors;
     cmon_err_handler * err_handler;
@@ -554,7 +555,8 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_ptr_type(ast, _ast_idx));
         ret = cmon_is_valid_idx(rt) ? cmon_types_find_ptr(_fr->resolver->types,
                                                           rt,
-                                                          cmon_ast_type_ptr_is_mut(ast, _ast_idx))
+                                                          cmon_ast_type_ptr_is_mut(ast, _ast_idx),
+                                                          _fr->resolver->mod_idx)
                                     : CMON_INVALID_IDX;
     }
     else if (kind == cmon_astk_type_view)
@@ -562,7 +564,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_view_type(ast, _ast_idx));
         ret = cmon_is_valid_idx(rt) ? cmon_types_find_view(_fr->resolver->types,
                                                            rt,
-                                                           cmon_ast_type_view_is_mut(ast, _ast_idx))
+                                                           cmon_ast_type_view_is_mut(ast, _ast_idx), _fr->resolver->mod_idx)
                                     : CMON_INVALID_IDX;
     }
     else if (kind == cmon_astk_type_array)
@@ -570,7 +572,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         cmon_idx rt = _resolve_parsed_type(_fr, _scope, cmon_ast_type_array_type(ast, _ast_idx));
         ret = cmon_is_valid_idx(rt)
                   ? cmon_types_find_array(
-                        _fr->resolver->types, rt, cmon_ast_type_array_count(ast, _ast_idx))
+                        _fr->resolver->types, rt, cmon_ast_type_array_count(ast, _ast_idx), _fr->resolver->mod_idx)
                   : CMON_INVALID_IDX;
     }
     else if (kind == cmon_astk_type_fn)
@@ -605,7 +607,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
-                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf), _fr->resolver->mod_idx);
         cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
     }
 
@@ -821,7 +823,9 @@ static inline cmon_idx _resolve_addr(_file_resolver * _fr, cmon_idx _scope, cmon
         // }
         cmon_bool is_mut;
         if (!_validate_lvalue_expr(_fr, expr, type, cmon_false, &is_mut))
-            return cmon_types_find_ptr(_fr->resolver->types, type, is_mut);
+        {
+            return cmon_types_find_ptr(_fr->resolver->types, type, is_mut, _fr->resolver->mod_idx);
+        }
     }
     return CMON_INVALID_IDX;
 }
@@ -1023,6 +1027,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
                 if (skind == cmon_symk_var)
                 {
                     cmon_dyn_arr_append(&_fr->external_variables, selected_sym);
+                    cmon_ast_selector_set_sym(_fr_ast(_fr), _ast_idx, selected_sym);
                     return cmon_symbols_var_type(_fr->resolver->symbols, selected_sym);
                 }
             }
@@ -1191,7 +1196,7 @@ static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
         _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), rti, type);
     }
 
-    return cmon_types_find_array(_fr->resolver->types, type, expr_count);
+    return cmon_types_find_array(_fr->resolver->types, type, expr_count, _fr->resolver->mod_idx);
 }
 
 static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
@@ -1362,7 +1367,7 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
-                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
+                                 cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf), _fr->resolver->mod_idx);
     }
     cmon_idx_buf_mng_return(_fr->idx_buf_mng, idx_buf);
     _fr->resolved_types[_ast_idx] = ret;
@@ -1702,6 +1707,7 @@ cmon_resolver * cmon_resolver_create(cmon_allocator * _alloc, size_t _max_errors
     cmon_dyn_arr_init(&ret->file_resolvers, _alloc, 8);
     cmon_dyn_arr_init(&ret->dep_buffer, _alloc, 32);
     cmon_dyn_arr_init(&ret->sorted_types, _alloc, 32);
+    cmon_dyn_arr_init(&ret->symbol_ir_map, _alloc, 4);
     // cmon_dyn_arr_init(&ret->global_fns, _alloc, 16);
     // cmon_dyn_arr_init(&ret->global_vars, _alloc, 16);
     // cmon_dyn_arr_init(&ret->local_fns, _alloc, 32);
@@ -1739,6 +1745,7 @@ void cmon_resolver_destroy(cmon_resolver * _r)
     // cmon_dyn_arr_dealloc(&_r->local_fns);
     // cmon_dyn_arr_dealloc(&_r->global_vars);
     // cmon_dyn_arr_dealloc(&_r->global_fns);
+    cmon_dyn_arr_dealloc(&_r->symbol_ir_map);
     cmon_dyn_arr_dealloc(&_r->sorted_types);
     cmon_dyn_arr_dealloc(&_r->dep_buffer);
     cmon_dyn_arr_dealloc(&_r->file_resolvers);
@@ -2543,11 +2550,14 @@ static inline cmon_idx _ir_add_block(cmon_resolver * _r, _file_resolver * _fr, c
 static inline cmon_idx _ir_add_var_decl(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx)
 {
     cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
-    return cmon_irb_add_var_decl(_r->ir_builder,
-                                 cmon_symbols_unique_name(_r->symbols, sym),
-                                 cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
-                                 cmon_symbols_var_type(_r->symbols, sym),
-                                 _ir_add(_r, _fr, cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx)));
+    cmon_idx ret =
+        cmon_irb_add_var_decl(_r->ir_builder,
+                              cmon_symbols_unique_name(_r->symbols, sym),
+                              cmon_ast_var_decl_is_mut(_fr_ast(_fr), _ast_idx),
+                              cmon_symbols_var_type(_r->symbols, sym),
+                              _ir_add(_r, _fr, cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx)));
+    _r->symbol_ir_map[sym] = ret;
+    return ret;
 }
 
 static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _ast_idx)
@@ -2596,7 +2606,8 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     else if (kind == cmon_astk_ident)
     {
         cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
-        return cmon_irb_add_ident(_r->ir_builder, cmon_symbols_unique_name(_r->symbols, sym));
+        assert(cmon_is_valid_idx(_r->symbol_ir_map[sym]));
+        return cmon_irb_add_ident(_r->ir_builder, _r->symbol_ir_map[sym]);
     }
     else if (kind == cmon_astk_addr)
     {
@@ -2626,7 +2637,11 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
         cmon_typek tkind = cmon_types_kind(_r->types, _fr->resolved_types[_ast_idx]);
         if (tkind == cmon_typek_modident)
         {
-            //@TODO: Just add the global var name/function name as an ident to IR? I think so
+            //@NOTE: If the symbol is in a different module, simply add an ident referring to it to
+            //the IR
+            //@TODO: More sanity checks/asserts?
+            return cmon_irb_add_ident(
+                _r->ir_builder, _r->symbol_ir_map[cmon_ast_selector_sym(_fr_ast(_fr), _ast_idx)]);
         }
         else
         {
@@ -2826,10 +2841,41 @@ cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r)
     _r->ir_builder = cmon_irb_create(
         _r->alloc, cmon_dyn_arr_count(&_r->sorted_types), fns_count, globals_count, 1024);
 
+    // allocate symbol to IR map
+    cmon_dyn_arr_resize(&_r->symbol_ir_map, cmon_symbols_count(_r->symbols));
+    memset(&_r->symbol_ir_map[0],
+           cmon_dyn_arr_count(&_r->symbol_ir_map) * sizeof(cmon_idx),
+           CMON_INVALID_IDX);
+
+    // add external symbol type dependencies to sorted types
+    //@NOTE: as the external module is compiled before this one, we can just add the without dep
+    //graph resolving
+    for (i = 0; i < cmon_dyn_arr_count(&external_vars); ++i)
+    {
+        _add_unique_idx(&_r->sorted_types, cmon_symbols_var_type(_r->symbols, external_vars[i]));
+    }
+
+    for (i = 0; i < cmon_dyn_arr_count(&external_fns); ++i)
+    {
+
+        // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
+    }
+
     // add sorted types to ir builder
     for (i = 0; i < cmon_dyn_arr_count(&_r->sorted_types); ++i)
     {
         cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
+    }
+
+    // add external symbols to IR
+    for (i = 0; i < cmon_dyn_arr_count(&external_vars); ++i)
+    {
+        // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
+    }
+
+    for (i = 0; i < cmon_dyn_arr_count(&external_fns); ++i)
+    {
+        // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
     }
 
     const char * mod_pref = cmon_modules_prefix(_r->mods, _r->mod_idx);

@@ -9,6 +9,8 @@ typedef struct
 {
     cmon_idx parent;
     cmon_str_view name;
+    //@TODO: similar to ast and IR, have one linear array for each of these in cmon_symbols and only
+    //save being/end in here?
     cmon_dyn_arr(cmon_idx) symbols;
     cmon_dyn_arr(cmon_idx) children;
     cmon_hashmap(cmon_str_view, cmon_idx) name_map;
@@ -396,4 +398,9 @@ cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _
 {
     assert(_idx < cmon_symbols_scope_child_count(_s, _scope));
     return _get_scope(_s, _scope)->children[_idx];
+}
+
+size_t cmon_symbols_count(cmon_symbols * _s)
+{
+    return cmon_dyn_arr_count(&_s->symbols);
 }
