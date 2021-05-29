@@ -8,9 +8,9 @@
 typedef struct
 {
     cmon_idx parent;
-    cmon_str_view name;
+    cmon_idx mod_idx;
     //@TODO: similar to ast and IR, have one linear array for each of these in cmon_symbols and only
-    //save being/end in here?
+    // save being/end in here?
     cmon_dyn_arr(cmon_idx) symbols;
     cmon_dyn_arr(cmon_idx) children;
     cmon_hashmap(cmon_str_view, cmon_idx) name_map;
@@ -27,10 +27,10 @@ typedef struct
     cmon_str_view name;
     cmon_symk kind;
     cmon_bool is_pub;
-    cmon_idx src_file_idx;
-    cmon_idx ast_idx;
     cmon_idx scope_idx;
     cmon_idx redecl_idx;
+    cmon_idx src_file_idx;
+    cmon_idx ast_idx;
     size_t uname_str_off;
     union
     {
@@ -74,16 +74,14 @@ static inline _symbol * _get_symbol(cmon_symbols * _s, cmon_idx _sym)
 
 static inline cmon_idx _get_sym_tok_idx(cmon_symbols * _s, cmon_idx _sym)
 {
-    _symbol * sym;
-    sym = _get_symbol(_s, _sym);
-    return cmon_ast_token(cmon_src_ast(_s->src, sym->src_file_idx), sym->ast_idx);
+    return cmon_ast_token(cmon_symbols_ast(_s, _sym), cmon_symbols_ast(_s, _sym));
 }
 
-static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmon_str_view _name)
+static inline cmon_idx _add_scope(cmon_symbols * _s, cmon_idx _parent_scope, cmon_idx _mod_idx)
 {
     _scope s;
     s.parent = _parent_scope;
-    s.name = _name;
+    s.mod_idx = _mod_idx;
     cmon_dyn_arr_init(&s.symbols, _s->alloc, 16);
     cmon_dyn_arr_init(&s.children, _s->alloc, 4);
     cmon_hashmap_init(&s.name_map, _s->alloc, _str_view_hash, _str_view_cmp, NULL);
@@ -108,10 +106,10 @@ static inline cmon_idx _add_symbol(cmon_symbols * _s,
     s.name = _name;
     s.kind = _kind;
     s.is_pub = _is_pub;
-    s.src_file_idx = _src_file_idx;
-    s.ast_idx = _ast_idx;
     s.scope_idx = _scp;
     s.redecl_idx = 0;
+    s.src_file_idx = _src_file_idx;
+    s.ast_idx = _ast_idx;
 
     //@TODO: right now hashmap does not provide an API to manualy update the value for a found node
     // causing us to basically find _name twice right now, once below and once in cmon_hashmap_set
@@ -169,9 +167,9 @@ void cmon_symbols_destroy(cmon_symbols * _s)
     CMON_DESTROY(_s->alloc, _s);
 }
 
-cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope)
+cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope, cmon_idx _mod_idx)
 {
-    return _add_scope(_s, _scope, cmon_str_view_make(""));
+    return _add_scope(_s, _scope, _mod_idx);
 }
 
 cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope)
@@ -337,6 +335,11 @@ cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym)
     return _get_symbol(_s, _sym)->src_file_idx;
 }
 
+cmon_idx cmon_symbols_module(cmon_symbols * _s, cmon_idx _sym)
+{
+    return cmon_symbols_scope_module(_s, cmon_symbols_scope(_s, _sym));
+}
+
 cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym)
 {
     return _get_symbol(_s, _sym)->ast_idx;
@@ -398,6 +401,11 @@ cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _
 {
     assert(_idx < cmon_symbols_scope_child_count(_s, _scope));
     return _get_scope(_s, _scope)->children[_idx];
+}
+
+cmon_idx cmon_symbols_scope_module(cmon_symbols * _s, cmon_idx _scope)
+{
+    return _get_scope(_s, _scope)->mod_idx;
 }
 
 size_t cmon_symbols_count(cmon_symbols * _s)

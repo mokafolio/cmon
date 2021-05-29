@@ -675,8 +675,9 @@ RESOLVE_TEST(resolve_alias03, "alias Boop = f64", cmon_true);
 RESOLVE_TEST(resolve_alias04, "alias Boop = NoExist", cmon_false);
 RESOLVE_TEST(resolve_alias05, "alias Boop = no.Exist", cmon_false);
 RESOLVE_TEST(resolve_alias06, "alias Foo = Bar; alias Bar = Foo", cmon_false);
-RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
-RESOLVE_TEST(resolve_alias08, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
+RESOLVE_TEST(resolve_alias07, "alias Bat = Foo; alias Bar = Foo; alias Foo = Bar;", cmon_false);
+RESOLVE_TEST(resolve_alias08, "alias Bat = Foo; alias Foo = Bar; alias Bar = Bat", cmon_false);
+RESOLVE_TEST(resolve_alias09, "alias Foo = Bar; struct Bar{ foo : Foo }", cmon_false);
 RESOLVE_TEST(resolve_call01, "fn foo(){}; fn main(){ foo() }", cmon_true);
 RESOLVE_TEST(resolve_call02, "fn foo(a : f32)->f32{}; bar := foo(1.3)", cmon_true);
 RESOLVE_TEST(resolve_call03, "fn foo(a : f32)->f32{}; bar : f32 = foo(1.3)", cmon_true);
@@ -693,61 +694,61 @@ RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)
 RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
 RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
 
-// void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-//     cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-// }
+void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33)");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+}
 
-// UTEST(cmon, resolve_module_selector_test)
-// {
-//     EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
-// }
+UTEST(cmon, resolve_module_selector_test)
+{
+    EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
+}
 
-// void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; import bar");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-//     cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-// }
+void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; import bar");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+}
 
-// UTEST(cmon, resolve_module_circ_dep)
-// {
-//     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
-// }
+UTEST(cmon, resolve_module_circ_dep)
+{
+    EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
+}
 
-// void _module_circ_dep_test_adder_fn02(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; import bar");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+void _module_circ_dep_test_adder_fn02(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; import bar");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
 
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-//     cmon_src_set_code(_src, src02_idx, "module bar; import bar.bat;");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import bar.bat;");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
 
-//     cmon_idx src03_idx = cmon_src_add(_src, "bar/bat/bat.cmon", "bat.cmon"); 
-//     cmon_src_set_code(_src, src03_idx, "module bat; import foo;");
-//     cmon_idx bat_mod = cmon_modules_add(_mods, "bar.bat", "bat");
-//     cmon_modules_add_src_file(_mods, bat_mod, src03_idx);
-// }
+    cmon_idx src03_idx = cmon_src_add(_src, "bar/bat/bat.cmon", "bat.cmon"); 
+    cmon_src_set_code(_src, src03_idx, "module bat; import foo;");
+    cmon_idx bat_mod = cmon_modules_add(_mods, "bar.bat", "bat");
+    cmon_modules_add_src_file(_mods, bat_mod, src03_idx);
+}
 
-// UTEST(cmon, resolve_module_circ_dep02)
-// {
-//     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn02));
-// }
+UTEST(cmon, resolve_module_circ_dep02)
+{
+    EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn02));
+}
 
 UTEST_MAIN();

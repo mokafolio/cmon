@@ -66,6 +66,7 @@ CMON_API const char * cmon_types_full_name(cmon_types * _tr, cmon_idx _type_idx)
 CMON_API cmon_typek cmon_types_kind(cmon_types * _tr, cmon_idx _type_idx);
 CMON_API cmon_idx cmon_types_src_file(cmon_types * _tr, cmon_idx _type_idx);
 CMON_API cmon_idx cmon_types_name_tok(cmon_types * _tr, cmon_idx _type_idx);
+CMON_API cmon_idx cmon_types_module(cmon_types * _tr, cmon_idx _type_idx);
 
 // struct specific getters
 CMON_API size_t cmon_types_struct_field_count(cmon_types * _tr, cmon_idx _struct_idx);
@@ -123,6 +124,7 @@ CMON_API cmon_idx cmon_types_fn_param_count(cmon_types * _tr, cmon_idx _fn_idx);
 CMON_API cmon_idx cmon_types_fn_param(cmon_types * _tr, cmon_idx _fn_idx, cmon_idx _param_idx);
 
 // utilities
+CMON_API cmon_bool cmon_types_is_builtin(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_unsigned_int(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_signed_int(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_int(cmon_types * _tr, cmon_idx _idx);
@@ -130,6 +132,7 @@ CMON_API cmon_bool cmon_types_is_float(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_numeric(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_idx cmon_types_remove_ptr(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_implicit(cmon_types * _tr, cmon_idx _idx);
+CMON_API void cmon_types_set_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx);
 CMON_API cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx);
 
 #endif // CMON_CMON_TYPES_H

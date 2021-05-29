@@ -44,7 +44,8 @@ typedef struct
 typedef struct
 {
     cmon_typek kind;
-    // if it's a none builtin type, src_file_idx and name_tok will be set.
+    // if it's a none builtin type, the following will be set.
+    cmon_idx mod_idx;
     cmon_idx src_file_idx;
     cmon_idx name_tok;
     const char * name_str;
@@ -73,6 +74,7 @@ typedef struct cmon_types
 
     // builtin type indices
     cmon_dyn_arr(cmon_idx) builtins;
+    size_t builtins_end;
     cmon_idx builtin_s8;
     cmon_idx builtin_s16;
     cmon_idx builtin_s32;
@@ -162,6 +164,16 @@ static inline cmon_idx _add_type(cmon_types * _t,
         t.mod_map[_mod_idx] = cmon_true;
     }
 
+    //only user defined types can be defined in a module. struct is the only user type for now.
+    if(_kind == cmon_typek_struct)
+    {
+        t.mod_idx = _mod_idx;
+    }
+    else
+    {
+        t.mod_idx = CMON_INVALID_IDX;
+    }
+
     printf("ADDING FOCKING TYPE %s\n", _unique);
 
     cmon_dyn_arr_append(&_t->types, t);
@@ -215,6 +227,8 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     // ret->builtin_u8_view;
     ret->builtin_modident = _add_builtin(ret, cmon_typek_modident, "__modident", cmon_true);
     ret->builtin_typeident = _add_builtin(ret, cmon_typek_typeident, "__typeident", cmon_true);
+
+    ret->builtins_end = cmon_dyn_arr_count(&ret->types);
 
     return ret;
 }
@@ -468,6 +482,11 @@ cmon_idx cmon_types_name_tok(cmon_types * _t, cmon_idx _type_idx)
     return _get_type(_t, _type_idx).name_tok;
 }
 
+cmon_idx cmon_types_module(cmon_types * _t, cmon_idx _type_idx)
+{
+    return _get_type(_t, _type_idx).mod_idx;
+}
+
 static inline _struct_field * _get_struct_field(cmon_types * _t,
                                                 cmon_idx _struct_idx,
                                                 cmon_idx _field_idx)
@@ -669,6 +688,11 @@ cmon_idx cmon_types_builtin(cmon_types * _tr, cmon_idx _idx)
     return _tr->builtins[_idx];
 }
 
+cmon_bool cmon_types_is_builtin(cmon_types * _tr, cmon_idx _idx)
+{
+    return _idx < _tr->builtins_end;
+}
+
 cmon_bool cmon_types_is_unsigned_int(cmon_types * _t, cmon_idx _idx)
 {
     cmon_typek kind = cmon_types_kind(_t, _idx);
@@ -711,6 +735,11 @@ cmon_bool cmon_types_is_implicit(cmon_types * _t, cmon_idx _idx)
     cmon_typek kind = cmon_types_kind(_t, _idx);
     return kind == cmon_typek_array || kind == cmon_typek_view || kind == cmon_typek_ptr ||
            kind == cmon_typek_fn;
+}
+
+void cmon_types_set_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx)
+{
+    _get_type(_tr, _idx).mod_map[_mod_idx] = cmon_true;
 }
 
 cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx)

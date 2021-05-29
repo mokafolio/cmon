@@ -250,7 +250,7 @@ cmon_idx cmon_irb_add_call(cmon_irb * _b,
     return _add_node(_b, cmon_irk_call, cmon_dyn_arr_count(&_b->calls) - 1);
 }
 
-cmon_idx cmon_irb_add_init(cmon_irb * _b,
+cmon_idx cmon_irb_add_struct_init(cmon_irb * _b,
                            cmon_idx _struct_type_idx,
                            cmon_idx * _fields,
                            size_t _count)

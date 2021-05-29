@@ -18,7 +18,7 @@ CMON_API cmon_symbols * cmon_symbols_create(cmon_allocator * _alloc,
                                             cmon_src * _src,
                                             cmon_modules * _mods);
 CMON_API void cmon_symbols_destroy(cmon_symbols * _s);
-CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope);
+CMON_API cmon_idx cmon_symbols_scope_begin(cmon_symbols * _s, cmon_idx _scope, cmon_idx _mod_idx);
 CMON_API cmon_idx cmon_symbols_scope_end(cmon_symbols * _s, cmon_idx _scope);
 
 // check if a sym table represents the global scope
@@ -82,6 +82,7 @@ CMON_API cmon_str_view cmon_symbols_name(cmon_symbols * _s, cmon_idx _sym);
 CMON_API const char * cmon_symbols_unique_name(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_bool cmon_symbols_is_pub(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_src_file(cmon_symbols * _s, cmon_idx _sym);
+CMON_API cmon_idx cmon_symbols_module(cmon_symbols * _s, cmon_idx _sym);
 CMON_API cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym);
 
 // get import specific symbol info
@@ -100,6 +101,7 @@ CMON_API size_t cmon_symbols_scope_recursive_symbol_count(cmon_symbols * _s, cmo
 CMON_API cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx);
 CMON_API size_t cmon_symbols_scope_child_count(cmon_symbols * _s, cmon_idx _scope);
 CMON_API cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx);
+CMON_API cmon_idx cmon_symbols_scope_module(cmon_symbols * _s, cmon_idx _scope);
 
 CMON_API size_t cmon_symbols_count(cmon_symbols * _s);
 
