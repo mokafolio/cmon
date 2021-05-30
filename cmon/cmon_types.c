@@ -469,6 +469,7 @@ const char * cmon_types_full_name(cmon_types * _t, cmon_idx _type_idx)
 
 cmon_typek cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
 {
+    printf("TIDX %lu\n", _type_idx);
     return _get_type(_t, _type_idx).kind;
 }
 

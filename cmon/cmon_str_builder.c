@@ -123,6 +123,7 @@ size_t cmon_str_buf_append(cmon_str_buf * _s, const char * _str)
 
 const char * cmon_str_buf_get(cmon_str_buf * _s, size_t _offset)
 {
+    if(!cmon_dyn_arr_count(&_s->buf)) return NULL;
     assert(_offset < cmon_dyn_arr_count(&_s->buf));
     return &_s->buf[_offset];
 }

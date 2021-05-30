@@ -34,7 +34,7 @@ CMON_API cmon_bool cmon_resolver_globals_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_usertypes_def_expr_pass(cmon_resolver * _r, cmon_idx _file_idx);
 CMON_API cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx);
-CMON_API cmon_resolved_mod * cmon_resolver_finalize(cmon_resolver * _r);
+CMON_API cmon_ir * cmon_resolver_finalize(cmon_resolver * _r);
 
 // retrieve errors
 CMON_API cmon_bool cmon_resolver_has_errors(cmon_resolver * _r);

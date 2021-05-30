@@ -52,7 +52,7 @@ typedef struct
     cmon_idx return_type;
     cmon_idx params_begin;
     cmon_idx params_end;
-    cmon_idx block_idx;
+    cmon_idx body_idx;
 } _fn_decl;
 
 typedef struct cmon_ir
@@ -318,24 +318,30 @@ cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                          cmon_idx _return_type,
                          cmon_idx * _params,
                          size_t _count,
-                         cmon_idx _body_block,
                                   cmon_bool _is_main_fn)
 {
     cmon_idx params_begin = _add_indices(_b, _params, _count);
-    cmon_idx ret = cmon_dyn_arr_count(&_b->fns);
     cmon_dyn_arr_append(&_b->fns,
                         ((_fn_decl){ cmon_str_buf_append(_b->str_buf, _name),
                                      _return_type,
                                      params_begin,
                                      cmon_dyn_arr_count(&_b->idx_buffer),
-                                     _body_block }));
+                                     CMON_INVALID_IDX }));
 
+    cmon_idx ret = _add_node(_b, cmon_irk_fn, cmon_dyn_arr_count(&_b->fns) - 1);
     if(_is_main_fn)
     {
         assert(!cmon_is_valid_idx(_b->main_fn_idx));
         _b->main_fn_idx = ret;
     }
     return ret;
+}
+
+void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body)
+{
+    assert(_fn < cmon_dyn_arr_count(&_b->kinds));
+    assert(_b->kinds[_fn] == cmon_irk_fn);
+    _b->fns[_b->data[_fn]].body_idx = _body;
 }
 
 cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
@@ -599,7 +605,6 @@ size_t cmon_ir_block_child_count(cmon_ir * _ir, cmon_idx _idx)
 
 cmon_idx cmon_ir_block_child(cmon_ir * _ir, cmon_idx _idx, size_t _child_idx)
 {
-
     return _idx_buf_get(_ir, _ir->idx_pairs[_ir_data(_ir, _idx)].left + _child_idx);
 }
 
@@ -653,7 +658,7 @@ cmon_idx cmon_ir_fn_param(cmon_ir * _ir, cmon_idx _idx, size_t _param_idx)
     return _idx_buf_get(_ir, _get_fn(_ir, _idx)->params_begin + _param_idx);
 }
 
-cmon_idx cmon_ir_fn_block(cmon_ir * _ir, cmon_idx _idx)
+cmon_idx cmon_ir_fn_body(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _get_fn(_ir, _idx)->block_idx;
+    return _get_fn(_ir, _idx)->body_idx;
 }

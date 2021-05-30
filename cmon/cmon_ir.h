@@ -22,6 +22,7 @@ typedef enum
     cmon_irk_deref,
     cmon_irk_noinit,
     cmon_irk_var_decl,
+    cmon_irk_fn,
     cmon_irk_block,
     cmon_irk_paran_expr
 } cmon_irk;
@@ -87,8 +88,8 @@ CMON_API cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                                   cmon_idx _return_type,
                                   cmon_idx * _params,
                                   size_t _count,
-                                  cmon_idx _body_block,
                                   cmon_bool _is_main_fn);
+CMON_API void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body);
 
 // global variables
 //@NOTE: If _expr is CMON_INVALID_IDX the variable will be extern, meaning it will be defined in a
@@ -144,6 +145,6 @@ CMON_API const char * cmon_ir_fn_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_fn_return_type(cmon_ir * _ir, cmon_idx _idx);
 CMON_API size_t cmon_ir_fn_param_count(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_fn_param(cmon_ir * _ir, cmon_idx _idx, size_t _param_idx);
-CMON_API cmon_idx cmon_ir_fn_block(cmon_ir * _ir, cmon_idx _idx);
+CMON_API cmon_idx cmon_ir_fn_body(cmon_ir * _ir, cmon_idx _idx);
 
 #endif // CMON_CMON_IR_H
