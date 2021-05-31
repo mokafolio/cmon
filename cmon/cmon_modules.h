@@ -4,6 +4,7 @@
 #include <cmon/cmon_src.h>
 
 typedef struct cmon_modules cmon_modules;
+typedef struct cmon_resolver cmon_resolver;
 
 CMON_API cmon_modules * cmon_modules_create(cmon_allocator * _a, cmon_src * _src);
 CMON_API void cmon_modules_destroy(cmon_modules * _m);
@@ -16,6 +17,8 @@ CMON_API void cmon_modules_add_dep(cmon_modules * _m,
                                    cmon_idx _src_file_idx,
                                    cmon_idx _import_tok_idx);
 CMON_API void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _scope);
+CMON_API void cmon_modules_set_resolver(cmon_modules * _m, cmon_idx _mod_idx, cmon_resolver * _r);
+CMON_API cmon_resolver * cmon_modules_resolver(cmon_modules * _m, cmon_idx _mod_idx);
 
 CMON_API cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path);
 CMON_API size_t cmon_modules_count(cmon_modules * _m);

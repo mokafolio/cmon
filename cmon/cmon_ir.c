@@ -128,7 +128,6 @@ cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
     cmon_dyn_arr_init(&ret->inits, _alloc, 16);
     cmon_dyn_arr_init(&ret->idx_pairs, _alloc, 16);
     cmon_dyn_arr_init(&ret->var_decls, _alloc, 32);
-    cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
     cmon_dyn_arr_init(&ret->idx_buffer, _alloc, _node_count_estimate / 8);
     cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
     cmon_dyn_arr_init(&ret->global_vars, _alloc, _global_var_count);
@@ -141,9 +140,8 @@ void cmon_irb_destroy(cmon_irb * _b)
         return;
 
     cmon_dyn_arr_dealloc(&_b->global_vars);
-    // cmon_dyn_arr_dealloc(&_b->fns);
-    cmon_dyn_arr_dealloc(&_b->idx_buffer);
     cmon_dyn_arr_dealloc(&_b->fns);
+    cmon_dyn_arr_dealloc(&_b->idx_buffer);
     cmon_dyn_arr_dealloc(&_b->var_decls);
     cmon_dyn_arr_dealloc(&_b->idx_pairs);
     cmon_dyn_arr_dealloc(&_b->inits);
@@ -188,7 +186,7 @@ static inline cmon_idx _add_indices(cmon_irb * _b, cmon_idx * _indices, size_t _
 
 cmon_idx cmon_irb_add_ident(cmon_irb * _b, cmon_idx _ref_idx)
 {
-    assert(_ref_idx < cmon_dyn_arr_count(_b->kinds));
+    assert(_ref_idx < cmon_dyn_arr_count(&_b->kinds));
     return _add_node(_b, cmon_irk_ident, _ref_idx);
 }
 

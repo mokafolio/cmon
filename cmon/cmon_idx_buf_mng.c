@@ -38,6 +38,7 @@ cmon_idx cmon_idx_buf_mng_get(cmon_idx_buf_mng * _m)
         cmon_dyn_arr(cmon_idx) buf;
         cmon_dyn_arr_init(&buf, _m->alloc, 16);
         cmon_dyn_arr_append(&_m->bufs, buf);
+        printf("ADDING NEW BUF %lu\n", cmon_dyn_arr_count(&_m->bufs));
         return cmon_dyn_arr_count(&_m->bufs) - 1;
     }
     ret = cmon_dyn_arr_pop(&_m->free_bufs);
@@ -67,6 +68,8 @@ cmon_idx * cmon_idx_buf_ptr(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 
 size_t cmon_idx_buf_count(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 {
+    printf("cmon_idx_buf_count %lu %lu\n", _buf_idx, cmon_dyn_arr_count(&_m->bufs));
+    assert(_buf_idx < cmon_dyn_arr_count(&_m->bufs));
     return cmon_dyn_arr_count(&_m->bufs[_buf_idx]);
 }
 

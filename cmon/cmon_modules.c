@@ -16,6 +16,7 @@ typedef struct
     cmon_dyn_arr(cmon_idx) src_files;
     cmon_dyn_arr(_dep) deps; // module indices that this module depends on
     cmon_idx global_scope;
+    cmon_resolver * resolver;
 } _module;
 
 typedef struct cmon_modules
@@ -71,6 +72,7 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
     mod.path_str_off = cmon_str_buf_append(_m->str_buf, _path);
     mod.name_str_off = cmon_str_buf_append(_m->str_buf, _name);
     mod.global_scope = CMON_INVALID_IDX;
+    mod.resolver = NULL;
 
     cmon_str_builder_clear(_m->str_builder);
     cmon_str_builder_append_fmt(_m->str_builder, "%s%lu", _name, ret);
@@ -104,6 +106,16 @@ void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_id
 {
     assert(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
     _get_module(_m, _mod_idx)->global_scope = _scope;
+}
+
+void cmon_modules_set_resolver(cmon_modules * _m, cmon_idx _mod_idx, cmon_resolver * _r)
+{
+    _get_module(_m, _mod_idx)->resolver = _r;
+}
+
+cmon_resolver * cmon_modules_resolver(cmon_modules * _m, cmon_idx _mod_idx)
+{
+    return _get_module(_m, _mod_idx)->resolver;
 }
 
 cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
