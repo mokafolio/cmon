@@ -4,6 +4,7 @@
 #include <cmon/cmon_err_handler.h>
 #include <cmon/cmon_parser.h>
 #include <cmon/cmon_resolver.h>
+#include <cmon/cmon_str_builder.h>
 #include <setjmp.h>
 
 typedef struct
@@ -272,6 +273,12 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
+
+        cmon_str_builder * sb = cmon_str_builder_create(_b->alloc, 1024);
+
+        printf("WOOOOP:\n%s\n\n", cmon_ir_debug_str(ir, _b->types, sb));
+
+        cmon_str_builder_destroy(sb);
     }
 
     return cmon_false;

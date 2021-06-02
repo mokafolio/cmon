@@ -1,17 +1,18 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_ir.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_types.h>
 
 typedef struct
 {
-    unsigned char op;
+    char op;
     cmon_idx left;
     cmon_idx right;
 } _binop;
 
 typedef struct
 {
-    unsigned char op;
+    char op;
     cmon_idx right;
 } _prefix;
 
@@ -79,12 +80,14 @@ typedef struct cmon_ir
     size_t idx_pairs_count;
     _var_decl * var_decls;
     size_t var_decls_count;
-    _fn_decl * fns;
-    size_t fns_count;
+    _fn_decl * fn_data;
+    size_t fn_data_count;
     cmon_idx * idx_buffer;
     size_t idx_buffer_count;
     cmon_idx * global_vars;
     size_t global_vars_count;
+    cmon_idx * fns;
+    size_t fns_count;
 } cmon_ir;
 
 typedef struct cmon_irb
@@ -102,9 +105,10 @@ typedef struct cmon_irb
     cmon_dyn_arr(_init) inits;
     cmon_dyn_arr(_idx_pair) idx_pairs;
     cmon_dyn_arr(_var_decl) var_decls;
-    cmon_dyn_arr(_fn_decl) fns;
+    cmon_dyn_arr(_fn_decl) fn_data;
     cmon_dyn_arr(cmon_idx) idx_buffer;
     cmon_dyn_arr(cmon_idx) global_vars;
+    cmon_dyn_arr(cmon_idx) fns;
     cmon_ir ir; // filled in in cmon_irb_ir
 } cmon_irb;
 
@@ -129,8 +133,9 @@ cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
     cmon_dyn_arr_init(&ret->idx_pairs, _alloc, 16);
     cmon_dyn_arr_init(&ret->var_decls, _alloc, 32);
     cmon_dyn_arr_init(&ret->idx_buffer, _alloc, _node_count_estimate / 8);
-    cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
+    cmon_dyn_arr_init(&ret->fn_data, _alloc, _fn_count);
     cmon_dyn_arr_init(&ret->global_vars, _alloc, _global_var_count);
+    cmon_dyn_arr_init(&ret->fns, _alloc, _fn_count);
     return ret;
 }
 
@@ -139,8 +144,9 @@ void cmon_irb_destroy(cmon_irb * _b)
     if (!_b)
         return;
 
-    cmon_dyn_arr_dealloc(&_b->global_vars);
     cmon_dyn_arr_dealloc(&_b->fns);
+    cmon_dyn_arr_dealloc(&_b->global_vars);
+    cmon_dyn_arr_dealloc(&_b->fn_data);
     cmon_dyn_arr_dealloc(&_b->idx_buffer);
     cmon_dyn_arr_dealloc(&_b->var_decls);
     cmon_dyn_arr_dealloc(&_b->idx_pairs);
@@ -178,6 +184,11 @@ static inline cmon_idx _add_indices(cmon_irb * _b, cmon_idx * _indices, size_t _
     }
     return ret;
 }
+
+// static inline cmon_idx _idx_buf_end(cmon_irb * _b)
+// {
+//     return cmon_dyn_arr_count(&_b->idx_buffer) ? cmon_dyn_arr_count(&_b->idx_buffer) - 1 : 0;
+// }
 
 // cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name)
 // {
@@ -220,13 +231,14 @@ cmon_idx cmon_irb_add_deref(cmon_irb * _b, cmon_idx _expr)
     return _add_node(_b, cmon_irk_deref, _expr);
 }
 
-cmon_idx cmon_irb_add_binary(cmon_irb * _b, unsigned char _op, cmon_idx _left, cmon_idx _right)
+cmon_idx cmon_irb_add_binary(cmon_irb * _b, char _op, cmon_idx _left, cmon_idx _right)
 {
+    printf("cmon_irb_add_binary %c\n", _op);
     cmon_dyn_arr_append(&_b->binops, ((_binop){ _op, _left, _right }));
     return _add_node(_b, cmon_irk_binary, cmon_dyn_arr_count(&_b->binops) - 1);
 }
 
-cmon_idx cmon_irb_add_prefix(cmon_irb * _b, unsigned char _op, cmon_idx _right)
+cmon_idx cmon_irb_add_prefix(cmon_irb * _b, char _op, cmon_idx _right)
 {
     cmon_dyn_arr_append(&_b->prefixes, ((_prefix){ _op, _right }));
     return _add_node(_b, cmon_irk_prefix, cmon_dyn_arr_count(&_b->prefixes) - 1);
@@ -249,9 +261,9 @@ cmon_idx cmon_irb_add_call(cmon_irb * _b,
 }
 
 cmon_idx cmon_irb_add_struct_init(cmon_irb * _b,
-                           cmon_idx _struct_type_idx,
-                           cmon_idx * _fields,
-                           size_t _count)
+                                  cmon_idx _struct_type_idx,
+                                  cmon_idx * _fields,
+                                  size_t _count)
 {
     cmon_idx begin = _add_indices(_b, _fields, _count);
     cmon_dyn_arr_append(&_b->inits,
@@ -286,8 +298,9 @@ cmon_idx cmon_irb_add_index(cmon_irb * _b, cmon_idx _lhs, cmon_idx _index_expr)
 cmon_idx cmon_irb_add_block(cmon_irb * _b, cmon_idx * _stmt_indices, size_t _count)
 {
     cmon_idx begin = _add_indices(_b, _stmt_indices, _count);
+    printf("cmon_irb_add_block %lu\n", begin);
     cmon_dyn_arr_append(&_b->idx_pairs,
-                        ((_idx_pair){ begin, cmon_dyn_arr_count(&_b->idx_buffer) - 1 }));
+                        ((_idx_pair){ begin, cmon_dyn_arr_count(&_b->idx_buffer) }));
     return _add_node(_b, cmon_irk_block, cmon_dyn_arr_count(&_b->idx_pairs) - 1);
 }
 
@@ -316,22 +329,24 @@ cmon_idx cmon_irb_add_fn(cmon_irb * _b,
                          cmon_idx _return_type,
                          cmon_idx * _params,
                          size_t _count,
-                                  cmon_bool _is_main_fn)
+                         cmon_bool _is_main_fn)
 {
     cmon_idx params_begin = _add_indices(_b, _params, _count);
-    cmon_dyn_arr_append(&_b->fns,
+
+    cmon_dyn_arr_append(&_b->fn_data,
                         ((_fn_decl){ cmon_str_buf_append(_b->str_buf, _name),
                                      _return_type,
                                      params_begin,
                                      cmon_dyn_arr_count(&_b->idx_buffer),
                                      CMON_INVALID_IDX }));
 
-    cmon_idx ret = _add_node(_b, cmon_irk_fn, cmon_dyn_arr_count(&_b->fns) - 1);
-    if(_is_main_fn)
+    cmon_idx ret = _add_node(_b, cmon_irk_fn, cmon_dyn_arr_count(&_b->fn_data) - 1);
+    if (_is_main_fn)
     {
         assert(!cmon_is_valid_idx(_b->main_fn_idx));
         _b->main_fn_idx = ret;
     }
+    cmon_dyn_arr_append(&_b->fns, ret);
     return ret;
 }
 
@@ -339,7 +354,7 @@ void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body)
 {
     assert(_fn < cmon_dyn_arr_count(&_b->kinds));
     assert(_b->kinds[_fn] == cmon_irk_fn);
-    _b->fns[_b->data[_fn]].body_idx = _body;
+    _b->fn_data[_b->data[_fn]].body_idx = _body;
 }
 
 cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
@@ -379,12 +394,14 @@ cmon_ir * cmon_irb_ir(cmon_irb * _b)
     ret->idx_pairs_count = cmon_dyn_arr_count(&_b->idx_pairs);
     ret->var_decls = _b->var_decls;
     ret->var_decls_count = cmon_dyn_arr_count(&_b->var_decls);
-    ret->fns = _b->fns;
-    ret->fns_count = cmon_dyn_arr_count(&_b->fns);
+    ret->fn_data = _b->fn_data;
+    ret->fn_data_count = cmon_dyn_arr_count(&_b->fn_data);
     ret->idx_buffer = _b->idx_buffer;
     ret->idx_buffer_count = cmon_dyn_arr_count(&_b->idx_buffer);
     ret->global_vars = _b->global_vars;
     ret->global_vars_count = cmon_dyn_arr_count(&_b->global_vars);
+    ret->fns = _b->fns;
+    ret->fns_count = cmon_dyn_arr_count(&_b->fns);
     return ret;
 }
 
@@ -433,13 +450,22 @@ cmon_idx cmon_ir_main_fn(cmon_ir * _ir)
     return _ir->main_fn_idx;
 }
 
+cmon_irk cmon_ir_kind(cmon_ir * _ir, cmon_idx _idx)
+{
+    return _ir_kind(_ir, _idx);
+}
+
 const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_ident);
     cmon_irk kind = _ir_kind(_ir, _ir_data(_ir, _idx));
-    if(kind == cmon_irk_var_decl)
+    if (kind == cmon_irk_var_decl)
     {
         return cmon_ir_var_decl_name(_ir, _ir_data(_ir, _idx));
+    }
+    else if (kind == cmon_irk_fn)
+    {
+        return cmon_ir_fn_name(_ir, _ir_data(_ir, _idx));
     }
     assert(0);
     return "";
@@ -609,54 +635,296 @@ cmon_idx cmon_ir_block_child(cmon_ir * _ir, cmon_idx _idx, size_t _child_idx)
 const char * cmon_ir_var_decl_name(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
-    return _ir_str(_ir, _ir->var_decls[_idx].name_off);
+    return _ir_str(_ir, _ir->var_decls[_ir_data(_ir, _idx)].name_off);
 }
 
 cmon_bool cmon_ir_var_decl_is_mut(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
-    return _ir->var_decls[_idx].is_mut;
+    return _ir->var_decls[_ir_data(_ir, _idx)].is_mut;
 }
 
 cmon_idx cmon_ir_var_decl_type(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
-    return _ir->var_decls[_idx].type_idx;
+    return _ir->var_decls[_ir_data(_ir, _idx)].type_idx;
 }
 
 cmon_idx cmon_ir_var_decl_expr(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
-    return _ir->var_decls[_idx].expr_idx;
+    return _ir->var_decls[_ir_data(_ir, _idx)].expr_idx;
 }
 
-static inline _fn_decl * _get_fn(cmon_ir * _ir, cmon_idx _idx)
+static inline _fn_decl * _ir_fn_data(cmon_ir * _ir, cmon_idx _idx)
 {
-    assert(_idx < cmon_dyn_arr_count(&_ir->fns));
-    return &_ir->fns[_idx];
+    assert(_idx < cmon_dyn_arr_count(&_ir->fn_data));
+    return &_ir->fn_data[_idx];
 }
 
 const char * cmon_ir_fn_name(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _ir_str(_ir, _get_fn(_ir, _idx)->name_off);
+    return _ir_str(_ir, _ir_fn_data(_ir, _ir_data(_ir, _idx))->name_off);
 }
 
 cmon_idx cmon_ir_fn_return_type(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _get_fn(_ir, _idx)->return_type;
+    return _ir_fn_data(_ir, _ir_data(_ir, _idx))->return_type;
 }
 
 size_t cmon_ir_fn_param_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _get_fn(_ir, _idx)->params_end - _get_fn(_ir, _idx)->params_begin;
+    return _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_end - _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_begin;
 }
 
 cmon_idx cmon_ir_fn_param(cmon_ir * _ir, cmon_idx _idx, size_t _param_idx)
 {
-    return _idx_buf_get(_ir, _get_fn(_ir, _idx)->params_begin + _param_idx);
+    return _idx_buf_get(_ir, _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_begin + _param_idx);
 }
 
 cmon_idx cmon_ir_fn_body(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _get_fn(_ir, _idx)->body_idx;
+    return _ir_fn_data(_ir, _ir_data(_ir, _idx))->body_idx;
+}
+
+static inline void _debug_write_stmt(
+    cmon_ir * _ir, cmon_types * _types, cmon_str_builder * _b, cmon_idx _ir_idx, size_t _indent);
+
+static inline void _debug_write_expr(cmon_ir * _ir,
+                                     cmon_types * _types,
+                                     cmon_str_builder * _b,
+                                     cmon_idx _ir_idx);
+
+static inline void _debug_write_type(cmon_ir * _ir,
+                                     cmon_types * _types,
+                                     cmon_str_builder * _b,
+                                     cmon_idx _type_idx)
+{
+    cmon_str_builder_append(_b, cmon_types_full_name(_types, _type_idx));
+}
+
+static inline void _debug_write_var_decl(cmon_ir * _ir,
+                                         cmon_types * _types,
+                                         cmon_str_builder * _b,
+                                         cmon_idx _ir_idx)
+{
+    cmon_idx expr = cmon_ir_var_decl_expr(_ir, _ir_idx);
+    if (!cmon_is_valid_idx(expr))
+    {
+        cmon_str_builder_append(_b, "extern ");
+    }
+    printf("_debug_write_var_decl %s\n", cmon_ir_var_decl_name(_ir, _ir_idx));
+    cmon_str_builder_append_fmt(_b,
+                                "%s%s : %s",
+                                cmon_ir_var_decl_is_mut(_ir, _ir_idx) ? "mut " : "",
+                                cmon_ir_var_decl_name(_ir, _ir_idx),
+                                cmon_types_full_name(_types, cmon_ir_var_decl_type(_ir, _ir_idx)));
+    if (cmon_is_valid_idx(expr))
+    {
+        cmon_str_builder_append(_b, " = ");
+        _debug_write_expr(_ir, _types, _b, expr);
+    }
+}
+
+static inline void _debug_indent(cmon_str_builder * _b, size_t _indent)
+{
+    for (size_t i = 0; i < _indent; ++i)
+    {
+        cmon_str_builder_append(_b, "    ");
+    }
+}
+
+static inline void _debug_write_expr(cmon_ir * _ir,
+                                     cmon_types * _types,
+                                     cmon_str_builder * _b,
+                                     cmon_idx _ir_idx)
+{
+    cmon_irk kind = cmon_ir_kind(_ir, _ir_idx);
+    if (kind == cmon_irk_int_lit || kind == cmon_irk_float_lit || kind == cmon_irk_string_lit)
+    {
+        cmon_str_builder_append(_b, _ir_str(_ir, _ir_data(_ir, _ir_idx)));
+    }
+    else if (kind == cmon_irk_ident)
+    {
+        cmon_str_builder_append(_b, cmon_ir_ident_name(_ir, _ir_idx));
+    }
+    else if (kind == cmon_irk_bool_lit)
+    {
+        cmon_str_builder_append(_b, cmon_ir_bool_lit_value(_ir, _ir_idx) ? "true" : "false");
+    }
+    else if (kind == cmon_irk_noinit)
+    {
+        cmon_str_builder_append(_b, "---");
+    }
+    else if (kind == cmon_irk_addr)
+    {
+        cmon_str_builder_append(_b, "&");
+        _debug_write_expr(_ir, _types, _b, cmon_ir_addr_expr(_ir, _ir_idx));
+    }
+    else if (kind == cmon_irk_deref)
+    {
+        cmon_str_builder_append(_b, "*");
+        _debug_write_expr(_ir, _types, _b, cmon_ir_deref_expr(_ir, _ir_idx));
+    }
+    else if (kind == cmon_irk_paran_expr)
+    {
+        cmon_str_builder_append(_b, "(");
+        _debug_write_expr(_ir, _types, _b, cmon_ir_paran_expr(_ir, _ir_idx));
+        cmon_str_builder_append(_b, ")");
+    }
+    else if (kind == cmon_irk_call)
+    {
+        _debug_write_expr(_ir, _types, _b, cmon_ir_call_left(_ir, _ir_idx));
+        cmon_str_builder_append(_b, "(");
+        for (size_t i = 0; i < cmon_ir_call_arg_count(_ir, _ir_idx); ++i)
+        {
+            _debug_write_expr(_ir, _types, _b, cmon_ir_call_arg(_ir, _ir_idx, i));
+            if (i < cmon_ir_call_arg_count(_ir, _ir_idx) - 1)
+                cmon_str_builder_append(_b, ", ");
+        }
+        cmon_str_builder_append(_b, ")");
+    }
+    else if (kind == cmon_irk_struct_init)
+    {
+        cmon_str_builder_append_fmt(
+            _b, "%s{", cmon_types_unique_name(_types, cmon_ir_struct_init_type(_ir, _ir_idx)));
+        for (size_t i = 0; i < cmon_ir_struct_init_expr_count(_ir, _ir_idx); ++i)
+        {
+            _debug_write_expr(_ir, _types, _b, cmon_ir_struct_init_expr(_ir, _ir_idx, i));
+            if (i < cmon_ir_struct_init_expr_count(_ir, _ir_idx) - 1)
+                cmon_str_builder_append(_b, ", ");
+        }
+        cmon_str_builder_append(_b, "}");
+    }
+    else if (kind == cmon_irk_array_init)
+    {
+        cmon_str_builder_append_fmt(
+            _b, "%s[", cmon_types_unique_name(_types, cmon_ir_array_init_type(_ir, _ir_idx)));
+        for (size_t i = 0; i < cmon_ir_array_init_expr_count(_ir, _ir_idx); ++i)
+        {
+            _debug_write_expr(_ir, _types, _b, cmon_ir_array_init_expr(_ir, _ir_idx, i));
+            if (i < cmon_ir_array_init_expr_count(_ir, _ir_idx) - 1)
+                cmon_str_builder_append(_b, ", ");
+        }
+        cmon_str_builder_append(_b, "]");
+    }
+    else if (kind == cmon_irk_index)
+    {
+        _debug_write_expr(_ir, _types, _b, cmon_ir_index_left(_ir, _ir_idx));
+        cmon_str_builder_append(_b, "[");
+        _debug_write_expr(_ir, _types, _b, cmon_ir_index_expr(_ir, _ir_idx));
+        cmon_str_builder_append(_b, "]");
+    }
+    else if (kind == cmon_irk_selector)
+    {
+        _debug_write_expr(_ir, _types, _b, cmon_ir_selector_left(_ir, _ir_idx));
+        cmon_str_builder_append_fmt(_b, ".%s", cmon_ir_selector_name(_ir, _ir_idx));
+    }
+    else if (kind == cmon_irk_prefix)
+    {
+        cmon_str_builder_append_fmt(_b, "%c", cmon_ir_prefix_op(_ir, _ir_idx));
+        _debug_write_expr(_ir, _types, _b, cmon_ir_prefix_expr(_ir, _ir_idx));
+    }
+    else if (kind == cmon_irk_binary)
+    {
+        _debug_write_expr(_ir, _types, _b, cmon_ir_binary_left(_ir, _ir_idx));
+        cmon_str_builder_append_fmt(_b, " %c ", cmon_ir_binary_op(_ir, _ir_idx));
+        _debug_write_expr(_ir, _types, _b, cmon_ir_binary_right(_ir, _ir_idx));
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+static inline void _debug_write_stmt(
+    cmon_ir * _ir, cmon_types * _types, cmon_str_builder * _b, cmon_idx _ir_idx, size_t _indent)
+{
+    cmon_irk kind = cmon_ir_kind(_ir, _ir_idx);
+    if (kind == cmon_irk_block)
+    {
+        _debug_indent(_b, _indent);
+        cmon_str_builder_append_fmt(_b, "{\n");
+        printf("CHILD COUNT %lu\n", cmon_ir_block_child_count(_ir, _ir_idx));
+        for (size_t i = 0; i < cmon_ir_block_child_count(_ir, _ir_idx); ++i)
+        {
+            _debug_write_stmt(_ir, _types, _b, cmon_ir_block_child(_ir, _ir_idx, i), _indent + 1);
+        }
+        _debug_indent(_b, _indent);
+        cmon_str_builder_append(_b, "}\n");
+    }
+    else if(kind == cmon_irk_var_decl)
+    {
+        _debug_indent(_b, _indent);
+        _debug_write_var_decl(_ir, _types, _b, _ir_idx);
+        cmon_str_builder_append(_b, "\n");
+    }
+    else
+    {
+        // expr stmt
+        _debug_indent(_b, _indent);
+        _debug_write_expr(_ir, _types, _b, _ir_idx);
+        cmon_str_builder_append(_b, "\n");
+    }
+}
+
+static inline void _debug_write_fn(cmon_ir * _ir,
+                                   cmon_types * _types,
+                                   cmon_str_builder * _b,
+                                   cmon_idx _ir_idx)
+{
+    printf("a\n");
+    cmon_idx body = cmon_ir_fn_body(_ir, _ir_idx);
+    if (!cmon_is_valid_idx(body))
+    {
+        cmon_str_builder_append(_b, "extern ");
+    }
+    printf("a2\n");
+    cmon_str_builder_append_fmt(_b, "fn %s(", cmon_ir_fn_name(_ir, _ir_idx));
+    for (size_t i = 0; i < cmon_ir_fn_param_count(_ir, _ir_idx); ++i)
+    {
+        _debug_write_var_decl(_ir, _types, _b, cmon_ir_fn_param(_ir, _ir_idx, i));
+        if (i < cmon_ir_fn_param_count(_ir, _ir_idx) - 1)
+        {
+            cmon_str_builder_append(_b, ", ");
+        }
+    }
+    printf("a3\n");
+    cmon_str_builder_append(_b, ") -> ");
+    printf("DA RET TYPE %lu\n", cmon_ir_fn_return_type(_ir, _ir_idx));
+    _debug_write_type(_ir, _types, _b, cmon_ir_fn_return_type(_ir, _ir_idx));
+    if (cmon_is_valid_idx(body))
+    {
+        printf("a4\n");
+        cmon_str_builder_append(_b, "\n");
+        _debug_write_stmt(_ir, _types, _b, body, 0);
+    }
+    printf("b\n");
+}
+
+const char * cmon_ir_debug_str(cmon_ir * _ir, cmon_types * _types, cmon_str_builder * _b)
+{
+    cmon_str_builder_clear(_b);
+
+    cmon_str_builder_append(_b, "sorted types:\n");
+    for (size_t i = 0; i < _ir->types_count; ++i)
+    {
+        _debug_write_type(_ir, _types, _b, _ir->types[i]);
+    }
+
+    cmon_str_builder_append(_b, "\nglobal variables:\n");
+    for (size_t i = 0; i < _ir->global_vars_count; ++i)
+    {
+        _debug_write_var_decl(_ir, _types, _b, _ir->global_vars[i]);
+        cmon_str_builder_append(_b, "\n");
+    }
+
+    cmon_str_builder_append(_b, "\nglobal functions:\n");
+    for (size_t i = 0; i < _ir->fns_count; ++i)
+    {
+        _debug_write_fn(_ir, _types, _b, _ir->fns[i]);
+        cmon_str_builder_append(_b, "\n");
+    }
+
+    return cmon_str_builder_c_str(_b);
 }

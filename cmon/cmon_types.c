@@ -747,3 +747,8 @@ cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx
 {
     return _get_type(_tr, _idx).mod_map[_mod_idx];
 }
+
+const char * cmon_typek_to_str(cmon_typek _kind)
+{
+
+}

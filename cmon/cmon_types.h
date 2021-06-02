@@ -134,5 +134,6 @@ CMON_API cmon_idx cmon_types_remove_ptr(cmon_types * _tr, cmon_idx _idx);
 CMON_API cmon_bool cmon_types_is_implicit(cmon_types * _tr, cmon_idx _idx);
 CMON_API void cmon_types_set_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx);
 CMON_API cmon_bool cmon_types_is_used_in_module(cmon_types * _tr, cmon_idx _idx, cmon_idx _mod_idx);
+CMON_API const char * cmon_typek_to_str(cmon_typek _kind);
 
 #endif // CMON_CMON_TYPES_H

@@ -705,15 +705,16 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)", cmon_false);
 // RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
 // RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
+// RESOLVE_TEST(resolve_init_loop10, "fn foo()->s32{ a := bar }; bar := foo()", cmon_false);
 
 void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 {
     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub fn boinkyhoinky(){}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob;");
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33); fn main(){ foo.boinkyhoinky() }");
     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
 }
@@ -762,5 +763,7 @@ UTEST(cmon, resolve_module_selector_test)
 // {
 //     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn02));
 // }
+
+// RESOLVE_TEST(resolve_empty, "mut foo : f64 = 1.2; fn bar(a : s32, mut b : s32) -> s32 { boop := 1 / 2 }", cmon_true);
 
 UTEST_MAIN();

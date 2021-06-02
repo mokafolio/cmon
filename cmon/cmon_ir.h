@@ -14,7 +14,6 @@ typedef enum
     cmon_irk_index,
     cmon_irk_selector,
     cmon_irk_struct_init,
-    cmon_irk_struct_init_field,
     cmon_irk_array_init,
     cmon_irk_prefix,
     cmon_irk_binary,
@@ -51,11 +50,8 @@ CMON_API cmon_idx cmon_irb_add_int_lit(cmon_irb * _b, const char * _value);
 CMON_API cmon_idx cmon_irb_add_string_lit(cmon_irb * _b, const char * _value);
 CMON_API cmon_idx cmon_irb_add_addr(cmon_irb * _b, cmon_idx _expr);
 CMON_API cmon_idx cmon_irb_add_deref(cmon_irb * _b, cmon_idx _expr);
-CMON_API cmon_idx cmon_irb_add_binary(cmon_irb * _b,
-                                      unsigned char _op,
-                                      cmon_idx _left,
-                                      cmon_idx _right);
-CMON_API cmon_idx cmon_irb_add_prefix(cmon_irb * _b, unsigned char _op, cmon_idx _right);
+CMON_API cmon_idx cmon_irb_add_binary(cmon_irb * _b, char _op, cmon_idx _left, cmon_idx _right);
+CMON_API cmon_idx cmon_irb_add_prefix(cmon_irb * _b, char _op, cmon_idx _right);
 CMON_API cmon_idx cmon_irb_add_paran(cmon_irb * _b, cmon_idx _expr);
 CMON_API cmon_idx cmon_irb_add_call(cmon_irb * _b,
                                     cmon_idx _expr_idx,
@@ -93,7 +89,7 @@ CMON_API void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body);
 
 // global variables
 //@NOTE: If _expr is CMON_INVALID_IDX the variable will be extern, meaning it will be defined in a
-//separate module (and thus compilation unit)
+// separate module (and thus compilation unit)
 CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
                                                const char * _name,
                                                cmon_bool _is_pub,
@@ -107,7 +103,7 @@ CMON_API size_t cmon_ir_type_count(cmon_ir * _ir);
 CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx);
 CMON_API size_t cmon_ir_fn_count(cmon_ir * _ir);
 CMON_API cmon_idx cmon_ir_main_fn(cmon_ir * _ir);
-CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx);
+CMON_API cmon_irk cmon_ir_kind(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx);
@@ -146,5 +142,9 @@ CMON_API cmon_idx cmon_ir_fn_return_type(cmon_ir * _ir, cmon_idx _idx);
 CMON_API size_t cmon_ir_fn_param_count(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_fn_param(cmon_ir * _ir, cmon_idx _idx, size_t _param_idx);
 CMON_API cmon_idx cmon_ir_fn_body(cmon_ir * _ir, cmon_idx _idx);
+
+typedef struct cmon_str_builder cmon_str_builder;
+typedef struct cmon_types cmon_types;
+CMON_API const char * cmon_ir_debug_str(cmon_ir * _ir, cmon_types * _types, cmon_str_builder * _b);
 
 #endif // CMON_CMON_IR_H
