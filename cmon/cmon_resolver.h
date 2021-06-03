@@ -8,7 +8,6 @@
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_types.h>
 
-typedef struct cmon_resolved_mod cmon_resolved_mod;
 typedef struct cmon_resolver cmon_resolver;
 
 typedef struct cmon_file_ast_pair
@@ -41,21 +40,5 @@ CMON_API cmon_bool cmon_resolver_has_errors(cmon_resolver * _r);
 CMON_API cmon_bool cmon_resolver_errors(cmon_resolver * _r,
                                         cmon_err_report ** _out_errs,
                                         size_t * _out_count);
-
-//retrieve the resolved module data
-// CMON_API cmon_resolved_mod * cmon_resolver_resolved_mod(cmon_resolver * _r);
-// CMON_API void cmon_resolved_mod_destroy(cmon_resolved_mod * _ra);
-CMON_API cmon_idx cmon_resolved_mod_type(cmon_resolved_mod * _ra, size_t _i);
-CMON_API cmon_src * cmon_resolved_mod_src(cmon_resolved_mod * _ra);
-CMON_API cmon_types * cmon_resolved_mod_types(cmon_resolved_mod * _ra);
-CMON_API cmon_modules * cmon_resolved_mod_modules(cmon_resolved_mod * _ra);
-CMON_API cmon_idx cmon_resolved_mod_module_idx(cmon_resolved_mod * _ra);
-CMON_API cmon_idx * cmon_resolved_mod_resolved_types(cmon_resolved_mod * _ra, cmon_idx _src_file_idx);
-CMON_API cmon_idx cmon_resolved_mod_resolved_type(cmon_resolved_mod * _ra, cmon_idx _src_file_idx, cmon_idx _ast_idx);
-CMON_API size_t cmon_resolved_mod_type_count(cmon_resolved_mod * _ra);
-CMON_API cmon_file_ast_pair cmon_resolved_mod_global_fn(cmon_resolved_mod * _ra, size_t _i);
-CMON_API size_t cmon_resolved_mod_global_fn_count(cmon_resolved_mod * _ra);
-CMON_API cmon_file_ast_pair cmon_resolved_mod_local_fn(cmon_resolved_mod * _ra, size_t _i);
-CMON_API size_t cmon_resolved_mod_local_fn_count(cmon_resolved_mod * _ra);
 
 #endif // CMON_CMON_RESOLVER_H

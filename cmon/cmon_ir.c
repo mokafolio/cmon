@@ -706,14 +706,14 @@ static inline void _debug_write_type(cmon_ir * _ir,
 static inline void _debug_write_var_decl(cmon_ir * _ir,
                                          cmon_types * _types,
                                          cmon_str_builder * _b,
-                                         cmon_idx _ir_idx)
+                                         cmon_idx _ir_idx,
+                                         cmon_bool _is_global)
 {
     cmon_idx expr = cmon_ir_var_decl_expr(_ir, _ir_idx);
-    if (!cmon_is_valid_idx(expr))
+    if (_is_global && !cmon_is_valid_idx(expr))
     {
         cmon_str_builder_append(_b, "extern ");
     }
-    printf("_debug_write_var_decl %s\n", cmon_ir_var_decl_name(_ir, _ir_idx));
     cmon_str_builder_append_fmt(_b,
                                 "%s%s : %s",
                                 cmon_ir_var_decl_is_mut(_ir, _ir_idx) ? "mut " : "",
@@ -845,7 +845,6 @@ static inline void _debug_write_stmt(
     {
         _debug_indent(_b, _indent);
         cmon_str_builder_append_fmt(_b, "{\n");
-        printf("CHILD COUNT %lu\n", cmon_ir_block_child_count(_ir, _ir_idx));
         for (size_t i = 0; i < cmon_ir_block_child_count(_ir, _ir_idx); ++i)
         {
             _debug_write_stmt(_ir, _types, _b, cmon_ir_block_child(_ir, _ir_idx, i), _indent + 1);
@@ -856,7 +855,7 @@ static inline void _debug_write_stmt(
     else if(kind == cmon_irk_var_decl)
     {
         _debug_indent(_b, _indent);
-        _debug_write_var_decl(_ir, _types, _b, _ir_idx);
+        _debug_write_var_decl(_ir, _types, _b, _ir_idx, cmon_false);
         cmon_str_builder_append(_b, "\n");
     }
     else
@@ -883,7 +882,7 @@ static inline void _debug_write_fn(cmon_ir * _ir,
     cmon_str_builder_append_fmt(_b, "fn %s(", cmon_ir_fn_name(_ir, _ir_idx));
     for (size_t i = 0; i < cmon_ir_fn_param_count(_ir, _ir_idx); ++i)
     {
-        _debug_write_var_decl(_ir, _types, _b, cmon_ir_fn_param(_ir, _ir_idx, i));
+        _debug_write_var_decl(_ir, _types, _b, cmon_ir_fn_param(_ir, _ir_idx, i), cmon_false);
         if (i < cmon_ir_fn_param_count(_ir, _ir_idx) - 1)
         {
             cmon_str_builder_append(_b, ", ");
@@ -910,12 +909,13 @@ const char * cmon_ir_debug_str(cmon_ir * _ir, cmon_types * _types, cmon_str_buil
     for (size_t i = 0; i < _ir->types_count; ++i)
     {
         _debug_write_type(_ir, _types, _b, _ir->types[i]);
+        cmon_str_builder_append(_b, "\n");
     }
 
     cmon_str_builder_append(_b, "\nglobal variables:\n");
     for (size_t i = 0; i < _ir->global_vars_count; ++i)
     {
-        _debug_write_var_decl(_ir, _types, _b, _ir->global_vars[i]);
+        _debug_write_var_decl(_ir, _types, _b, _ir->global_vars[i], cmon_true);
         cmon_str_builder_append(_b, "\n");
     }
 

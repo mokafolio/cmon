@@ -97,7 +97,7 @@ static inline void _add_resolver_errors(cmon_builder_st * _b,
     }
 }
 
-cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
+cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen)
 {
     size_t i, j;
 
@@ -274,11 +274,14 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b)
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
-        cmon_str_builder * sb = cmon_str_builder_create(_b->alloc, 1024);
+        // cmon_str_builder * sb = cmon_str_builder_create(_b->alloc, 1024);
 
-        printf("WOOOOP:\n%s\n\n", cmon_ir_debug_str(ir, _b->types, sb));
+        // printf("WOOOOP:\n%s\n\n", cmon_ir_debug_str(ir, _b->types, sb));
 
-        cmon_str_builder_destroy(sb);
+        // cmon_str_builder_destroy(sb);
+
+        //code generation for the module
+        
     }
 
     return cmon_false;

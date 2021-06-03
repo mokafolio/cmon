@@ -22,24 +22,13 @@ static inline const char * _top_code()
            "typedef uint8_t u8;\n"
            "typedef uint16_t u16;\n"
            "typedef uint32_t u32;\n"
-           "typedef uint64_t u64;\n\n";
+           "typedef uint64_t u64;\n"
+           "#ifndef __STDC_IEC_559__\n"
+           "#error \"c compiler with __STDC_IEC_559__ required\""
+           "#endif\n"
+           "typedef float f32;\n"
+           "typedef double f64;\n\n";
 }
-
-// static inline cmon_tokens * _tokens(_codegen_c * _cg, cmon_idx _file_idx)
-// {
-//     return cmon_src_tokens(_cg->src, _file_idx);
-// }
-
-// static inline cmon_ast * _ast(_codegen_c * _cg, cmon_idx _file_idx)
-// {
-//     return cmon_src_ast(_cg->src, _file_idx);
-// }
-
-// static inline cmon_idx _ast_resolved_type(_codegen_c * _cg, cmon_idx _file_idx, cmon_idx
-// _ast_idx)
-// {
-//     return cmon_resolved_mod_resolved_type(_cg->resolved_mod, _file_idx, _ast_idx);
-// }
 
 static inline void _write_indent(_codegen_c * _cg, size_t _indent)
 {
@@ -187,7 +176,7 @@ static inline const char * _codegen_c_err_msg_fn(void * _cg)
 
 cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc)
 {
-    _codegen_c * cgen = CMON_CREATE(_alloc, cgen);
+    _codegen_c * cgen = CMON_CREATE(_alloc, _codegen_c);
     cgen->alloc = _alloc;
     cgen->str_builder = cmon_str_builder_create(_alloc, 2048);
     cgen->ir = NULL;

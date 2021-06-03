@@ -1,5 +1,6 @@
 #include "utest.h"
 #include <cmon/cmon_builder_st.h>
+#include <cmon/cmon_codegen_c.h>
 #include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_hashmap.h>
@@ -557,8 +558,9 @@ UTEST(cmon, basic_ir_test)
 }
 
 typedef void (*module_adder_fn)(cmon_src *, cmon_modules *);
+typedef cmon_codegen (*codegen_adder_fn)(cmon_allocator*);
 
-static cmon_bool _resolve_test_fn(module_adder_fn _fn)
+static cmon_bool _resolve_test_fn_impl(module_adder_fn _fn, codegen_adder_fn _cfn)
 {
     cmon_bool err = cmon_false;
     cmon_allocator alloc = cmon_mallocator_make();
@@ -568,8 +570,8 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
     _fn(src, mods);
 
     cmon_builder_st * builder = cmon_builder_st_create(&alloc, 1, src, mods);
-
-    if (cmon_builder_st_build(builder))
+    cmon_codegen cg = _cfn(&alloc);
+    if (cmon_builder_st_build(builder, &cg))
     {
         cmon_err_report * errs;
         size_t count;
@@ -583,10 +585,21 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
     }
 
     // end:
+    cmon_codegen_dealloc(&cg);
     cmon_builder_st_destroy(builder);
     cmon_modules_destroy(mods);
     cmon_src_destroy(src);
     return err;
+}
+
+static inline cmon_codegen _empty_codegen(cmon_allocator * _a)
+{
+    return cmon_codegen_make_empty();
+}
+
+static cmon_bool _resolve_test_fn(module_adder_fn _fn)
+{
+    return _resolve_test_fn_impl(_fn, _empty_codegen);
 }
 
 #define RESOLVE_TEST(_name, _code, _should_pass)                                                   \
@@ -710,11 +723,11 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 {
     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub fn boinkyhoinky(){}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub fn boinkyhoinky() -> void {}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33); fn main(){ foo.boinkyhoinky() }");
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2}; val : s32 = foo.foo_fn(-33);");
     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
 }
@@ -765,5 +778,19 @@ UTEST(cmon, resolve_module_selector_test)
 // }
 
 // RESOLVE_TEST(resolve_empty, "mut foo : f64 = 1.2; fn bar(a : s32, mut b : s32) -> s32 { boop := 1 / 2 }", cmon_true);
+
+
+static inline void _c_codegen_test_mod_add_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; bar := 1.0");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+}
+
+UTEST(cmon, basic_c_codegen)
+{
+    EXPECT_EQ(cmon_true, _resolve_test_fn_impl(_c_codegen_test_mod_add_fn, cmon_codegen_c_make));
+}
 
 UTEST_MAIN();
