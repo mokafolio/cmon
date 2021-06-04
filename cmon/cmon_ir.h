@@ -100,14 +100,18 @@ CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
 // getters
 CMON_API cmon_ir * cmon_irb_ir(cmon_irb * _b);
 CMON_API size_t cmon_ir_type_count(cmon_ir * _ir);
-CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx);
+CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _i);
 CMON_API size_t cmon_ir_fn_count(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_fn(cmon_ir * _ir, size_t _i);
 CMON_API cmon_idx cmon_ir_main_fn(cmon_ir * _ir);
+CMON_API size_t cmon_ir_global_var_count(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_global_var(cmon_ir * _ir, size_t _i);
 CMON_API cmon_irk cmon_ir_kind(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx);
 CMON_API const char * cmon_ir_int_lit_value(cmon_ir * _ir, cmon_idx _idx);
+CMON_API const char * cmon_ir_string_lit_value(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_deref_expr(cmon_ir * _ir, cmon_idx _idx);
 CMON_API cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx);

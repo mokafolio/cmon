@@ -58,24 +58,12 @@ static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _idx)
 
 static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _idx)
 {
-    // assert(cmon_ast_kind(_ast(_cg, _file_idx), _ast_idx) == cmon_astk_var_decl);
-    // cmon_ast * ast = _ast(_cg, _file_idx);
-    // cmon_tokens * toks = _tokens(_cg, _file_idx);
-    // cmon_idx fn = cmon_ast_var_decl_expr(ast, _ast_idx);
-    // cmon_idx ast_ret = cmon_ast_fn_ret_type(ast, fn);
-    // _write_type(_cg, _ast_resolved_type(_cg, _file_idx, ast_ret));
-    // _write_fn_name(_cg, _file_idx, _ast_idx);
-    // cmon_str_builder_append(_cg->str_builder, "(");
-    // // for (size_t i = 0; i < cmon_ast_fn_params_count(ast, fn); ++i)
-    // // {
-    // //     cmon_idx param_idx = cmon_ast_fn_param(ast, fn, i);
-    // //     cmon_idx ast_idx = cmon_ast_var_decl_type(ast, param_idx);
-    // //     _write_ast_type(_cg, _file_idx, ast_idx);
-    // //     cmon_str_view name = cmon_tokens_str_view(toks, cmon_ast_var_decl_type(ast, name));
-    // //     cmon_str_builder_append_fmt(_cg->str_builder, " %.*s", );
-    // // }
-    // cmon_str_builder_append(_cg->str_builder, ")");
-
+    if (!cmon_is_valid_idx(cmon_ir_fn_body(_cg->ir, _idx)))
+    {
+        cmon_str_builder_append(_cg->str_builder, "extern ");
+    }
+    //@TODO: Add pub to IR and make all non pub functions static.
+    //@TODO: Pick a function body length threshold under which to add inline keyword?
     _write_type(_cg, cmon_ir_fn_return_type(_cg->ir, _idx));
     _write_fn_name(_cg, _idx);
     cmon_str_builder_append(_cg->str_builder, "(");
@@ -85,12 +73,180 @@ static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _idx)
         cmon_idx decl = cmon_ir_fn_param(_cg->ir, _idx, i);
         _write_type(_cg, cmon_ir_var_decl_type(_cg->ir, decl));
         cmon_str_builder_append_fmt(_cg->str_builder, " %s", cmon_ir_var_decl_name(_cg->ir, decl));
-        if(i < pcount - 1)
+        if (i < pcount - 1)
         {
             cmon_str_builder_append(_cg->str_builder, ", ");
         }
     }
     cmon_str_builder_append(_cg->str_builder, ")");
+}
+
+static inline void _write_expr(_codegen_c * _cg, cmon_idx _idx)
+{
+    cmon_irk kind = cmon_ir_kind(_cg->ir, _idx);
+    if (kind == cmon_irk_int_lit)
+    {
+        cmon_str_builder_append(_cg->str_builder, cmon_ir_int_lit_value(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_float_lit)
+    {
+        cmon_str_builder_append(_cg->str_builder, cmon_ir_float_lit_value(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_string_lit)
+    {
+        cmon_str_builder_append(_cg->str_builder, cmon_ir_string_lit_value(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_ident)
+    {
+        cmon_str_builder_append(_cg->str_builder, cmon_ir_ident_name(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_bool_lit)
+    {
+        cmon_str_builder_append(_cg->str_builder,
+                                cmon_ir_bool_lit_value(_cg->ir, _idx) ? "true" : "false");
+    }
+    else if (kind == cmon_irk_noinit)
+    {
+        // cmon_str_builder_append(_cg->ir, "---");
+    }
+    else if (kind == cmon_irk_addr)
+    {
+        cmon_str_builder_append(_cg->str_builder, "&");
+        _write_expr(_cg, cmon_ir_addr_expr(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_deref)
+    {
+        cmon_str_builder_append(_cg->str_builder, "*");
+        _write_expr(_cg, cmon_ir_deref_expr(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_paran_expr)
+    {
+        cmon_str_builder_append(_cg->str_builder, "(");
+        _write_expr(_cg, cmon_ir_paran_expr(_cg->ir, _idx));
+        cmon_str_builder_append(_cg->str_builder, ")");
+    }
+    else if (kind == cmon_irk_call)
+    {
+        _write_expr(_cg, cmon_ir_call_left(_cg->ir, _idx));
+        cmon_str_builder_append(_cg->str_builder, "(");
+        for (size_t i = 0; i < cmon_ir_call_arg_count(_cg->ir, _idx); ++i)
+        {
+            _write_expr(_cg, cmon_ir_call_arg(_cg->ir, _idx, i));
+            if (i < cmon_ir_call_arg_count(_cg->ir, _idx) - 1)
+                cmon_str_builder_append(_cg->str_builder, ", ");
+        }
+        cmon_str_builder_append(_cg->str_builder, ")");
+    }
+    else if (kind == cmon_irk_struct_init)
+    {
+        cmon_str_builder_append_fmt(
+            _cg->str_builder,
+            "((%s){",
+            cmon_types_unique_name(_cg->types, cmon_ir_struct_init_type(_cg->ir, _idx)));
+        for (size_t i = 0; i < cmon_ir_struct_init_expr_count(_cg->ir, _idx); ++i)
+        {
+            _write_expr(_cg, cmon_ir_struct_init_expr(_cg->ir, _idx, i));
+            if (i < cmon_ir_struct_init_expr_count(_cg->ir, _idx) - 1)
+                cmon_str_builder_append(_cg->str_builder, ", ");
+        }
+        cmon_str_builder_append(_cg->str_builder, "})");
+    }
+    else if (kind == cmon_irk_array_init)
+    {
+        cmon_str_builder_append_fmt(
+            _cg->str_builder,
+            "((%s){.data={",
+            cmon_types_unique_name(_cg->types, cmon_ir_array_init_type(_cg->ir, _idx)));
+        for (size_t i = 0; i < cmon_ir_array_init_expr_count(_cg->ir, _idx); ++i)
+        {
+            _write_expr(_cg, cmon_ir_array_init_expr(_cg->ir, _idx, i));
+            if (i < cmon_ir_array_init_expr_count(_cg->ir, _idx) - 1)
+                cmon_str_builder_append(_cg->str_builder, ", ");
+        }
+        cmon_str_builder_append(_cg->str_builder, "}})");
+    }
+    else if (kind == cmon_irk_index)
+    {
+        _write_expr(_cg, cmon_ir_index_left(_cg->ir, _idx));
+        cmon_str_builder_append(_cg->str_builder, "[");
+        _write_expr(_cg, cmon_ir_index_expr(_cg->ir, _idx));
+        cmon_str_builder_append(_cg->str_builder, "]");
+    }
+    else if (kind == cmon_irk_selector)
+    {
+        _write_expr(_cg, cmon_ir_selector_left(_cg->ir, _idx));
+        cmon_str_builder_append_fmt(_cg->str_builder, ".%s", cmon_ir_selector_name(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_prefix)
+    {
+        cmon_str_builder_append_fmt(_cg->str_builder, "%c", cmon_ir_prefix_op(_cg->ir, _idx));
+        _write_expr(_cg, cmon_ir_prefix_expr(_cg->ir, _idx));
+    }
+    else if (kind == cmon_irk_binary)
+    {
+        _write_expr(_cg, cmon_ir_binary_left(_cg->ir, _idx));
+        cmon_str_builder_append_fmt(_cg->str_builder, " %c ", cmon_ir_binary_op(_cg->ir, _idx));
+        _write_expr(_cg, cmon_ir_binary_right(_cg->ir, _idx));
+    }
+    else
+    {
+        assert(0);
+    }
+}
+
+static inline void _write_stmt(_codegen_c * _cg, cmon_idx _idx, size_t _indent);
+
+static inline void _write_var_decl(_codegen_c * _cg, cmon_idx _idx, cmon_bool _is_global)
+{
+    cmon_idx expr = cmon_ir_var_decl_expr(_cg->ir, _idx);
+    if (_is_global && !cmon_is_valid_idx(expr))
+    {
+        cmon_str_builder_append(_cg->str_builder, "extern ");
+    }
+    cmon_str_builder_append_fmt(
+        _cg->str_builder,
+        "%s %s",
+        cmon_types_unique_name(_cg->types, cmon_ir_var_decl_type(_cg->ir, _idx)),
+        cmon_ir_var_decl_name(_cg->ir, _idx));
+    if (!_is_global && cmon_is_valid_idx(expr))
+    {
+        cmon_str_builder_append(_cg->str_builder, " = ");
+        _write_expr(_cg, expr);
+    }
+}
+
+static inline void _write_block(_codegen_c * _cg, cmon_idx _idx, size_t _indent)
+{
+    _write_indent(_cg, _indent);
+    cmon_str_builder_append_fmt(_cg->str_builder, "{\n");
+    for (size_t i = 0; i < cmon_ir_block_child_count(_cg->ir, _idx); ++i)
+    {
+        _write_stmt(_cg, cmon_ir_block_child(_cg->ir, _idx, i), _indent + 1);
+    }
+    _write_indent(_cg, _indent);
+    cmon_str_builder_append(_cg->str_builder, "}\n");
+}
+
+static inline void _write_stmt(_codegen_c * _cg, cmon_idx _idx, size_t _indent)
+{
+    cmon_irk kind = cmon_ir_kind(_cg->ir, _idx);
+    if (kind == cmon_irk_block)
+    {
+        _write_block(_cg, _idx, _indent);
+    }
+    else if (kind == cmon_irk_var_decl)
+    {
+        _write_indent(_cg, _indent);
+        _write_var_decl(_cg, _idx, cmon_false);
+        cmon_str_builder_append(_cg->str_builder, ";\n");
+    }
+    else
+    {
+        // expr stmt
+        _write_indent(_cg, _indent);
+        _write_expr(_cg, _idx);
+        cmon_str_builder_append(_cg->str_builder, ";\n");
+    }
 }
 
 static inline cmon_bool _codegen_c_gen_fn(
@@ -141,24 +297,52 @@ static inline cmon_bool _codegen_c_gen_fn(
             _write_indent(cg, 1);
             _write_type(cg, cmon_types_array_type(cg->types, tidx));
             cmon_str_builder_append_fmt(cg->str_builder,
-                                        "[%lu];\n} %s;\n\n",
+                                        "data[%lu];\n} %s;\n\n",
                                         cmon_types_array_count(cg->types, tidx),
                                         uname);
         }
+        else if (kind == cmon_typek_ptr)
+        {
+            // types to skip
+        }
+        else
+        {
+            assert(0);
+        }
     }
 
-    // declare all functions
-    for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
+    // declare all global variables
+    for (i = 0; i < cmon_ir_global_var_count(_ir); ++i)
     {
-        _write_fn_head(cg, (cmon_idx)i);
+        _write_var_decl(cg, cmon_ir_global_var(_ir, i), cmon_true);
         cmon_str_builder_append(cg->str_builder, ";\n");
     }
 
-    //declare all global variables
+    // declare all functions (including extern functions in other modules)
+    for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
+    {
+        _write_fn_head(cg, cmon_ir_fn(_ir, i));
+        cmon_str_builder_append(cg->str_builder, ";\n");
+    }
 
-    // define all functions
+    // define all functions (except ones in other modules)
+    for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
+    {
+        //main function is written later
+        if(cmon_ir_fn(_ir, i) == cmon_ir_main_fn(_ir))
+            continue;
 
-    //define all globals in dependency order
+        if (cmon_is_valid_idx(cmon_ir_fn_body(_ir, cmon_ir_fn(_ir, i))))
+        {
+            _write_fn_head(cg, cmon_ir_fn(_ir, i));
+            cmon_str_builder_append(cg->str_builder, "\n");
+            _write_block(cg, cmon_ir_fn_body(_ir, cmon_ir_fn(_ir, i)), 0);
+        }
+    }
+
+    // write c main function
+    // define all globals in dependency order (including the ones from other modules)
+    // call cmon main function
 
     return cmon_false;
 }

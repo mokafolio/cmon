@@ -445,9 +445,24 @@ size_t cmon_ir_fn_count(cmon_ir * _ir)
     return _ir->fns_count;
 }
 
+cmon_idx cmon_ir_fn(cmon_ir * _ir, size_t _i)
+{
+    return _ir->fns[_i];
+}
+
 cmon_idx cmon_ir_main_fn(cmon_ir * _ir)
 {
     return _ir->main_fn_idx;
+}
+
+size_t cmon_ir_global_var_count(cmon_ir * _ir)
+{
+    return _ir->global_vars_count;
+}
+
+cmon_idx cmon_ir_global_var(cmon_ir * _ir, size_t _i)
+{
+    return _ir->global_vars[_i];
 }
 
 cmon_irk cmon_ir_kind(cmon_ir * _ir, cmon_idx _idx)
