@@ -545,17 +545,17 @@ end:
 //     return err;
 // }
 
-UTEST(cmon, basic_ir_test)
-{
-    cmon_allocator a = cmon_mallocator_make();
-    cmon_irb * b = cmon_irb_create(&a, 4, 2, 2, 4);
+// UTEST(cmon, basic_ir_test)
+// {
+//     cmon_allocator a = cmon_mallocator_make();
+//     cmon_irb * b = cmon_irb_create(&a, 4, 2, 2, 4);
 
-    cmon_idx ilit = cmon_irb_add_int_lit(b, "1");
-    cmon_irb_add_var_decl(b, "foo", cmon_true, 0, ilit);
+//     cmon_idx ilit = cmon_irb_add_int_lit(b, "1");
+//     cmon_irb_add_var_decl(b, "foo", cmon_true, 0, ilit);
 
-    cmon_irb_destroy(b);
-    cmon_allocator_dealloc(&a);
-}
+//     cmon_irb_destroy(b);
+//     cmon_allocator_dealloc(&a);
+// }
 
 typedef void (*module_adder_fn)(cmon_src *, cmon_modules *);
 typedef cmon_codegen (*codegen_adder_fn)(cmon_allocator*);
@@ -723,7 +723,7 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 {
     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub fn boinkyhoinky() -> void {}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 }; pub foo_glob := 99;");
     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
@@ -783,9 +783,13 @@ UTEST(cmon, resolve_module_selector_test)
 static inline void _c_codegen_test_mod_add_fn(cmon_src * _src, cmon_modules * _mods)
 {
     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; bar := 1.0");
+    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 = 1; b : s32 }; pub foo_glob := 99; c := FooType{b: 3}");
     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2, b:-99}; val : s32 = foo.foo_fn(-33); fn main() -> s32{}");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
 }
 
 UTEST(cmon, basic_c_codegen)

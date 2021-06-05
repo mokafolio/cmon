@@ -143,20 +143,6 @@ const char * cmon_join_paths(const char * _a, const char * _b, char * _buf, size
     return _buf;
 }
 
-int cmon_exec(const char * _cmd)
-{
-    FILE * pipe = popen(_cmd, "r");
-    if (!pipe)
-        goto err;
-
-    pclose(pipe);
-    return 0;
-
-err:
-    pclose(pipe);
-    return -1;
-}
-
 void cmon_panic(const char * _fmt, ...)
 {
     va_list args;

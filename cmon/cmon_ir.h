@@ -31,6 +31,7 @@ typedef struct cmon_ir cmon_ir;
 typedef struct cmon_irb cmon_irb;
 
 CMON_API cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
+                                    size_t _dep_count,
                                     size_t _type_count,
                                     size_t _fn_count,
                                     size_t _global_var_count,
@@ -40,6 +41,9 @@ CMON_API void cmon_irb_destroy(cmon_irb * _b);
 // Types (see cmon_types).
 // Must be added in dependency order!
 CMON_API void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx);
+
+// add a module dependency (mainly needed to initialize globals sitting in other modules for now)
+CMON_API void cmon_irb_add_dep(cmon_irb * _b, cmon_idx _mod_idx, const char * _unique_name);
 
 // expressions
 // CMON_API cmon_idx cmon_irb_add_ident(cmon_irb * _b, const char * _name);
@@ -99,6 +103,9 @@ CMON_API cmon_idx cmon_irb_add_global_var_decl(cmon_irb * _b,
 
 // getters
 CMON_API cmon_ir * cmon_irb_ir(cmon_irb * _b);
+CMON_API size_t cmon_ir_dep_count(cmon_ir * _ir);
+CMON_API cmon_idx cmon_ir_dep_module(cmon_ir * _ir, cmon_idx _dep_idx);
+CMON_API const char * cmon_ir_dep_name(cmon_ir * _ir, cmon_idx _dep_idx);
 CMON_API size_t cmon_ir_type_count(cmon_ir * _ir);
 CMON_API cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _i);
 CMON_API size_t cmon_ir_fn_count(cmon_ir * _ir);

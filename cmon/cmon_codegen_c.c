@@ -24,7 +24,7 @@ static inline const char * _top_code()
            "typedef uint32_t u32;\n"
            "typedef uint64_t u64;\n"
            "#ifndef __STDC_IEC_559__\n"
-           "#error \"c compiler with __STDC_IEC_559__ required\""
+           "#error \"c compiler with __STDC_IEC_559__ required\"\n"
            "#endif\n"
            "typedef float f32;\n"
            "typedef double f64;\n\n";
@@ -56,6 +56,26 @@ static inline void _write_fn_name(_codegen_c * _cg, cmon_idx _idx)
     cmon_str_builder_append(_cg->str_builder, cmon_ir_fn_name(_cg->ir, _idx));
 }
 
+static inline void _write_global_init_fn_name(_codegen_c * _cg, const char * _dep_name)
+{
+    cmon_str_builder_append_fmt(_cg->str_builder, "__%s_init_globals()", _dep_name);
+}
+
+static inline void _write_global_init_fn_head(_codegen_c * _cg,
+                                              const char * _dep_name,
+                                              cmon_bool _is_extern)
+{
+    if (_is_extern)
+    {
+        cmon_str_builder_append(_cg->str_builder, "extern void ");
+    }
+    else
+    {
+        cmon_str_builder_append(_cg->str_builder, "void ");
+    }
+    _write_global_init_fn_name(_cg, _dep_name);
+}
+
 static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _idx)
 {
     if (!cmon_is_valid_idx(cmon_ir_fn_body(_cg->ir, _idx)))
@@ -65,6 +85,7 @@ static inline void _write_fn_head(_codegen_c * _cg, cmon_idx _idx)
     //@TODO: Add pub to IR and make all non pub functions static.
     //@TODO: Pick a function body length threshold under which to add inline keyword?
     _write_type(_cg, cmon_ir_fn_return_type(_cg->ir, _idx));
+    cmon_str_builder_append(_cg->str_builder, " ");
     _write_fn_name(_cg, _idx);
     cmon_str_builder_append(_cg->str_builder, "(");
     size_t pcount = cmon_ir_fn_param_count(_cg->ir, _idx);
@@ -224,7 +245,7 @@ static inline void _write_block(_codegen_c * _cg, cmon_idx _idx, size_t _indent)
         _write_stmt(_cg, cmon_ir_block_child(_cg->ir, _idx, i), _indent + 1);
     }
     _write_indent(_cg, _indent);
-    cmon_str_builder_append(_cg->str_builder, "}\n");
+    cmon_str_builder_append(_cg->str_builder, "}\n\n");
 }
 
 static inline void _write_stmt(_codegen_c * _cg, cmon_idx _idx, size_t _indent)
@@ -266,12 +287,14 @@ static inline cmon_bool _codegen_c_gen_fn(
     {
         cmon_idx tidx = cmon_ir_type(_ir, i);
         cmon_typek kind = cmon_types_kind(cg->types, tidx);
-        if (kind != cmon_typek_ptr)
+        if (kind != cmon_typek_ptr && kind != cmon_typek_fn && !cmon_types_is_builtin(cg->types, tidx))
         {
             const char * uname = cmon_types_unique_name(cg->types, tidx);
             cmon_str_builder_append_fmt(cg->str_builder, "typedef struct %s %s;\n", uname, uname);
         }
     }
+
+    cmon_str_builder_append(cg->str_builder, "\n");
 
     // full type definitions
     for (i = 0; i < type_count; ++i)
@@ -279,9 +302,10 @@ static inline cmon_bool _codegen_c_gen_fn(
         cmon_idx tidx = cmon_ir_type(_ir, i);
         cmon_typek kind = cmon_types_kind(cg->types, tidx);
         const char * uname = cmon_types_unique_name(cg->types, tidx);
+        printf("KIND %lu\n", kind);
         if (kind == cmon_typek_struct)
         {
-            cmon_str_builder_append(cg->str_builder, "typedef struct{\n");
+            cmon_str_builder_append_fmt(cg->str_builder, "typedef struct %s{\n", uname);
             for (j = 0; j < cmon_types_struct_field_count(cg->types, tidx); ++j)
             {
                 _write_indent(cg, 1);
@@ -301,7 +325,7 @@ static inline cmon_bool _codegen_c_gen_fn(
                                         cmon_types_array_count(cg->types, tidx),
                                         uname);
         }
-        else if (kind == cmon_typek_ptr)
+        else if (kind == cmon_typek_ptr || kind == cmon_typek_fn || cmon_types_is_builtin(cg->types, tidx))
         {
             // types to skip
         }
@@ -311,12 +335,16 @@ static inline cmon_bool _codegen_c_gen_fn(
         }
     }
 
+    cmon_str_builder_append(cg->str_builder, "\n");
+
     // declare all global variables
     for (i = 0; i < cmon_ir_global_var_count(_ir); ++i)
     {
         _write_var_decl(cg, cmon_ir_global_var(_ir, i), cmon_true);
         cmon_str_builder_append(cg->str_builder, ";\n");
     }
+
+    cmon_str_builder_append(cg->str_builder, "\n");
 
     // declare all functions (including extern functions in other modules)
     for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
@@ -325,12 +353,23 @@ static inline cmon_bool _codegen_c_gen_fn(
         cmon_str_builder_append(cg->str_builder, ";\n");
     }
 
+    cmon_str_builder_append(cg->str_builder, "\n");
+
+    // declare all global init functions for all the modules dependencies
+    for (i = 0; i < cmon_ir_dep_count(_ir); ++i)
+    {
+        _write_global_init_fn_head(cg, cmon_ir_dep_name(_ir, (cmon_idx)i), cmon_true);
+        cmon_str_builder_append(cg->str_builder, ";\n");
+    }
+
+    cmon_str_builder_append(cg->str_builder, "\n");
+
     // define all functions (except ones in other modules)
     for (i = 0; i < cmon_ir_fn_count(_ir); ++i)
     {
-        //main function is written later
-        if(cmon_ir_fn(_ir, i) == cmon_ir_main_fn(_ir))
-            continue;
+        // // main function is written later
+        // if (cmon_ir_fn(_ir, i) == cmon_ir_main_fn(_ir))
+        //     continue;
 
         if (cmon_is_valid_idx(cmon_ir_fn_body(_ir, cmon_ir_fn(_ir, i))))
         {
@@ -340,9 +379,54 @@ static inline cmon_bool _codegen_c_gen_fn(
         }
     }
 
-    // write c main function
-    // define all globals in dependency order (including the ones from other modules)
-    // call cmon main function
+    // write the global init function for this module
+    _write_global_init_fn_head(cg, cmon_modules_prefix(cg->mods, cg->mod_idx), cmon_false);
+    cmon_str_builder_append(cg->str_builder, "\n{\n");
+    for (i = 0; i < cmon_ir_global_var_count(_ir); ++i)
+    {
+        cmon_idx var = cmon_ir_global_var(_ir, i);
+        if (cmon_is_valid_idx(cmon_ir_var_decl_expr(_ir, var)))
+        {
+            _write_indent(cg, 1);
+            cmon_str_builder_append_fmt(cg->str_builder, "%s = ", cmon_ir_var_decl_name(_ir, var));
+            _write_expr(cg, cmon_ir_var_decl_expr(_ir, var));
+            cmon_str_builder_append(cg->str_builder, ";\n");
+        }
+    }
+    cmon_str_builder_append(cg->str_builder, "}\n\n");
+
+    // write c main function (if needed)
+    cmon_idx main_fn = cmon_ir_main_fn(_ir);
+    if (cmon_is_valid_idx(cmon_ir_main_fn(_ir)))
+    {
+        cmon_str_builder_append(cg->str_builder, "\nint main(int _argc, const char ** _args)\n{\n");
+
+        // call other modules global init functions
+        for (i = 0; i < cmon_ir_dep_count(_ir); ++i)
+        {
+            _write_indent(cg, 1);
+            _write_global_init_fn_name(cg, cmon_ir_dep_name(_ir, (cmon_idx)i));
+            cmon_str_builder_append(cg->str_builder, ";\n");
+        }
+
+        // init the globals in this module
+        _write_indent(cg, 1);
+        _write_global_init_fn_name(cg, cmon_modules_prefix(cg->mods, cg->mod_idx));
+        cmon_str_builder_append(cg->str_builder, ";\n\n");
+
+        // call cmon main function
+        _write_indent(cg, 1);
+        cmon_idx ret_type = cmon_ir_fn_return_type(_ir, cmon_ir_main_fn(_ir));
+        if(cmon_types_kind(_types, ret_type) == cmon_typek_s32)
+        {
+            cmon_str_builder_append(cg->str_builder, "return ");
+        }
+        cmon_str_builder_append_fmt(cg->str_builder, "%s();\n", cmon_ir_fn_name(_ir, cmon_ir_main_fn(_ir)));
+
+        cmon_str_builder_append(cg->str_builder, "}\n");
+    }
+
+    printf("c code:\n%s", cmon_str_builder_c_str(cg->str_builder));
 
     return cmon_false;
 }

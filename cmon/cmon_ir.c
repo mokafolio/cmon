@@ -5,6 +5,12 @@
 
 typedef struct
 {
+    cmon_idx mod_idx;
+    size_t name_off;
+} _dependency;
+
+typedef struct
+{
     char op;
     cmon_idx left;
     cmon_idx right;
@@ -62,6 +68,8 @@ typedef struct cmon_ir
     const char * str_buf;
     size_t str_buf_count;
     cmon_idx main_fn_idx;
+    _dependency * deps;
+    size_t deps_count;
     cmon_idx * types;
     size_t types_count;
     cmon_irk * kinds;
@@ -96,6 +104,7 @@ typedef struct cmon_irb
     cmon_str_builder * str_builder;
     cmon_str_buf * str_buf;
     cmon_idx main_fn_idx;
+    cmon_dyn_arr(_dependency) deps;
     cmon_dyn_arr(cmon_idx) types;
     cmon_dyn_arr(cmon_irk) kinds;
     cmon_dyn_arr(cmon_idx) data;
@@ -113,6 +122,7 @@ typedef struct cmon_irb
 } cmon_irb;
 
 cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
+                           size_t _dep_count,
                            size_t _type_count,
                            size_t _fn_count,
                            size_t _global_var_count,
@@ -123,6 +133,7 @@ cmon_irb * cmon_irb_create(cmon_allocator * _alloc,
     ret->str_builder = cmon_str_builder_create(_alloc, 512);
     ret->str_buf = cmon_str_buf_create(_alloc, 1024);
     ret->main_fn_idx = CMON_INVALID_IDX;
+    cmon_dyn_arr_init(&ret->deps, _alloc, _dep_count);
     cmon_dyn_arr_init(&ret->types, _alloc, _type_count);
     cmon_dyn_arr_init(&ret->kinds, _alloc, _node_count_estimate);
     cmon_dyn_arr_init(&ret->data, _alloc, _node_count_estimate);
@@ -157,6 +168,7 @@ void cmon_irb_destroy(cmon_irb * _b)
     cmon_dyn_arr_dealloc(&_b->data);
     cmon_dyn_arr_dealloc(&_b->kinds);
     cmon_dyn_arr_dealloc(&_b->types);
+    cmon_dyn_arr_dealloc(&_b->deps);
     cmon_str_buf_destroy(_b->str_buf);
     cmon_str_builder_destroy(_b->str_builder);
     CMON_DESTROY(_b->alloc, _b);
@@ -165,6 +177,12 @@ void cmon_irb_destroy(cmon_irb * _b)
 void cmon_irb_add_type(cmon_irb * _b, cmon_idx _type_idx)
 {
     cmon_dyn_arr_append(&_b->types, _type_idx);
+}
+
+void cmon_irb_add_dep(cmon_irb * _b, cmon_idx _mod_idx, const char * _unique_name)
+{
+    cmon_dyn_arr_append(
+        &_b->deps, ((_dependency){ _mod_idx, cmon_str_buf_append(_b->str_buf, _unique_name) }));
 }
 
 static inline cmon_idx _add_node(cmon_irb * _b, cmon_irk _kind, cmon_idx _data_idx)
@@ -376,6 +394,8 @@ cmon_ir * cmon_irb_ir(cmon_irb * _b)
     ret->str_buf = cmon_str_buf_get(_b->str_buf, 0);
     ret->str_buf_count = cmon_str_buf_count(_b->str_buf);
     ret->main_fn_idx = _b->main_fn_idx;
+    ret->deps = _b->deps;
+    ret->deps_count = cmon_dyn_arr_count(&_b->deps);
     ret->types = _b->types;
     ret->types_count = cmon_dyn_arr_count(&_b->types);
     ret->kinds = _b->kinds;
@@ -427,6 +447,21 @@ static inline cmon_irk _ir_kind(cmon_ir * _ir, cmon_idx _idx)
 {
     assert(_idx < _ir->kinds_count);
     return _ir->kinds[_idx];
+}
+
+size_t cmon_ir_dep_count(cmon_ir * _ir)
+{
+    return _ir->deps_count;
+}
+
+cmon_idx cmon_ir_dep_module(cmon_ir * _ir, cmon_idx _dep_idx)
+{
+    return _ir->deps[_dep_idx].mod_idx;
+}
+
+const char * cmon_ir_dep_name(cmon_ir * _ir, cmon_idx _dep_idx)
+{
+    return _ir_str(_ir, _ir->deps[_dep_idx].name_off);
 }
 
 size_t cmon_ir_type_count(cmon_ir * _ir)
@@ -689,7 +724,8 @@ cmon_idx cmon_ir_fn_return_type(cmon_ir * _ir, cmon_idx _idx)
 
 size_t cmon_ir_fn_param_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    return _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_end - _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_begin;
+    return _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_end -
+           _ir_fn_data(_ir, _ir_data(_ir, _idx))->params_begin;
 }
 
 cmon_idx cmon_ir_fn_param(cmon_ir * _ir, cmon_idx _idx, size_t _param_idx)
@@ -867,7 +903,7 @@ static inline void _debug_write_stmt(
         _debug_indent(_b, _indent);
         cmon_str_builder_append(_b, "}\n");
     }
-    else if(kind == cmon_irk_var_decl)
+    else if (kind == cmon_irk_var_decl)
     {
         _debug_indent(_b, _indent);
         _debug_write_var_decl(_ir, _types, _b, _ir_idx, cmon_false);

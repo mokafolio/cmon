@@ -187,6 +187,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen)
     // return if modules errored during top level pass.
     cmon_err_handler_jump(_b->err_handler, cmon_true);
 
+    //@TODO: move that somewhere else so it can be used by different build implementations
     // resolve dependency order between modules
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
@@ -272,7 +273,9 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen)
         if(!ir)
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
-        }
+        }   
+
+        cmon_codegen_gen(_codegen, _b->mods, (cmon_idx)i, _b->types, ir);
 
         // cmon_str_builder * sb = cmon_str_builder_create(_b->alloc, 1024);
 

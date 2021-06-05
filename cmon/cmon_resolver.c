@@ -2031,10 +2031,11 @@ cmon_bool cmon_resolver_finalize_top_lvl_names(cmon_resolver * _r)
         _file_resolver * fr = &_r->file_resolvers[i];
 
         _set_err_jmp_goto(fr, err_end);
-        
-        if(cmon_is_valid_idx(fr->main_fn_sym))
+
+        if (cmon_is_valid_idx(fr->main_fn_sym))
         {
-            //sanity check, the main fn sym should only ever be set once, error should have been caught way before this.
+            // sanity check, the main fn sym should only ever be set once, error should have been
+            // caught way before this.
             assert(!cmon_is_valid_idx(_r->main_fn_sym));
             _r->main_fn_sym = fr->main_fn_sym;
         }
@@ -2559,6 +2560,23 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
         cmon_idx var_ast_idx = cmon_symbols_ast(_r->symbols, fr->global_var_decls[i]);
         assert(cmon_is_valid_idx(var_ast_idx));
         _resolve_var_decl(fr, fr->file_scope, var_ast_idx);
+
+        // validate main function signature
+        //@TODO: Better error message, showing which signatures are valid?
+        if (fr->global_var_decls[i] == fr->main_fn_sym)
+        {
+            cmon_idx sig = fr->resolved_types[cmon_ast_var_decl_expr(_fr_ast(fr), var_ast_idx)];
+            assert(cmon_types_kind(_r->types, sig) == cmon_typek_fn);
+            cmon_idx ret_type = cmon_types_fn_return_type(_r->types, sig);
+            if ((cmon_types_kind(_r->types, ret_type) != cmon_typek_s32 &&
+                 cmon_types_kind(_r->types, ret_type) != cmon_typek_void) ||
+                (cmon_types_fn_param_count(_r->types, sig) != 0 &&
+                 cmon_types_fn_param_count(_r->types, sig) != 1))
+            {
+                _fr_err(
+                    fr, cmon_ast_token(_fr_ast(fr), var_ast_idx), "bad main function signature");
+            }
+        }
     }
 
     // cmon_dep_graph_clear(_r->dep_graph);
@@ -2932,6 +2950,19 @@ static inline void _ir_add_fn_body(cmon_resolver * _r, _file_resolver * _fr, cmo
     cmon_irb_fn_set_body(_r->ir_builder, fn_ir, _ir_add_block(_r, _fr, body));
 }
 
+static inline void _ir_add_dep(cmon_resolver * _r, cmon_bool * _allready_added_lu, cmon_idx _dep)
+{
+    if (_allready_added_lu[_dep])
+        return;
+
+    for (size_t i = 0; i < cmon_modules_dep_count(_r->mods, _dep); ++i)
+    {
+        _ir_add_dep(_r, _allready_added_lu, cmon_modules_dep_mod_idx(_r->mods, _dep, (cmon_idx)i));
+    }
+    _allready_added_lu[_dep] = cmon_true;
+    cmon_irb_add_dep(_r->ir_builder, _dep, cmon_modules_prefix(_r->mods, _dep));
+}
+
 cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
 {
     size_t i, j;
@@ -2943,6 +2974,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     // with :).
     cmon_dyn_arr(cmon_idx) external_vars;
     cmon_dyn_arr(cmon_idx) external_fns;
+    cmon_dyn_arr(cmon_bool) dep_added_map;
     cmon_dyn_arr_init(&external_vars, _r->alloc, 16);
     cmon_dyn_arr_init(&external_fns, _r->alloc, 16);
 
@@ -2991,8 +3023,12 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
 
     // create the IR builder
     assert(!_r->ir_builder);
-    _r->ir_builder = cmon_irb_create(
-        _r->alloc, cmon_dyn_arr_count(&_r->sorted_types), fns_count, globals_count, 1024);
+    _r->ir_builder = cmon_irb_create(_r->alloc,
+                                     cmon_modules_dep_count(_r->mods, _r->mod_idx),
+                                     cmon_dyn_arr_count(&_r->sorted_types),
+                                     fns_count,
+                                     globals_count,
+                                     1024);
 
     // allocate symbol to IR map
     cmon_dyn_arr_resize(&_r->symbol_ir_map, cmon_symbols_count(_r->symbols));
@@ -3013,6 +3049,16 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
 
     //     // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
     // }
+
+    // add all dependencies to IR in a sorted fashion, including indirect ones.
+    cmon_dyn_arr_init(&dep_added_map, _r->alloc, cmon_modules_count(_r->mods));
+    cmon_dyn_arr_resize(&dep_added_map, cmon_modules_count(_r->mods));
+    memset(&dep_added_map[0], cmon_false, cmon_dyn_arr_count(&dep_added_map) * sizeof(cmon_bool));
+    for (i = 0; i < cmon_modules_dep_count(_r->mods, _r->mod_idx); ++i)
+    {
+        _ir_add_dep(
+            _r, dep_added_map, cmon_modules_dep_mod_idx(_r->mods, _r->mod_idx, (cmon_idx)i));
+    }
 
     // add sorted types to ir builder
     for (i = 0; i < cmon_dyn_arr_count(&_r->sorted_types); ++i)
@@ -3155,6 +3201,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     ret = cmon_irb_ir(_r->ir_builder);
 
 err_end:
+    cmon_dyn_arr_dealloc(&dep_added_map);
     cmon_dyn_arr_dealloc(&external_fns);
     cmon_dyn_arr_dealloc(&external_vars);
     return ret;
