@@ -1,4 +1,5 @@
 #include <cmon/cmon_codegen_c.h>
+#include <cmon/cmon_exec.h>
 #include <cmon/cmon_str_builder.h>
 
 typedef struct
@@ -427,6 +428,7 @@ static inline cmon_bool _codegen_c_gen_fn(
     }
 
     printf("c code:\n%s", cmon_str_builder_c_str(cg->str_builder));
+    
 
     return cmon_false;
 }

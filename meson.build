@@ -12,6 +12,7 @@ lib_src = [
     'cmon/cmon_err_handler.c',
     'cmon/cmon_err_report.c',
     'cmon/cmon_exec.c',
+    'cmon/cmon_file_sys.c',
     'cmon/cmon_hashmap.c',
     'cmon/cmon_idx_buf_mng.c',
     'cmon/cmon_ir.c',
