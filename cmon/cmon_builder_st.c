@@ -19,6 +19,7 @@ typedef struct
 {
     cmon_dyn_arr(_per_file_data) file_data;
     cmon_resolver * resolver;
+    cmon_ir * ir;
 } _per_module_data;
 
 typedef struct cmon_builder_st
@@ -97,7 +98,7 @@ static inline void _add_resolver_errors(cmon_builder_st * _b,
     }
 }
 
-cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen)
+cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, const char * _build_dir)
 {
     size_t i, j;
 
@@ -273,18 +274,26 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen)
         if(!ir)
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
-        }   
+        }
 
-        cmon_codegen_gen(_codegen, _b->mods, (cmon_idx)i, _b->types, ir);
+        pmd->ir = ir;
+    }
 
-        // cmon_str_builder * sb = cmon_str_builder_create(_b->alloc, 1024);
+    //if codegen fails, we panic for now and call it a day.
+    if(cmon_codegen_prepare(_codegen))
+    {
+            cmon_panic(cmon_codegen_err_msg(_codegen));
+    }
 
-        // printf("WOOOOP:\n%s\n\n", cmon_ir_debug_str(ir, _b->types, sb));
-
-        // cmon_str_builder_destroy(sb);
-
-        //code generation for the module
-        
+    for(i = 0; i < cmon_modules_count(_b->mods); ++i)
+    {
+        _per_module_data * pmd = &_b->mod_data[i];
+        cmon_idx session = cmon_codegen_begin_session(_codegen, (cmon_idx)i, pmd->ir);
+        if(cmon_codegen_gen(_codegen, session))
+        {
+            cmon_panic(cmon_codegen_session_err_msg(_codegen, session));
+        }
+        cmon_codegen_end_session(_codegen, session);
     }
 
     return cmon_false;

@@ -13,7 +13,7 @@ CMON_API cmon_builder_st * cmon_builder_st_create(cmon_allocator * _alloc,
                                                   cmon_src * _src,
                                                   cmon_modules * _mods);
 CMON_API void cmon_builder_st_destroy(cmon_builder_st * _b);
-CMON_API cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen);
+CMON_API cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, const char * _build_dir);
 CMON_API cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
                                           cmon_err_report ** _out_errs,
                                           size_t * _out_count);
