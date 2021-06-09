@@ -547,12 +547,12 @@ static inline cmon_bool _gen_fn(_session * _s)
     {
         // for non-executable modules, simply build the .o file
         cmon_str_builder_append_fmt(
-            _s->tmp_str_builder, "gcc -c %s -o %s 2>&1", _s->c_path, _s->o_path);
+            _s->tmp_str_builder, "clang -c %s -o %s 2>&1", _s->c_path, _s->o_path);
     }
     else
     {
         // build the .c file and link all dependencies .o files to create the executable
-        cmon_str_builder_append_fmt(_s->tmp_str_builder, "gcc %s ", _s->c_path);
+        cmon_str_builder_append_fmt(_s->tmp_str_builder, "clang %s ", _s->c_path);
         for (i = 0; i < cmon_ir_dep_count(_s->ir); ++i)
         {
             cmon_str_builder_append_fmt(_s->tmp_str_builder,
