@@ -3050,7 +3050,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     //     // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
     // }
 
-    // add all dependencies to IR in a sorted fashion, including indirect ones.
+    // add all dependencies to IR in a sorted fashion, including indirect ones. (i.e. if foo depends on bar, also add bars dependencies etc.)
     cmon_dyn_arr_init(&dep_added_map, _r->alloc, cmon_modules_count(_r->mods));
     cmon_dyn_arr_resize(&dep_added_map, cmon_modules_count(_r->mods));
     memset(&dep_added_map[0], cmon_false, cmon_dyn_arr_count(&dep_added_map) * sizeof(cmon_bool));

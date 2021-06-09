@@ -17,5 +17,6 @@ CMON_API cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _c
 CMON_API cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
                                           cmon_err_report ** _out_errs,
                                           size_t * _out_count);
+CMON_API cmon_types * cmon_builder_st_types(cmon_builder_st * _b);
 
 #endif // CMON_CMON_BUILDER_ST_H

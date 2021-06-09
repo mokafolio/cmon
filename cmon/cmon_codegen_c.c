@@ -1,8 +1,9 @@
 #include <cmon/cmon_codegen_c.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_exec.h>
-#include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_fs.h>
+#include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_util.h>
 
 typedef struct _codegen_c _codegen_c;
 
@@ -13,6 +14,7 @@ typedef struct
     cmon_ir * ir;
     cmon_str_builder * str_builder;
     cmon_str_builder * tmp_str_builder;
+    cmon_str_builder * c_compiler_output_builder;
     char c_path[CMON_PATH_MAX];
     char o_path[CMON_PATH_MAX];
     char err_msg[CMON_ERR_MSG_MAX];
@@ -39,9 +41,17 @@ static inline cmon_bool _set_err(_codegen_c * _cg, const char * _msg)
     return cmon_true;
 }
 
+static inline cmon_bool _set_sess_err(_session * _s, const char * _msg)
+{
+    assert(sizeof(_s->err_msg) > strlen(_msg));
+    strcpy(_s->err_msg, _msg);
+    return cmon_true;
+}
+
 static inline const char * _top_code()
 {
     return "#include <stdint.h>\n"
+           "#include <stdio.h>\n"
            "#include <stdbool.h>\n\n"
            "typedef int8_t s8;\n"
            "typedef int16_t s16;\n"
@@ -302,7 +312,14 @@ static inline cmon_bool _codegen_c_prep_fn(void * _cg)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
 
-    assert(cmon_fs_exists(cg->build_dir));
+    // assert(cmon_fs_exists(cg->build_dir));
+    if (!cmon_fs_exists(cg->build_dir))
+    {
+        if (cmon_fs_mkdir(cg->build_dir) == -1)
+        {
+            return _set_err(cg, "failed to create build directory");
+        }
+    }
 
     cmon_join_paths(cg->build_dir, "cgen", cg->cgen_dir, sizeof(cg->cgen_dir));
     cmon_join_paths(cg->cgen_dir, "c", cg->c_dir, sizeof(cg->c_dir));
@@ -473,6 +490,12 @@ static inline cmon_bool _gen_fn(_session * _s)
         _write_global_init_fn_name(_s, cmon_modules_prefix(_s->cgen->mods, _s->mod_idx));
         cmon_str_builder_append(_s->str_builder, ";\n\n");
 
+        cmon_str_builder_append_fmt(
+            _s->str_builder,
+            "printf(%s);\n",
+            cmon_str_builder_tmp_str(_s->tmp_str_builder,
+                                     "\"Hell cmon %%i %%i\\n\", foo0_foo_glob, bar1_boink"));
+
         // call cmon main function
         _write_indent(_s, 1);
         cmon_idx ret_type = cmon_ir_fn_return_type(_s->ir, main_fn);
@@ -480,10 +503,79 @@ static inline cmon_bool _gen_fn(_session * _s)
         {
             cmon_str_builder_append(_s->str_builder, "return ");
         }
-        cmon_str_builder_append_fmt(
-            _s->str_builder, "%s();\n", cmon_ir_fn_name(_s->ir, main_fn));
+        cmon_str_builder_append_fmt(_s->str_builder, "%s();\n", cmon_ir_fn_name(_s->ir, main_fn));
 
         cmon_str_builder_append(_s->str_builder, "}\n");
+    }
+
+    printf("DA FOGGING C CODE\n%s\n", cmon_str_builder_c_str(_s->str_builder));
+    cmon_join_paths(_s->cgen->c_dir,
+                    cmon_str_builder_tmp_str(_s->tmp_str_builder,
+                                             "%s.c",
+                                             cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
+                    _s->c_path,
+                    sizeof(_s->c_path));
+
+    // create output path name
+    if (!cmon_is_valid_idx(main_fn))
+    {
+        cmon_join_paths(_s->cgen->o_dir,
+                        cmon_str_builder_tmp_str(_s->tmp_str_builder,
+                                                 "%s.o",
+                                                 cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
+                        _s->o_path,
+                        sizeof(_s->o_path));
+    }
+    else
+    {
+        cmon_join_paths(_s->cgen->build_dir,
+                        cmon_str_builder_tmp_str(_s->tmp_str_builder,
+                                                 "%s",
+                                                 cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
+                        _s->o_path,
+                        sizeof(_s->o_path));
+    }
+
+    if (cmon_fs_write_txt_file(_s->c_path, cmon_str_builder_c_str(_s->str_builder)) == -1)
+    {
+        return _set_sess_err(_s, "could not save c file");
+    }
+
+    // generate the command to compile the c code
+    cmon_str_builder_clear(_s->tmp_str_builder);
+    if (!cmon_is_valid_idx(main_fn))
+    {
+        // for non-executable modules, simply build the .o file
+        cmon_str_builder_append_fmt(
+            _s->tmp_str_builder, "gcc -c %s -o %s 2>&1", _s->c_path, _s->o_path);
+    }
+    else
+    {
+        // build the .c file and link all dependencies .o files to create the executable
+        cmon_str_builder_append_fmt(_s->tmp_str_builder, "gcc %s ", _s->c_path);
+        for (i = 0; i < cmon_ir_dep_count(_s->ir); ++i)
+        {
+            cmon_str_builder_append_fmt(_s->tmp_str_builder,
+                                        "%s/%s.o ",
+                                        _s->cgen->o_dir,
+                                        cmon_ir_dep_name(_s->ir, (cmon_idx)i));
+        }
+        cmon_str_builder_append_fmt(_s->tmp_str_builder, "-o %s 2>&1", _s->o_path);
+    }
+
+    printf("DA FOCKING CMD %s\n", cmon_str_builder_c_str(_s->tmp_str_builder));
+
+    int status =
+        cmon_exec(cmon_str_builder_c_str(_s->tmp_str_builder), _s->c_compiler_output_builder);
+
+    printf("DA FOCKING STATUS %i\n", status);
+    if (status != 0)
+    {
+        return _set_sess_err(
+            _s,
+            cmon_str_builder_tmp_str(_s->tmp_str_builder,
+                                     "c compiler error: %s",
+                                     cmon_str_builder_c_str(_s->c_compiler_output_builder)));
     }
 
     return cmon_false;
@@ -504,6 +596,7 @@ static inline cmon_idx _reset_session(_codegen_c * _cg,
     _session * s = &_cg->sessions[_session_idx];
     cmon_str_builder_clear(s->str_builder);
     cmon_str_builder_clear(s->tmp_str_builder);
+    cmon_str_builder_clear(s->c_compiler_output_builder);
     s->mod_idx = _mod_idx;
     s->ir = _ir;
     return _session_idx;
@@ -520,6 +613,7 @@ static inline cmon_idx _codegen_c_begin_session(void * _cg, cmon_idx _mod_idx, c
     _session s;
     s.str_builder = cmon_str_builder_create(cg->alloc, 2048);
     s.tmp_str_builder = cmon_str_builder_create(cg->alloc, CMON_PATH_MAX);
+    s.c_compiler_output_builder = cmon_str_builder_create(cg->alloc, CMON_PATH_MAX);
     s.mod_idx = _mod_idx;
     s.ir = _ir;
     s.cgen = cg;
@@ -537,10 +631,13 @@ static inline void _codegen_c_shutdown_fn(void * _cg)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
     cmon_dyn_arr_dealloc(&cg->free_sessions);
-    for (size_t i = 0; cmon_dyn_arr_count(&cg->sessions); ++i)
+    printf("SESSION COUNT %lu\n", cmon_dyn_arr_count(&cg->sessions));
+    for (size_t i = 0; i < cmon_dyn_arr_count(&cg->sessions); ++i)
     {
-        cmon_str_builder_destroy(cg->sessions[i].tmp_str_builder);
-        cmon_str_builder_destroy(cg->sessions[i].str_builder);
+        _session * s = &cg->sessions[i];
+        cmon_str_builder_destroy(s->c_compiler_output_builder);
+        cmon_str_builder_destroy(s->tmp_str_builder);
+        cmon_str_builder_destroy(s->str_builder);
     }
     cmon_dyn_arr_dealloc(&cg->sessions);
     // cmon_str_builder_destroy(cg->tmp_str_builder);
@@ -550,10 +647,14 @@ static inline void _codegen_c_shutdown_fn(void * _cg)
 
 static inline const char * _codegen_c_err_msg_fn(void * _cg)
 {
+    _codegen_c * cg = (_codegen_c *)_cg;
+    return cg->err_msg;
 }
 
 static inline const char * _codegen_c_sess_err_msg_fn(void * _cg, cmon_idx _session_idx)
 {
+    _codegen_c * cg = (_codegen_c *)_cg;
+    return cg->sessions[_session_idx].err_msg;
 }
 
 cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc,
@@ -563,8 +664,6 @@ cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc,
 {
     _codegen_c * cgen = CMON_CREATE(_alloc, _codegen_c);
     cgen->alloc = _alloc;
-    // cgen->str_builder = cmon_str_builder_create(_alloc, 2048);
-    // cgen->tmp_str_builder = cmon_str_builder_create(_alloc, CMON_PATH_MAX);
     cgen->types = _types;
     cgen->mods = _mods;
     strcpy(cgen->build_dir, _build_dir);

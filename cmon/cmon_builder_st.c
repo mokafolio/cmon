@@ -315,3 +315,8 @@ cmon_bool cmon_builder_st_errors(cmon_builder_st * _b,
     *_out_count = 0;
     return cmon_false;
 }
+
+cmon_types * cmon_builder_st_types(cmon_builder_st * _b)
+{
+    return _b->types;
+}
