@@ -38,6 +38,12 @@ cmon_argparse * cmon_argparse_create(cmon_allocator * _alloc, const char * _cmd_
 
 void cmon_argparse_destroy(cmon_argparse * _a)
 {
+    for(size_t i=0; i<cmon_dyn_arr_count(&_a->args); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_a->args[i].possible_vals);
+    }
+    cmon_dyn_arr_dealloc(&_a->args);
+    CMON_DESTROY(_a->alloc, _a);
 }
 
 void cmon_argparse_parse(cmon_argparse * _a, const char ** _args, size_t _count)
@@ -66,7 +72,7 @@ void cmon_argparse_parse(cmon_argparse * _a, const char ** _args, size_t _count)
             {
                 if (i >= _count - 1)
                 {
-                    cmon_panic("expected value for option '%s'\n", _a->args[idx].key_short);
+                    cmon_panic("expected value for argument '%s'\n", _a->args[idx].key_short);
                 }
 
                 const char * val = _args[++i];
@@ -90,14 +96,14 @@ void cmon_argparse_parse(cmon_argparse * _a, const char ** _args, size_t _count)
 
                 if (!is_valid)
                 {
-                    cmon_panic("invalid value '%s' for option '%s'\n", val, _get_key(_a, idx));
+                    cmon_panic("invalid value '%s' for argument '%s'\n", val, _get_key(_a, idx));
                 }
                 strcpy(_a->args[idx].val, val);
             }
         }
         else
         {
-            cmon_panic("unknown option '%s'\n", _args[i]);
+            cmon_panic("unknown argument '%s'\n", _args[i]);
         }
     }
 }
@@ -141,9 +147,9 @@ void cmon_argparse_add_possible_val(cmon_argparse * _a,
     _a->args[_arg].expects_value = cmon_true;
 }
 
-const char * cmon_argparse_get_value(cmon_argparse * _a, const char * _key)
+const char * cmon_argparse_value(cmon_argparse * _a, const char * _key)
 {
-    cmon_idx a = cmon_argparse_get(_a, _key);
+    cmon_idx a = cmon_argparse_find(_a, _key);
     if (cmon_is_valid_idx(a))
     {
         if (_a->args[a].was_set)
@@ -157,7 +163,17 @@ const char * cmon_argparse_get_value(cmon_argparse * _a, const char * _key)
     return NULL;
 }
 
-cmon_idx cmon_argparse_get(cmon_argparse * _a, const char * _key)
+cmon_bool cmon_argparse_is_set(cmon_argparse * _a, const char * _key)
+{
+    cmon_idx a = cmon_argparse_find(_a, _key);
+    if (cmon_is_valid_idx(a))
+    {
+        return _a->args[a].was_set;
+    }
+    return cmon_false;
+}
+
+cmon_idx cmon_argparse_find(cmon_argparse * _a, const char * _key)
 {
     size_t i;
     for (i = 0; i < cmon_dyn_arr_count(&_a->args); ++i)
@@ -169,7 +185,6 @@ cmon_idx cmon_argparse_get(cmon_argparse * _a, const char * _key)
         }
     }
 
-    cmon_panic("attempting to get unknown option '%s'\n", _key);
     return CMON_INVALID_IDX;
 }
 

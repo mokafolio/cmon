@@ -1,4 +1,5 @@
 #include "utest.h"
+#include <cmon/cmon_argparse.h>
 #include <cmon/cmon_builder_st.h>
 #include <cmon/cmon_codegen_c.h>
 #include <cmon/cmon_dep_graph.h>
@@ -796,6 +797,38 @@ static inline void _c_codegen_test_mod_add_fn(cmon_src * _src, cmon_modules * _m
 UTEST(cmon, basic_c_codegen)
 {
     EXPECT_EQ(cmon_true, _resolve_test_fn_impl(_c_codegen_test_mod_add_fn, cmon_codegen_c_make));
+}
+
+UTEST(cmon, argparse)
+{
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_argparse * ap = cmon_argparse_create(&a, "foo");
+
+    cmon_idx uno = cmon_argparse_add_arg(ap, "-u", "--uno", cmon_true, "this is uno");
+    cmon_idx dos = cmon_argparse_add_arg(ap, "-d", "--dos", cmon_true, "this is dos");
+    cmon_idx tres = cmon_argparse_add_arg(ap, "-t", "", cmon_true, "this is tres");
+    cmon_idx quat = cmon_argparse_add_arg(ap, "-q", "", cmon_false, "");
+
+    cmon_argparse_print_help(ap);
+
+    const char * args[] = {"foo", "-u", "1", "--dos", "-99", "-t", "boink", "-q"};
+    cmon_argparse_parse(ap, args, 8);
+
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-u")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "--uno")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-d")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "--dos")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-t")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-q")));
+    EXPECT_FALSE(cmon_is_valid_idx(cmon_argparse_find(ap, "--boop")));
+
+    EXPECT_TRUE(cmon_argparse_is_set(ap, "-q"));
+    EXPECT_STREQ("1", cmon_argparse_value(ap, "-u"));
+    EXPECT_STREQ("-99", cmon_argparse_value(ap, "-d"));
+    EXPECT_STREQ("boink", cmon_argparse_value(ap, "-t"));
+
+    cmon_argparse_destroy(ap);
+    cmon_allocator_dealloc(&a);
 }
 
 UTEST_MAIN();

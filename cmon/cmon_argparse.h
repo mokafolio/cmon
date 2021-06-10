@@ -42,8 +42,9 @@ CMON_API cmon_idx cmon_argparse_add_arg(cmon_argparse * _a,
                                         cmon_bool _expects_value,
                                         const char * _help);
 CMON_API void cmon_argparse_add_possible_val(cmon_argparse * _a, cmon_idx _arg, const char * _val, cmon_bool _is_default);
-CMON_API const char * cmon_argparse_get_value(cmon_argparse * _a, const char * _key);
-CMON_API cmon_idx cmon_argparse_get(cmon_argparse * _a, const char * _key);
+CMON_API const char * cmon_argparse_value(cmon_argparse * _a, const char * _key);
+CMON_API cmon_bool cmon_argparse_is_set(cmon_argparse * _a, const char * _key);
+CMON_API cmon_idx cmon_argparse_find(cmon_argparse * _a, const char * _key);
 CMON_API void cmon_argparse_print_help(cmon_argparse * _a);
 
 #endif // CMON_CMON_ARGPARSE_H
