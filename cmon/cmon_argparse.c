@@ -40,6 +40,10 @@ void cmon_argparse_destroy(cmon_argparse * _a)
 {
     for(size_t i=0; i<cmon_dyn_arr_count(&_a->args); ++i)
     {
+        for(size_t j=0; j<cmon_dyn_arr_count(&_a->args[i].possible_vals); ++j)
+        {
+            cmon_c_str_free(_a->alloc, _a->args[i].possible_vals[j]);
+        }
         cmon_dyn_arr_dealloc(&_a->args[i].possible_vals);
     }
     cmon_dyn_arr_dealloc(&_a->args);
@@ -197,6 +201,7 @@ void cmon_argparse_print_help(cmon_argparse * _a)
     {
         _arg * a = &_a->args[i];
 
+        count = cmon_dyn_arr_count(&a->possible_vals);
         if (strlen(a->key_long))
         {
             printf("%-2s, %-16s %s\n", a->key_short, a->key_long, a->help);
@@ -206,7 +211,6 @@ void cmon_argparse_print_help(cmon_argparse * _a)
             printf("%-20s %s\n", a->key_short, a->help);
         }
 
-        count = cmon_dyn_arr_count(&a->possible_vals);
         if (count)
         {
             printf("%spossible values: ", s_whitespace);

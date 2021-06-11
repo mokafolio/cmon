@@ -8,7 +8,7 @@
 // abstract code generation interface
 typedef cmon_idx (*cmon_codegen_begin_session_fn)(void *, cmon_idx, cmon_ir *);
 typedef void (*cmon_codegen_end_session_fn)(void *, cmon_idx);
-typedef cmon_bool (*cmon_codegen_prep_fn)(void *);
+typedef cmon_bool (*cmon_codegen_prep_fn)(void *, cmon_modules *, cmon_types *, const char *);
 typedef cmon_bool (*cmon_codegen_fn)(void *, cmon_idx);
 typedef void (*cmon_codegen_shutdown_fn)(void *);
 typedef const char * (*cmon_codegen_session_err_msg_fn)(void *, cmon_idx);
@@ -28,7 +28,7 @@ typedef struct
 
 CMON_API cmon_codegen cmon_codegen_make_empty();
 CMON_API void cmon_codegen_dealloc(cmon_codegen * _cg);
-CMON_API cmon_bool cmon_codegen_prepare(cmon_codegen * _cg);
+CMON_API cmon_bool cmon_codegen_prepare(cmon_codegen * _cg, cmon_modules * _mods, cmon_types * _types, const char * _build_dir);
 CMON_API cmon_idx cmon_codegen_begin_session(cmon_codegen * _cg, cmon_idx _mod_idx, cmon_ir * _ir);
 CMON_API void cmon_codegen_end_session(cmon_codegen * _cg, cmon_idx _session_idx);
 CMON_API cmon_bool cmon_codegen_gen(cmon_codegen * _cg, cmon_idx _session_idx);

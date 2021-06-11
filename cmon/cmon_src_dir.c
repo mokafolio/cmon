@@ -30,6 +30,8 @@ cmon_src_dir * cmon_src_dir_create(cmon_allocator * _alloc,
 
 void cmon_src_dir_destroy(cmon_src_dir * _dir)
 {
+    if(!_dir)
+        return;
     cmon_str_builder_destroy(_dir->str_builder);
     CMON_DESTROY(_dir->alloc, _dir);
 }

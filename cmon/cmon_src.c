@@ -58,7 +58,10 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
 
 cmon_bool cmon_src_load_code(cmon_src * _src, cmon_idx _file_idx)
 {
-    
+    if(_get_file(_src, _file_idx)->code)
+        return cmon_false;
+
+    return cmon_false;
 }
 
 void cmon_src_set_code(cmon_src * _src, cmon_idx _file_idx, const char * _code)

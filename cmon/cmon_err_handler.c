@@ -52,9 +52,18 @@ void cmon_err_handler_err(cmon_err_handler * _e,
     cmon_tokens * toks = cmon_src_tokens(_e->src, _src_file_idx);
     toks = cmon_src_tokens(_e->src, _src_file_idx);
     cmon_str_builder_append_fmt_v(_e->str_builder, _fmt, args);
+
+    size_t line = 0;
+    size_t line_off = 0;
+    if(cmon_is_valid_idx(_tok_idx))
+    {
+        line = cmon_tokens_line(toks, _tok_idx);
+        line_off = cmon_tokens_line_offset(toks, _tok_idx);
+    }
+
     cmon_err_report err = cmon_err_report_make(cmon_src_filename(_e->src, _src_file_idx),
-                                               cmon_tokens_line(toks, _tok_idx),
-                                               cmon_tokens_line_offset(toks, _tok_idx),
+                                               line,
+                                               line_off,
                                                cmon_str_builder_c_str(_e->str_builder));
     va_end(args);
     cmon_err_handler_add_err(_e, _jump, &err);

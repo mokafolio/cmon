@@ -32,11 +32,10 @@ lib_src = [
 thread_dep = dependency('threads')
 cmon_lib = library('cmon', lib_src, include_directories : inc_dirs, dependencies: thread_dep)
 
-#cmon_bin = executable('cmon', 
-#    ['cmon/cmon_main2.c'], 
-#    link_with: [cmon_lib], 
-#    c_args : ['-fsanitize=address', '-Wall', '-std=gnu11'], 
-#    link_args : '-fsanitize=address')
-#
+cmon_bin = executable('cmon',
+    ['cmon.c'], 
+    link_with: [cmon_lib], 
+    c_args : ['-fsanitize=address', '-Wall', '-std=gnu11'], 
+    link_args : '-fsanitize=address')
 
 subdir('tests')

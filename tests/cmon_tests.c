@@ -559,7 +559,7 @@ end:
 // }
 
 typedef void (*module_adder_fn)(cmon_src *, cmon_modules *);
-typedef cmon_codegen (*codegen_adder_fn)(cmon_allocator*,cmon_modules *, cmon_types *, const char *);
+typedef cmon_codegen (*codegen_adder_fn)(cmon_allocator*);
 
 static cmon_bool _resolve_test_fn_impl(module_adder_fn _fn, codegen_adder_fn _cfn)
 {
@@ -571,7 +571,7 @@ static cmon_bool _resolve_test_fn_impl(module_adder_fn _fn, codegen_adder_fn _cf
     _fn(src, mods);
 
     cmon_builder_st * builder = cmon_builder_st_create(&alloc, 1, src, mods);
-    cmon_codegen cg = _cfn(&alloc, mods, cmon_builder_st_types(builder), "build");
+    cmon_codegen cg = _cfn(&alloc);
     if (cmon_builder_st_build(builder, &cg, "build"))
     {
         cmon_err_report * errs;
@@ -594,7 +594,7 @@ static cmon_bool _resolve_test_fn_impl(module_adder_fn _fn, codegen_adder_fn _cf
     return err;
 }
 
-static inline cmon_codegen _empty_codegen(cmon_allocator * _a, cmon_modules * _mods, cmon_types * _types, const char * _build_dir)
+static inline cmon_codegen _empty_codegen(cmon_allocator * _a)
 {
     return cmon_codegen_make_empty();
 }

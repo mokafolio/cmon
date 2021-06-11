@@ -308,11 +308,14 @@ static inline void _write_stmt(_session * _s, cmon_idx _idx, size_t _indent)
     }
 }
 
-static inline cmon_bool _codegen_c_prep_fn(void * _cg)
+static inline cmon_bool _codegen_c_prep_fn(void * _cg, cmon_modules *_mods, cmon_types * _types, const char * _build_dir)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
 
-    // assert(cmon_fs_exists(cg->build_dir));
+    cg->mods = _mods;
+    cg->types = _types;
+    strcpy(cg->build_dir, _build_dir);
+
     if (!cmon_fs_exists(cg->build_dir))
     {
         if (cmon_fs_mkdir(cg->build_dir) == -1)
@@ -657,18 +660,14 @@ static inline const char * _codegen_c_sess_err_msg_fn(void * _cg, cmon_idx _sess
     return cg->sessions[_session_idx].err_msg;
 }
 
-cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc,
-                                 cmon_modules * _mods,
-                                 cmon_types * _types,
-                                 const char * _build_dir)
+cmon_codegen cmon_codegen_c_make(cmon_allocator * _alloc)
 {
     _codegen_c * cgen = CMON_CREATE(_alloc, _codegen_c);
     cgen->alloc = _alloc;
-    cgen->types = _types;
-    cgen->mods = _mods;
-    strcpy(cgen->build_dir, _build_dir);
-    cmon_dyn_arr_init(&cgen->sessions, _alloc, cmon_modules_count(_mods));
-    cmon_dyn_arr_init(&cgen->free_sessions, _alloc, cmon_modules_count(_mods));
+    cgen->types = NULL;
+    cgen->mods = NULL;
+    cmon_dyn_arr_init(&cgen->sessions, _alloc, 4);
+    cmon_dyn_arr_init(&cgen->free_sessions, _alloc, 4);
     return (cmon_codegen){ cgen,
                            _codegen_c_prep_fn,
                            _codegen_c_begin_session,

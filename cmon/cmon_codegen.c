@@ -1,7 +1,7 @@
 #include <cmon/cmon_codegen.h>
 
 static inline cmon_bool _empty_prep(
-    void * _obj)
+    void * _obj, cmon_modules *_mods, cmon_types * _types, const char * _build_dir)
 {
     return cmon_false;
 }
@@ -45,10 +45,10 @@ cmon_codegen cmon_codegen_make_empty()
     return ret;
 }
 
-cmon_bool cmon_codegen_prepare(cmon_codegen * _cg)
+cmon_bool cmon_codegen_prepare(cmon_codegen * _cg, cmon_modules * _mods, cmon_types * _types, const char * _build_dir)
 {
     assert(_cg->prep_fn);
-    return _cg->prep_fn(_cg->obj);
+    return _cg->prep_fn(_cg->obj, _mods, _types, _build_dir);
 }
 
 cmon_idx cmon_codegen_begin_session(cmon_codegen * _cg, cmon_idx _mod_idx, cmon_ir * _ir)

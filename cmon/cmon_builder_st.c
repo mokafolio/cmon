@@ -98,7 +98,9 @@ static inline void _add_resolver_errors(cmon_builder_st * _b,
     }
 }
 
-cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, const char * _build_dir)
+cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
+                                cmon_codegen * _codegen,
+                                const char * _build_dir)
 {
     size_t i, j;
 
@@ -147,6 +149,19 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, c
         // setup everything needed per file
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
+            //@NOTE: If the src code was already set on the src file (i.e. during unit testing)
+            // the cmon_src_load_code funtions is a noop.
+            cmon_idx src_file_idx = cmon_modules_src_file(_b->mods, i, j);
+            if (cmon_src_load_code(_b->src, src_file_idx))
+            {
+                cmon_err_handler_err(_b->err_handler,
+                                     cmon_true,
+                                     src_file_idx,
+                                     CMON_INVALID_IDX,
+                                     "failed to load src file %s",
+                                     cmon_src_path(_b->src, src_file_idx));
+            }
+
             _per_file_data * pfd = &pmd->file_data[j];
             pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
             if (!pfd->ast)
@@ -271,7 +286,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, c
 
         cmon_ir * ir = cmon_resolver_finalize(pmd->resolver);
 
-        if(!ir)
+        if (!ir)
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
@@ -279,17 +294,17 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b, cmon_codegen * _codegen, c
         pmd->ir = ir;
     }
 
-    //if codegen fails, we panic for now and call it a day.
-    if(cmon_codegen_prepare(_codegen))
+    // if codegen fails, we panic for now and call it a day.
+    if (cmon_codegen_prepare(_codegen, _b->mods, _b->types, _build_dir))
     {
-            cmon_panic(cmon_codegen_err_msg(_codegen));
+        cmon_panic(cmon_codegen_err_msg(_codegen));
     }
 
-    for(i = 0; i < cmon_modules_count(_b->mods); ++i)
+    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_idx session = cmon_codegen_begin_session(_codegen, (cmon_idx)i, pmd->ir);
-        if(cmon_codegen_gen(_codegen, session))
+        if (cmon_codegen_gen(_codegen, session))
         {
             cmon_panic(cmon_codegen_session_err_msg(_codegen, session));
         }
