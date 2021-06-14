@@ -24,6 +24,7 @@ lib_src = [
     'cmon/cmon_src_dir.c',
     'cmon/cmon_str_builder.c',
     'cmon/cmon_symbols.c',
+    'cmon/cmon_tini.c',
     'cmon/cmon_tokens.c',
     'cmon/cmon_types.c',
     'cmon/cmon_util.c',

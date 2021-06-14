@@ -9,6 +9,7 @@
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_tokens.h>
+#include <cmon/cmon_tini.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -828,6 +829,17 @@ UTEST(cmon, argparse)
     EXPECT_STREQ("boink", cmon_argparse_value(ap, "-t"));
 
     cmon_argparse_destroy(ap);
+    cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, tini)
+{
+    //@TODO: This needs a lot more testing :)
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_err_report err;
+    cmon_tini * t = cmon_tini_parse(&a, "bar = #boink\n\"1\"", &err);
+
+    cmon_tini_destroy(t);
     cmon_allocator_dealloc(&a);
 }
 
