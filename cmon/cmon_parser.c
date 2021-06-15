@@ -94,7 +94,7 @@ typedef struct cmon_parser
     jmp_buf err_jmp;
 } cmon_parser;
 
-const char * _token_kinds_to_str(cmon_str_builder * _b, va_list _args)
+static inline const char * _token_kinds_to_str(cmon_str_builder * _b, va_list _args)
 {
     cmon_tokk kind;
 

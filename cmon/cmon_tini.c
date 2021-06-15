@@ -15,6 +15,7 @@ typedef enum
     _tokk_curl_open,
     _tokk_curl_close,
     _tokk_comment,
+    _tokk_eof,
     _tokk_none // used to indicate no previous token in next_token function
 } _tokk;
 
@@ -46,22 +47,35 @@ typedef struct
     cmon_hashmap(cmon_str_view, cmon_idx) name_map;
 } _obj;
 
+// we use one helper object for tokenizing and parsing to keep it simple
 typedef struct
 {
     cmon_allocator * alloc;
+    const char * name;
+    // tokenizing related
     const char * input;
     const char * pos;
     const char * end;
     cmon_idx current_line;
     cmon_idx current_line_off;
+    // parsing related
+    cmon_dyn_arr(_token) tokens;
+    cmon_idx tok_idx;
+    cmon_dyn_arr(cmon_tinik) kinds;
+    cmon_dyn_arr(cmon_idx) data;
+    cmon_dyn_arr(cmon_str_view) str_values;
+    cmon_dyn_arr(_key_val) key_value_pairs;
+    cmon_dyn_arr(_array) arrays;
+    cmon_dyn_arr(_obj) objs;
+    // error
     cmon_err_report err;
     cmon_str_builder * tmp_str_b;
-} _tokenizer;
+    cmon_str_builder * tk_str_builder;
+} _tokparse;
 
 typedef struct cmon_tini
 {
     cmon_allocator * alloc;
-    cmon_dyn_arr(_token) tokens;
     cmon_dyn_arr(cmon_tinik) kinds;
     cmon_dyn_arr(cmon_idx) data;
     cmon_dyn_arr(cmon_str_view) str_values;
@@ -70,32 +84,31 @@ typedef struct cmon_tini
     cmon_dyn_arr(_obj) objs;
 } cmon_tini;
 
-static inline cmon_idx _add_node(cmon_tini * _t, cmon_tinik _kind, cmon_idx _data)
-{
-    cmon_dyn_arr_append(&_t->kinds, _kind);
-    cmon_dyn_arr_append(&_t->data, _data);
-    return cmon_dyn_arr_count(&_t->kinds) - 1;
-}
+#define _err(_tp, _fmt, ...)                                                                       \
+    do                                                                                             \
+    {                                                                                              \
+        cmon_str_builder_clear(_tp->tmp_str_b);                                                    \
+        cmon_str_builder_append_fmt(_tp->tmp_str_b, _fmt, ##__VA_ARGS__);                          \
+        _tp->err = cmon_err_report_make(_tp->name,                                                 \
+                                        _tp->current_line,                                         \
+                                        _tp->current_line_off,                                     \
+                                        cmon_str_builder_c_str(_tp->tmp_str_b));                   \
+    } while (0)
 
-static inline _tokk _tok_kind(cmon_tini * _t, cmon_idx _idx)
-{
-    assert(_idx < cmon_dyn_arr_count(&_t->tokens));
-    return _t->tokens[_idx].kind;
-}
-
-static inline void _advance_pos(_tokenizer * _t, size_t _advance)
+// tokenize related functions
+static inline void _advance_pos(_tokparse * _t, size_t _advance)
 {
     _t->pos += _advance;
     _t->current_line_off += _advance;
 }
 
-static inline void _advance_line(_tokenizer * _t)
+static inline void _advance_line(_tokparse * _t)
 {
     ++_t->current_line;
     _t->current_line_off = 0;
 }
 
-static inline size_t _skip_whitespace(_tokenizer * _t)
+static inline size_t _skip_whitespace(_tokparse * _t)
 {
     size_t count = 0;
     while (isspace(*_t->pos))
@@ -110,7 +123,7 @@ static inline size_t _skip_whitespace(_tokenizer * _t)
     return count;
 }
 
-static inline cmon_bool _finalize_tok(_tokenizer * _t,
+static inline cmon_bool _finalize_tok(_tokparse * _t,
                                       _tokk _kind,
                                       size_t _advance,
                                       _token * _out_tok)
@@ -121,7 +134,7 @@ static inline cmon_bool _finalize_tok(_tokenizer * _t,
     return cmon_true;
 }
 
-static cmon_bool _next_token(_tokenizer * _t, _token * _out_tok, _tokk _prev_kind)
+static cmon_bool _next_token(_tokparse * _t, _token * _out_tok, _tokk _prev_kind)
 {
     if (_t->pos >= _t->end)
         return cmon_false;
@@ -160,16 +173,22 @@ static cmon_bool _next_token(_tokenizer * _t, _token * _out_tok, _tokk _prev_kin
     else
     {
         //@TODO: This whole else block could be compacted a lot more!
-        if (_prev_kind == _tokk_assign)
+        if (_prev_kind == _tokk_assign || _prev_kind == _tokk_comma)
         {
             // if this is an explicit string/multiline string
             if (*_t->pos == '"')
             {
                 _advance_pos(_t, 1);
                 while (*_t->pos != '"' && _t->pos != _t->end)
+                {
+                    if (*_t->pos == '\n')
+                    {
+                        _advance_line(_t);
+                    }
                     _advance_pos(_t, 1);
+                }
 
-                //skip closing "
+                // skip closing "
                 _advance_pos(_t, 1);
             }
             else
@@ -200,7 +219,20 @@ static cmon_bool _next_token(_tokenizer * _t, _token * _out_tok, _tokk _prev_kin
     return cmon_false;
 }
 
-static inline cmon_bool _is_impl_v(cmon_tini * _t, cmon_idx _idx, va_list _args)
+// parsing related functions
+static inline _tokk _tok_kind(_tokparse * _t, cmon_idx _idx)
+{
+    assert(_idx < cmon_dyn_arr_count(&_t->tokens));
+    return _t->tokens[_idx].kind;
+}
+
+static inline cmon_str_view _tok_str_view(_tokparse * _t, cmon_idx _idx)
+{
+    assert(_idx < cmon_dyn_arr_count(&_t->tokens));
+    return _t->tokens[_idx].str_view;
+}
+
+static inline cmon_bool _is_impl_v(_tokparse * _t, cmon_idx _idx, va_list _args)
 {
     _tokk kind;
     do
@@ -213,29 +245,142 @@ static inline cmon_bool _is_impl_v(cmon_tini * _t, cmon_idx _idx, va_list _args)
     return cmon_false;
 }
 
-static inline cmon_bool _tokens_is_impl(cmon_tini * _t, cmon_idx _idx, ...)
+static inline cmon_bool _tokens_is_impl(_tokparse * _t, cmon_idx _idx, ...)
+{
+    va_list args;
+    va_start(args, _t);
+    cmon_idx ret = _is_impl_v(_t, _idx, args);
+    va_end(args);
+    return ret;
+}
+
+static inline cmon_idx _tokens_accept_impl_v(_tokparse * _t, va_list _args)
+{
+    if (_is_impl_v(_t, _t->tok_idx, _args))
+        return _token_advance(_t, cmon_true);
+    return CMON_INVALID_IDX;
+}
+
+static inline cmon_idx _tokens_accept_impl(_tokparse * _t, ...)
+{
+    va_list args;
+    cmon_idx ret;
+    va_start(args, _t);
+    ret = _tokens_accept_impl_v(_t, args);
+    va_end(args);
+    return ret;
+}
+
+static inline const char * _tokk_to_str(_tokk _kind)
+{
+    switch (_kind)
+    {
+    case _tokk_name:
+        return "name";
+    case _tokk_string:
+        return "string";
+    case _tokk_comma:
+        return ",";
+    case _tokk_assign:
+        return "=";
+    case _tokk_square_open:
+        return "[";
+    case _tokk_square_close:
+        return "]";
+    case _tokk_curl_open:
+        return "{";
+    case _tokk_curl_close:
+        return "}";
+    case _tokk_comment:
+        return "#comment";
+    case _tokk_eof:
+        return "EOF";
+    }
+    return "none";
+}
+
+static inline const char * _token_kinds_to_str(cmon_str_builder * _b, va_list _args)
+{
+    _tokk kind;
+    cmon_str_builder_clear(_b);
+    do
+    {
+        kind = va_arg(_args, _tokk);
+        if (kind != -1)
+        {
+            if (cmon_str_builder_count(_b))
+                cmon_str_builder_append(_b, " or ");
+            cmon_str_builder_append_fmt(_b, "'%s'", _tokk_to_str(kind));
+        }
+    } while (kind != -1);
+    return cmon_str_builder_c_str(_b);
+}
+
+static inline cmon_idx _tok_check_impl(_tokparse * _t, ...)
+{
+    va_list args, cpy;
+    va_start(args, _t);
+    va_copy(cpy, args);
+    cmon_idx tok = _tokens_accept_impl_v(_t, args);
+    if (!cmon_is_valid_idx(tok))
+    {
+        const char * tk_kinds_str = _token_kinds_to_str(_t->tk_str_builder, cpy);
+        va_end(cpy);
+        va_end(args);
+
+        cmon_idx cur = _t->tok_idx;
+        if (_tok_kind(_t->tokens, cur) != _tokk_eof)
+        {
+            cmon_str_view name = _tok_str_view(_t, cur);
+            _err(_t, "%s expected, got '%.*s'", tk_kinds_str, name.end - name.begin, name.begin);
+        }
+        else
+        {
+            _err(_t, "%s expected, got 'EOF'", tk_kinds_str);
+        }
+    }
+
+    va_end(args);
+    return tok;
+}
+
+#define _accept(_t, ...) _tokens_accept_impl((_t), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+
+static inline cmon_idx _parse_array(_tokparse * _t)
 {
 }
 
-static inline cmon_idx _tokens_accept_impl(cmon_tini * _t, ...)
+static inline cmon_idx _parse_assign(_tokparse * _t)
 {
+}
+
+static inline cmon_idx _parse_obj(_tokparse * _t)
+{
+}
+
+// adding nodes to tini
+static inline cmon_idx _add_node(cmon_tini * _t, cmon_tinik _kind, cmon_idx _data)
+{
+    cmon_dyn_arr_append(&_t->kinds, _kind);
+    cmon_dyn_arr_append(&_t->data, _data);
+    return cmon_dyn_arr_count(&_t->kinds) - 1;
 }
 
 cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err_report * _out_err)
 {
     cmon_tini * ret = NULL;
     size_t len = strlen(_txt);
-    cmon_dyn_arr(_token) tokens;
-    cmon_dyn_arr_init(&tokens, _alloc, len / 4);
 
     // tokenize first
-    _tokenizer tn;
+    _tokparse tn;
     tn.alloc = _alloc;
     tn.input = _txt;
     tn.pos = _txt;
     tn.end = _txt + len;
     tn.current_line = 1;
     tn.current_line_off = 1;
+    cmon_dyn_arr_init(&tn.tokens, _alloc, len / 4);
+    tn.tok_idx = 0;
     tn.err = cmon_err_report_make_empty();
     tn.tmp_str_b = cmon_str_builder_create(_alloc, 512);
     _token tok;
@@ -243,21 +388,21 @@ cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err
     _tokk prev_kind = _tokk_none;
     while (_next_token(&tn, &tok, prev_kind))
     {
-        cmon_dyn_arr_append(&tokens, tok);
-        if(tok.kind != _tokk_comment)
+        cmon_dyn_arr_append(&tn.tokens, tok);
+        if (tok.kind != _tokk_comment)
         {
             prev_kind = tok.kind;
         }
     }
 
-    printf("tok count %lu\n", cmon_dyn_arr_count(&tokens));
+    printf("tok count %lu\n", cmon_dyn_arr_count(&tn.tokens));
     // then parse
 
     // ret = CMON_CREATE(_alloc, cmon_tini);
     // ret->alloc = _alloc;
 
 end:
-    cmon_dyn_arr_dealloc(&tokens);
+    cmon_dyn_arr_dealloc(&tn.tokens);
     return ret;
 }
 
