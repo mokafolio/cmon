@@ -6,6 +6,7 @@
 
 typedef enum
 {
+    cmon_tinik_assignment,
     cmon_tinik_value,
     cmon_tinik_obj,
     cmon_tinik_array
