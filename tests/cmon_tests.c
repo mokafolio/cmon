@@ -783,22 +783,22 @@ UTEST(cmon, resolve_module_selector_test)
 // RESOLVE_TEST(resolve_empty, "mut foo : f64 = 1.2; fn bar(a : s32, mut b : s32) -> s32 { boop := 1 / 2 }", cmon_true);
 
 
-static inline void _c_codegen_test_mod_add_fn(cmon_src * _src, cmon_modules * _mods)
-{
-    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-    cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 = 1; b : s32 }; pub foo_glob := 99; c := FooType{b: 3}");
-    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
-    cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2, b:-99}; val : s32 = foo.foo_fn(-33); fn main() -> s32{}");
-    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-}
+// static inline void _c_codegen_test_mod_add_fn(cmon_src * _src, cmon_modules * _mods)
+// {
+//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+//     cmon_src_set_code(_src, src01_idx, "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 = 1; b : s32 }; pub foo_glob := 99; c := FooType{b: 3}");
+//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon"); 
+//     cmon_src_set_code(_src, src02_idx, "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: 2, b:-99}; val : s32 = foo.foo_fn(-33); fn main() -> s32{}");
+//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+// }
 
-UTEST(cmon, basic_c_codegen)
-{
-    EXPECT_EQ(cmon_true, _resolve_test_fn_impl(_c_codegen_test_mod_add_fn, cmon_codegen_c_make));
-}
+// UTEST(cmon, basic_c_codegen)
+// {
+//     EXPECT_EQ(cmon_true, _resolve_test_fn_impl(_c_codegen_test_mod_add_fn, cmon_codegen_c_make));
+// }
 
 UTEST(cmon, argparse)
 {
@@ -837,13 +837,50 @@ UTEST(cmon, tini)
     //@TODO: This needs a lot more testing :)
     cmon_allocator a = cmon_mallocator_make();
     cmon_err_report err;
-    cmon_tini * t = cmon_tini_parse(&a, "foo.tini", "bar = 1", &err);
+    cmon_tini * t = cmon_tini_parse(&a, "foo.tini", "bar = {#honk\nfoo = 1\nboink = \"test\nstuff\", hello=world}\narr = [uno, -312, 2.13]", &err);
 
+    EXPECT_EQ(cmon_true, cmon_err_report_is_empty(&err));
     if(!cmon_err_report_is_empty(&err))
     {
         cmon_err_report_print(&err);
+        goto end;
     }
 
+    cmon_idx root_obj = cmon_tini_root_obj(t);
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(root_obj));
+    EXPECT_EQ(cmon_tinik_obj, cmon_tini_kind(t, root_obj));
+    EXPECT_EQ(2, cmon_tini_child_count(t, root_obj));
+
+    cmon_idx bar = cmon_tini_obj_find(t, root_obj, "bar");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(bar));
+    EXPECT_EQ(cmon_tinik_obj, cmon_tini_kind(t, bar));
+    EXPECT_EQ(3, cmon_tini_child_count(t, bar));
+
+    cmon_idx foo_idx = cmon_tini_obj_find(t, bar, "foo");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(foo_idx));
+    EXPECT_EQ(cmon_tinik_string, cmon_tini_kind(t, foo_idx));
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, foo_idx), "1"));
+
+    cmon_idx boink_idx = cmon_tini_obj_find(t, bar, "boink");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(boink_idx));
+    EXPECT_EQ(cmon_tinik_string, cmon_tini_kind(t, boink_idx));
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, boink_idx), "test\nstuff"));
+
+    cmon_idx hello_idx = cmon_tini_obj_find(t, bar, "hello");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(hello_idx));
+    EXPECT_EQ(cmon_tinik_string, cmon_tini_kind(t, hello_idx));
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, hello_idx), "world"));
+
+    cmon_idx arr_idx = cmon_tini_obj_find(t, root_obj, "arr");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(arr_idx));
+    EXPECT_EQ(cmon_tinik_array, cmon_tini_kind(t, arr_idx));
+    EXPECT_EQ(3, cmon_tini_child_count(t, arr_idx));
+
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 0)), "uno"));
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 1)), "-312"));
+    EXPECT_EQ(0, cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 2)), "2.13"));
+
+end:
     cmon_tini_destroy(t);
     cmon_allocator_dealloc(&a);
 }
