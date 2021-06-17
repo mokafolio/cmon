@@ -14,7 +14,7 @@ typedef enum
 
 typedef struct cmon_tini cmon_tini;
 
-CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err_report * _out_err);
+CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _name, const char * _txt, cmon_err_report * _out_err);
 CMON_API cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc, const char * _path, cmon_err_report * _out_err);
 CMON_API void cmon_tini_destroy(cmon_tini * _c);
 

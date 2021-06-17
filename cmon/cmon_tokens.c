@@ -506,8 +506,8 @@ static inline cmon_tokens * _tokens_create(cmon_allocator * _alloc)
 {
     cmon_tokens * ret = CMON_CREATE(_alloc, cmon_tokens);
     ret->alloc = _alloc;
-    cmon_dyn_arr_init(&ret->kinds, _alloc, 128);
-    cmon_dyn_arr_init(&ret->tokens, _alloc, 128);
+    cmon_dyn_arr_init(&ret->kinds, _alloc, 2);
+    cmon_dyn_arr_init(&ret->tokens, _alloc, 2);
     ret->tok_idx = CMON_INVALID_IDX;
     return ret;
 }

@@ -3,6 +3,8 @@
 #include <cmon/cmon_idx_buf_mng.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_tini.h>
+#include <cmon/cmon_util.h>
+#include <setjmp.h>
 #include <stdarg.h>
 
 typedef enum
@@ -52,7 +54,7 @@ typedef struct
 typedef struct
 {
     cmon_allocator * alloc;
-    const char * name;
+    char name[CMON_FILENAME_MAX];
     // tokenizing related
     const char * input;
     const char * pos;
@@ -72,6 +74,7 @@ typedef struct
     cmon_dyn_arr(_obj) objs;
     // error
     cmon_err_report err;
+    jmp_buf err_jmp;
     cmon_str_builder * tmp_str_b;
     cmon_str_builder * tk_str_builder;
 } _tokparse;
@@ -96,6 +99,7 @@ typedef struct cmon_tini
                                         _tp->current_line,                                         \
                                         _tp->current_line_off,                                     \
                                         cmon_str_builder_c_str(_tp->tmp_str_b));                   \
+        longjmp(_tp->err_jmp, 1);                                                                  \
     } while (0)
 
 // tokenize related functions
@@ -217,20 +221,45 @@ static cmon_bool _next_token(_tokparse * _t, _token * _out_tok, _tokk _prev_kind
             }
             _out_tok->kind = _tokk_name;
         }
+        _out_tok->str_view.end = _t->pos;
         return cmon_true;
     }
     return cmon_false;
 }
 
 // parsing related functions
+static inline cmon_idx _inline_next(_tokparse * _t, cmon_bool _skip_comments)
+{
+    size_t ret = _t->tok_idx;
+    while (ret < cmon_dyn_arr_count(&_t->tokens))
+    {
+        ++ret;
+        if (!_skip_comments || _t->kinds[ret] != _tokk_comment)
+            return ret;
+    }
+
+    return CMON_INVALID_IDX;
+}
+
+static inline cmon_idx _token_advance(_tokparse * _t, cmon_bool _skip_comments)
+{
+    cmon_idx ret, idx;
+    ret = _t->tok_idx;
+    idx = _inline_next(_t, _skip_comments);
+    _t->tok_idx = idx != CMON_INVALID_IDX ? idx : _t->tok_idx;
+    return ret;
+}
+
 static inline _tokk _tok_kind(_tokparse * _t, cmon_idx _idx)
 {
+    printf("SA %lu %lu\n", _idx, cmon_dyn_arr_count(&_t->tokens));
     assert(_idx < cmon_dyn_arr_count(&_t->tokens));
     return _t->tokens[_idx].kind;
 }
 
 static inline cmon_str_view _tok_str_view(_tokparse * _t, cmon_idx _idx)
 {
+    printf("_tok_str_view %lu %lu\n", _idx, cmon_dyn_arr_count(&_t->tokens));
     assert(_idx < cmon_dyn_arr_count(&_t->tokens));
     return _t->tokens[_idx].str_view;
 }
@@ -332,7 +361,8 @@ static inline cmon_idx _tok_check_impl(_tokparse * _t, ...)
         va_end(args);
 
         cmon_idx cur = _t->tok_idx;
-        if (_tok_kind(_t->tokens, cur) != _tokk_eof)
+        printf("tok idx %lu\n", cur);
+        if (_tok_kind(_t, cur) != _tokk_eof)
         {
             cmon_str_view name = _tok_str_view(_t, cur);
             _err(_t, "%s expected, got '%.*s'", tk_kinds_str, name.end - name.begin, name.begin);
@@ -348,10 +378,12 @@ static inline cmon_idx _tok_check_impl(_tokparse * _t, ...)
 }
 
 #define _tok_is(_t, _idx, ...)                                                                     \
-    _tokens_is_impl_v((_t), _idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+    _tokens_is_impl((_t), _idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
 #define _tok_is_current(_t, ...)                                                                   \
-    _tokens_is_impl_v((_t), (_t)->tok_idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+    _tokens_is_impl((_t), (_t)->tok_idx, _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
 #define _tok_accept(_t, ...) _tokens_accept_impl((_t), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
+#define _tok_accept_ot(_t, _out_tok, ...)                                                          \
+    (cmon_is_valid_idx(*(_out_tok) = _tokens_accept_impl((_t), __VA_ARGS__)))
 #define _tok_check(_t, ...) _tok_check_impl((_t), _CMON_VARARG_APPEND_LAST(-1, __VA_ARGS__))
 
 static inline cmon_idx _add_node(_tokparse * _t, cmon_tinik _kind, cmon_idx _data)
@@ -375,56 +407,123 @@ static inline cmon_idx _parse_value(_tokparse * _t);
 
 static inline cmon_idx _parse_array(_tokparse * _t)
 {
-}
-
-static inline cmon_idx _parse_assign(_tokparse * _t)
-{
-    cmon_idx name_tok = _tok_check(_t, _tokk_name);
-    _tok_check(_t, _tokk_assign);
-    cmon_idx rhs = _parse_value(_t);
-    cmon_dyn_arr_append(&_t->key_value_pairs, ((_key_val){ _tok_str_view(_t, name_tok), rhs }));
-    return _add_node(_t, cmon_tinik_assignment, cmon_dyn_arr_count(&_t->key_value_pairs) - 1);
-}
-
-static inline cmon_idx _parse_obj(_tokparse * _t)
-{
-    _tok_check(_t, _tokk_curl_open);
+    _tok_check(_t, _tokk_square_open);
 
     cmon_idx ib = cmon_idx_buf_mng_get(_t->idx_buf_mng);
     while (!_tok_is_current(_t, _tokk_curl_close, _tokk_eof))
     {
-        cmon_idx_buf_mng_append(_t->idx_buf_mng, ib, _parse_assign(_t));
+        cmon_idx_buf_append(_t->idx_buf_mng, ib, _parse_value(_t));
         _tok_accept(_t, _tokk_comma);
     }
-    _tok_check(_t, _tokk_curl_close);
-    
-    cmon_idx begin = _add_indices(_t, cmon_idx_buf_ptr(_t->idx_buf_mng, ib), cmon_idx_buf_count(_t->idx_buf_mng, ib));
-    cmon_dyn_arr_append(&_t->objs, ((_obj){begin, cmon_dyn_arr_count(&_t->idx_buffer), NULL}));
+    _tok_check(_t, _tokk_square_close);
+
+    cmon_idx begin = _add_indices(
+        _t, cmon_idx_buf_ptr(_t->idx_buf_mng, ib), cmon_idx_buf_count(_t->idx_buf_mng, ib));
+    cmon_dyn_arr_append(&_t->arrays, ((_array){ begin, cmon_dyn_arr_count(&_t->idx_buffer) }));
+    cmon_idx_buf_mng_return(_t->idx_buf_mng, ib);
+    return _add_node(_t, cmon_tinik_array, cmon_dyn_arr_count(&_t->arrays) - 1);
+}
+
+static inline cmon_idx _parse_assign(_tokparse * _t)
+{
+    printf("_parse_assign\n\n");
+    cmon_idx name_tok = _tok_check(_t, _tokk_name);
+    printf("DA TOK %lu\n", name_tok);
+    printf("DA NAME %s\n", _tok_str_view(_t, name_tok).begin);
+    _tok_check(_t, _tokk_assign);
+    cmon_idx rhs = _parse_value(_t);
+    cmon_dyn_arr_append(&_t->key_value_pairs, ((_key_val){ _tok_str_view(_t, name_tok), rhs }));
+    printf("_parse_assign end\n\n");
+    return _add_node(_t, cmon_tinik_assignment, cmon_dyn_arr_count(&_t->key_value_pairs) - 1);
+}
+
+static inline cmon_idx _parse_obj(_tokparse * _t, cmon_bool _is_root_obj)
+{
+    if (!_is_root_obj)
+    {
+        _tok_check(_t, _tokk_curl_open);
+    }
+
+    cmon_idx ib = cmon_idx_buf_mng_get(_t->idx_buf_mng);
+    while (!_tok_is_current(_t, _tokk_curl_close, _tokk_eof))
+    {
+        printf("boop\n");
+        cmon_idx_buf_append(_t->idx_buf_mng, ib, _parse_assign(_t));
+        _tok_accept(_t, _tokk_comma);
+    }
+    if (!_is_root_obj)
+    {
+        _tok_check(_t, _tokk_curl_close);
+    }
+
+    cmon_idx begin = _add_indices(
+        _t, cmon_idx_buf_ptr(_t->idx_buf_mng, ib), cmon_idx_buf_count(_t->idx_buf_mng, ib));
+    cmon_dyn_arr_append(&_t->objs, ((_obj){ begin, cmon_dyn_arr_count(&_t->idx_buffer), NULL }));
     cmon_idx_buf_mng_return(_t->idx_buf_mng, ib);
     return _add_node(_t, cmon_tinik_obj, cmon_dyn_arr_count(&_t->objs) - 1);
 }
 
 static inline cmon_idx _parse_value(_tokparse * _t)
 {
+    printf("_parse_value\n\n");
+    cmon_idx tok;
+    if (_tok_accept_ot(_t, &tok, _tokk_string))
+    {
+        printf("str val\n");
+        cmon_dyn_arr_append(&_t->str_values, _tok_str_view(_t, tok));
+        printf("[o\n");
+        return _add_node(_t, cmon_tinik_value, cmon_dyn_arr_count(&_t->str_values) - 1);
+    }
+    else if (_tok_is_current(_t, _tokk_square_open))
+    {
+        return _parse_array(_t);
+    }
+    else if (_tok_is_current(_t, _tokk_curl_open))
+    {
+        return _parse_obj(_t, cmon_false);
+    }
+
+    _err(_t,
+         "unexpected token '%s', string, object or array expected.",
+         _tokk_to_str(_tok_kind(_t, _t->tok_idx)));
+    return CMON_INVALID_IDX;
 }
 
-cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err_report * _out_err)
+cmon_tini * cmon_tini_parse(cmon_allocator * _alloc,
+                            const char * _name,
+                            const char * _txt,
+                            cmon_err_report * _out_err)
 {
     cmon_tini * ret = NULL;
     size_t len = strlen(_txt);
 
     // tokenize first
     _tokparse tn;
+    strcpy(tn.name, _name);
     tn.alloc = _alloc;
     tn.input = _txt;
     tn.pos = _txt;
     tn.end = _txt + len;
     tn.current_line = 1;
     tn.current_line_off = 1;
-    cmon_dyn_arr_init(&tn.tokens, _alloc, len / 4);
+    tn.idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
+    cmon_dyn_arr_init(&tn.tokens, _alloc, 2);
     tn.tok_idx = 0;
+    // cmon_dyn_arr_init(&tn.kinds, _alloc, len / 4);
+    // cmon_dyn_arr_init(&tn.data, _alloc, len / 4);
+    // cmon_dyn_arr_init(&tn.idx_buffer, _alloc, len / 4);
+    // cmon_dyn_arr_init(&tn.str_values, _alloc, len / 8);
+    // cmon_dyn_arr_init(&tn.key_value_pairs, _alloc, len / 8);
+    // cmon_dyn_arr_init(&tn.arrays, _alloc, len / 8);
+    // cmon_dyn_arr_init(&tn.objs, _alloc, len / 8);
     tn.err = cmon_err_report_make_empty();
-    tn.tmp_str_b = cmon_str_builder_create(_alloc, 512);
+    // tn.tmp_str_b = cmon_str_builder_create(_alloc, 512);
+    // tn.tk_str_builder = cmon_str_builder_create(_alloc, 256);
+
+    if (setjmp(tn.err_jmp))
+    {
+        goto end;
+    }
 
     _token tok;
     _tokk prev_kind = _tokk_none;
@@ -435,7 +534,19 @@ cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err
         {
             prev_kind = tok.kind;
         }
+
+        printf("what %p %p %lu\n",
+               tok.str_view.begin,
+               tok.str_view.end,
+               tok.str_view.end - tok.str_view.begin);
+        printf("DA TOK %.*s\n", tok.str_view.end - tok.str_view.begin, tok.str_view.begin);
     }
+
+    if (!cmon_err_report_is_empty(&tn.err))
+    {
+        goto end;
+    }
+
     // append eof token last
     tok.str_view.begin = tn.end;
     tok.str_view.end = tn.end;
@@ -443,13 +554,30 @@ cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _txt, cmon_err
     cmon_dyn_arr_append(&tn.tokens, tok);
 
     printf("tok count %lu\n", cmon_dyn_arr_count(&tn.tokens));
-    // then parse
+    for(size_t i=0; i<cmon_dyn_arr_count(&tn.tokens); ++i)
+    {
+                printf("what %p %p %lu\n",
+               tn.tokens[i].str_view.begin,
+               tn.tokens[i].str_view.end,
+               tn.tokens[i].str_view.end - tok.str_view.begin);
+        printf("DA TOK %.*s\n", tn.tokens[i].str_view.end - tn.tokens[i].str_view.begin, tn.tokens[i].str_view.begin);
+    }
+
+    // cmon_idx root_obj = _parse_assign(&tn);
+
+    // printf("node count %lu\n", cmon_dyn_arr_count(&tn.kinds));
+
+    // if (!cmon_err_report_is_empty(&tn.err))
+    // {
+    //     goto end;
+    // }
 
     // ret = CMON_CREATE(_alloc, cmon_tini);
     // ret->alloc = _alloc;
 
 end:
-    cmon_dyn_arr_dealloc(&tn.tokens);
+    *_out_err = tn.err;
+    // cmon_dyn_arr_dealloc(&tn.tokens);
     return ret;
 }
 

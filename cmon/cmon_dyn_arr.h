@@ -31,8 +31,8 @@
             void * _mem = cmon_allocator_realloc(                                                  \
                               _md->alloc,                                                          \
                               (cmon_mem_blk){                                                      \
-                                  _md, sizeof(*(_arr)) * _md->cap + sizeof(_cmon_dyn_arr_meta) },  \
-                              sizeof(*(_arr)) * _count + sizeof(_cmon_dyn_arr_meta))               \
+                                  _md, sizeof(**(_arr)) * _md->cap + sizeof(_cmon_dyn_arr_meta) }, \
+                              sizeof(**(_arr)) * _count + sizeof(_cmon_dyn_arr_meta))              \
                               .ptr;                                                                \
             _cmon_dyn_arr_meta * _nmd = _mem;                                                      \
             *_nmd = _old_md;                                                                       \

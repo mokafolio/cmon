@@ -7,18 +7,6 @@
 #include <stdarg.h>
 
 // for now the parser stops on the first error. we simpy save the error and jump out of parsing.
-// #define _err(_p, _tok, _msg, ...) \
-//     do \
-//     { \
-//         cmon_str_builder_clear(_p->err_str_builder); \
-//         cmon_str_builder_append_fmt(_p->err_str_builder, _msg, ##__VA_ARGS__); \
-//         _p->err = cmon_err_report_make(cmon_src_filename(_p->src, _p->src_file_idx), \
-//                                        cmon_tokens_line(_p->tokens, _tok), \
-//                                        cmon_tokens_line_offset(_p->tokens, _tok), \
-//                                        cmon_str_builder_c_str(_p->err_str_builder)); \
-//         longjmp(_p->err_jmp, 1); \
-//     } while (0)
-
 #define _err(_p, _tok, _fmt, ...)                                                                  \
     do                                                                                             \
     {                                                                                              \

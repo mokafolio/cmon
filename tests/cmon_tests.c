@@ -16,7 +16,7 @@ UTEST(cmon, dyn_arr_tests)
     cmon_allocator a = cmon_mallocator_make();
 
     cmon_dyn_arr(int) vec = NULL;
-    cmon_dyn_arr_init(&vec, &a, 2);
+    cmon_dyn_arr_init(&vec, &a, 1);
     cmon_dyn_arr_append(&vec, 1);
     cmon_dyn_arr_append(&vec, 2);
     EXPECT_EQ(cmon_dyn_arr_count(&vec), 2);
@@ -837,7 +837,12 @@ UTEST(cmon, tini)
     //@TODO: This needs a lot more testing :)
     cmon_allocator a = cmon_mallocator_make();
     cmon_err_report err;
-    cmon_tini * t = cmon_tini_parse(&a, "bar = #boink\n\"1\"", &err);
+    cmon_tini * t = cmon_tini_parse(&a, "foo.tini", "bar = 1", &err);
+
+    if(!cmon_err_report_is_empty(&err))
+    {
+        cmon_err_report_print(&err);
+    }
 
     cmon_tini_destroy(t);
     cmon_allocator_dealloc(&a);
