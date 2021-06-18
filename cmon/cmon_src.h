@@ -21,6 +21,7 @@ CMON_API cmon_tokens * cmon_src_tokens(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_path(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_filename(cmon_src * _src, cmon_idx _file_idx);
 CMON_API const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx);
+CMON_API cmon_str_view cmon_src_line(cmon_src * _src, cmon_idx _file_idx, size_t _line);
 CMON_API cmon_idx cmon_src_mod_src_idx(cmon_src * _src, cmon_idx _file_idx);
 CMON_API size_t cmon_src_count(cmon_src * _src);
 

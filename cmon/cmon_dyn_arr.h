@@ -63,10 +63,13 @@
 #define cmon_dyn_arr_dealloc(_arr)                                                                 \
     do                                                                                             \
     {                                                                                              \
-        _cmon_dyn_arr_meta * md = _cmon_dyn_arr_md(_arr);                                          \
-        cmon_allocator_free(                                                                       \
-            md->alloc,                                                                             \
-            (cmon_mem_blk){ md, sizeof(_cmon_dyn_arr_meta) + sizeof(*(*(_arr))) * md->cap });      \
+        if ((*_arr))                                                                               \
+        {                                                                                          \
+            _cmon_dyn_arr_meta * md = _cmon_dyn_arr_md(_arr);                                      \
+            cmon_allocator_free(                                                                   \
+                md->alloc,                                                                         \
+                (cmon_mem_blk){ md, sizeof(_cmon_dyn_arr_meta) + sizeof(*(*(_arr))) * md->cap });  \
+        }                                                                                          \
     } while (0)
 #define cmon_dyn_arr_remove(_arr, _idx)                                                            \
     do                                                                                             \

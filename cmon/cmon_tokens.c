@@ -4,6 +4,11 @@
 #include <cmon/cmon_tokens.h>
 #include <stdarg.h>
 
+//@TODO: a lot of this is pretty messy, especially how kinds/token are separate right now (which is
+// good, but a lot of the code can be a lot nicer). i.e. instead of having some stuff live in
+// cmon_tokens and some in _tokenize_session, put everything in _tokenize_session and only create
+// the cmon_tokens after successful completion.
+
 // for now the lexer stops on the first error. we simpy save the error.
 #define _err(_l, _msg, ...)                                                                        \
     do                                                                                             \
@@ -31,6 +36,7 @@ typedef struct cmon_tokens
     cmon_allocator * alloc;
     cmon_dyn_arr(cmon_tokk) kinds;
     cmon_dyn_arr(_token) tokens;
+    cmon_dyn_arr(cmon_str_view) lines;
     cmon_idx tok_idx;
 } cmon_tokens;
 
@@ -42,6 +48,8 @@ typedef struct
     const char * input;
     const char * pos;
     const char * end;
+    const char * line_start;
+    cmon_dyn_arr(cmon_str_view) lines;
     cmon_idx current_line;
     cmon_idx current_line_off;
     cmon_err_report err;
@@ -54,8 +62,15 @@ static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
     _l->current_line_off += _advance;
 }
 
+static inline void _finish_current_line(_tokenize_session * _l)
+{
+    cmon_dyn_arr_append(&_l->lines, ((cmon_str_view){ _l->line_start, _l->pos }));
+    _l->line_start = _l->pos + 1;
+}
+
 static inline void _advance_line(_tokenize_session * _l)
 {
+    _finish_current_line(_l);
     ++_l->current_line;
     _l->current_line_off = 0;
 }
@@ -175,10 +190,8 @@ static inline void _parse_float_or_int_literal(_tokenize_session * _l, cmon_bool
 {
     cmon_bool is_float = cmon_false;
     cmon_bool is_hex = cmon_false;
-    printf("start %s!\n", _l->pos);
     if (isdigit(*_l->pos))
     {
-        printf("consume\n");
         // skip hex portion
         if (*_l->pos == '0' && (_next_char_is(_l, 'x') || _next_char_is(_l, 'X')))
         {
@@ -487,7 +500,6 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_tokk * _out_kind, _tok
             else
                 *_out_kind = cmon_tokk_int;
 
-            printf("DA LIT %.*s\n\n", _l->pos - startp, startp);
         }
         else
         {
@@ -508,6 +520,7 @@ static inline cmon_tokens * _tokens_create(cmon_allocator * _alloc)
     ret->alloc = _alloc;
     cmon_dyn_arr_init(&ret->kinds, _alloc, 128);
     cmon_dyn_arr_init(&ret->tokens, _alloc, 128);
+    ret->lines = NULL;
     ret->tok_idx = CMON_INVALID_IDX;
     return ret;
 }
@@ -527,15 +540,23 @@ static inline void _tokenize_session_init(_tokenize_session * _s,
     _s->input = code;
     _s->pos = code;
     _s->end = code + strlen(code);
+    _s->line_start = code;
     _s->current_line = 1;
     _s->current_line_off = 1;
+    cmon_dyn_arr_init(&_s->lines, _alloc, 32);
     _s->err = cmon_err_report_make_empty();
     //@TODO: lazy init the string builder only on error
     _s->tmp_str_b = cmon_str_builder_create(_alloc, 512);
 }
 
-static inline void _tokenize_session_dealloc(_tokenize_session * _s)
+static inline void _tokenize_session_dealloc(_tokenize_session * _s, cmon_bool _was_successful)
 {
+    // if tokenization was successful, some ownership was moved to cmon_tokens, in that case we
+    // don't free it
+    if (!_was_successful)
+    {
+        cmon_dyn_arr_dealloc(&_s->lines);
+    }
     cmon_str_builder_destroy(_s->tmp_str_b);
 }
 
@@ -552,7 +573,7 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
     cmon_tokens * ret = _tokens_create(_alloc);
     while (_next_token(&s, &kind, &tok) && cmon_err_report_is_empty(&s.err))
     {
-        //sanity check. tokens can't consume no characters
+        // sanity check. tokens can't consume no characters
         assert(tok.str_view.begin < tok.str_view.end);
         cmon_dyn_arr_append(&ret->kinds, kind);
         cmon_dyn_arr_append(&ret->tokens, tok);
@@ -575,9 +596,19 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
         cmon_dyn_arr_append(&ret->kinds, cmon_tokk_eof);
         cmon_dyn_arr_append(&ret->tokens, tok);
         ret->tok_idx = 0;
+
+        _finish_current_line(&s);
+        ret->lines = s.lines;
+
+        // printf("DA FOCKING LINES\n");
+        // for (size_t i = 0; i < cmon_dyn_arr_count(&ret->lines); ++i)
+        // {
+        //     printf("%lu: %.*s\n", i, ret->lines[i].end - ret->lines[i].begin, ret->lines[i].begin);
+        // }
+        // printf("\n\n");
     }
 
-    _tokenize_session_dealloc(&s);
+    _tokenize_session_dealloc(&s, ret != NULL);
     return ret;
 }
 
@@ -585,6 +616,7 @@ void cmon_tokens_destroy(cmon_tokens * _t)
 {
     if (!_t)
         return;
+    cmon_dyn_arr_dealloc(&_t->lines);
     cmon_dyn_arr_dealloc(&_t->tokens);
     cmon_dyn_arr_dealloc(&_t->kinds);
     CMON_DESTROY(_t->alloc, _t);

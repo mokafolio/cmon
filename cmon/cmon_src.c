@@ -110,6 +110,11 @@ const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx)
     return _get_file(_src, _file_idx)->code;
 }
 
+cmon_str_view cmon_src_line(cmon_src * _src, cmon_idx _file_idx, size_t _line)
+{
+
+}
+
 cmon_idx cmon_src_mod_src_idx(cmon_src * _src, cmon_idx _file_idx)
 {
     return _get_file(_src, _file_idx)->mod_src_idx;
