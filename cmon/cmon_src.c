@@ -1,5 +1,6 @@
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_src.h>
+#include <cmon/cmon_tokens.h>
 #include <cmon/cmon_util.h>
 
 typedef struct
@@ -9,7 +10,7 @@ typedef struct
     char * code;
     cmon_ast * ast;
     cmon_tokens * tokens;
-    cmon_idx mod_src_idx; //src file index within the module
+    cmon_idx mod_src_idx; // src file index within the module
 } cmon_src_file;
 
 typedef struct cmon_src
@@ -58,7 +59,7 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
 
 cmon_bool cmon_src_load_code(cmon_src * _src, cmon_idx _file_idx)
 {
-    if(_get_file(_src, _file_idx)->code)
+    if (_get_file(_src, _file_idx)->code)
         return cmon_false;
 
     return cmon_false;
@@ -112,7 +113,8 @@ const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx)
 
 cmon_str_view cmon_src_line(cmon_src * _src, cmon_idx _file_idx, size_t _line)
 {
-
+    assert(cmon_src_tokens(_src, _file_idx));
+    return cmon_tokens_line_str_view(cmon_src_tokens(_src, _file_idx), _line);
 }
 
 cmon_idx cmon_src_mod_src_idx(cmon_src * _src, cmon_idx _file_idx)

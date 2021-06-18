@@ -765,6 +765,12 @@ cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...)
     return ret;
 }
 
+cmon_str_view cmon_tokens_line_str_view(cmon_tokens * _t, size_t _line)
+{
+    assert(_line < cmon_dyn_arr_count(&_t->lines));
+    return _t->lines[_line];
+}
+
 // cmon_bool cmon_tokens_is(cmon_tokens * _t, cmon_idx _idx, cmon_tokk _kind)
 // {
 //     return _get_kind(_t, _idx) == _kind;
