@@ -111,26 +111,30 @@ void cmon_log_write(cmon_log * _log, const char * _fmt, ...)
     va_end(args);
 }
 
-void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err)
+void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err, cmon_src * _src)
 {
     cmon_str_builder_clear(_log->str_builder);
     cmon_str_builder_append_fmt(_log->str_builder,
                                 "error: %s:%lu:%lu: %s",
-                                _err->filename,
-                                _err->line,
-                                _err->line_offset,
+                                cmon_err_report_filename(_err, _src),
+                                cmon_err_report_line(_err, _src),
+                                cmon_err_report_line_offset(_err, _src),
                                 _err->msg);
     _write_to_file(_log, "", cmon_str_builder_c_str(_log->str_builder));
     if (_log->verbose)
     {
-        printf("%s%serror:%s %s:%lu:%lu: %s\n%*.s^\n",
+        cmon_str_view line_sv = cmon_err_report_line_str_view(_err, _src);
+        int loff = (int)cmon_err_report_line_offset(_err, _src);
+        printf("%s%serror:%s %s:%lu:%lu: %s\n%.*s\n%*.s^\n",
                COL_RED,
                COL_BOLD,
                COL_RESET,
-               _err->filename,
-               _err->line,
-               _err->line_offset,
+               cmon_err_report_filename(_err, _src),
+               cmon_err_report_line(_err, _src),
+               cmon_err_report_line_offset(_err, _src),
                _err->msg,
-               _err->line_offset);
+               line_sv.end - line_sv.begin,
+               line_sv.begin,
+               loff - 1);
     }
 }

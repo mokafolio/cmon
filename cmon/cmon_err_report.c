@@ -1,38 +1,62 @@
 #include <cmon/cmon_err_report.h>
+#include <cmon/cmon_src.h>
+#include <cmon/cmon_tokens.h>
 
 cmon_err_report cmon_err_report_make_empty()
 {
     cmon_err_report ret;
-    memset(&ret, 0, sizeof(ret));
+    ret.src_file_idx = CMON_INVALID_IDX;
     return ret;
 }
 
-cmon_err_report cmon_err_report_make(const char * _file,
-                                     size_t _line,
-                                     size_t _line_off,
+cmon_err_report cmon_err_report_make(cmon_idx _src_file_idx,
+                                     cmon_idx _tok_idx,
                                      const char * _msg)
 {
     cmon_err_report ret;
-    assert(strlen(_file) < CMON_FILENAME_MAX - 1);
     assert(strlen(_msg) < CMON_ERR_MSG_MAX - 1);
-    ret.line = _line;
-    ret.line_offset = _line_off;
-    strcpy(ret.filename, _file);
+    ret.src_file_idx = _src_file_idx;
+    ret.token_idx = _tok_idx;
     strcpy(ret.msg, _msg);
     return ret;
 }
 
-cmon_err_report cmon_err_report_copy(cmon_err_report * _er)
-{
-    return *_er;
-}
-
 cmon_bool cmon_err_report_is_empty(cmon_err_report * _er)
 {
-    return _er->line == 0;
+    return !cmon_is_valid_idx(_er->src_file_idx);
 }
 
-void cmon_err_report_print(cmon_err_report * _er)
+static inline cmon_tokens * _err_toks(cmon_err_report * _er, cmon_src * _src)
 {
-    printf("%s:%lu:%lu: %s\n", _er->filename, _er->line, _er->line_offset, _er->msg);
+    assert(cmon_is_valid_idx(_er->src_file_idx));
+    return cmon_src_tokens(_src, _er->src_file_idx);
+}
+
+const char * cmon_err_report_filename(cmon_err_report * _er, cmon_src * _src)
+{
+    return cmon_src_filename(_src, _er->src_file_idx);
+}
+
+size_t cmon_err_report_line(cmon_err_report * _er, cmon_src * _src)
+{
+    return cmon_tokens_line(_err_toks(_er, _src), _er->token_idx);
+}
+
+size_t cmon_err_report_line_offset(cmon_err_report * _er, cmon_src * _src)
+{
+    return cmon_tokens_line_offset(_err_toks(_er, _src), _er->token_idx);
+}
+
+cmon_str_view cmon_err_report_line_str_view(cmon_err_report * _er, cmon_src * _src)
+{
+    return cmon_src_line(_src, _er->src_file_idx, cmon_err_report_line(_er, _src));
+}
+
+void cmon_err_report_print(cmon_err_report * _er, cmon_src * _src)
+{
+    printf("%s:%lu:%lu: %s\n",
+           cmon_err_report_filename(_er, _src),
+           cmon_err_report_line(_er, _src),
+           cmon_err_report_line_offset(_er, _src),
+           _er->msg);
 }

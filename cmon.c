@@ -85,7 +85,7 @@ int main(int _argc, const char * _args[])
         cmon_builder_st_errors(builder, &errs, &count);
         for(size_t i=0; i<count; ++i)
         {
-            cmon_err_report_print(&errs[i]);
+            cmon_err_report_print(&errs[i], src);
         }
     }
 

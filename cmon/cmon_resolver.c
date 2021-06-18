@@ -68,35 +68,35 @@ typedef struct cmon_resolver
     cmon_idx main_fn_sym;
 } cmon_resolver;
 
-static inline void _emit_err(cmon_str_builder * _str_builder,
-                             cmon_dyn_arr(cmon_err_report) * _out_errs,
-                             cmon_src * _src,
-                             cmon_idx _src_file_idx,
-                             cmon_idx _tok_idx,
-                             size_t _max_errors,
-                             jmp_buf * _jmp,
-                             const char * _fmt,
-                             ...)
-{
-    va_list args;
-    cmon_tokens * toks;
-    va_start(args, _fmt);
-    cmon_str_builder_clear(_str_builder);
+// static inline void _emit_err(cmon_str_builder * _str_builder,
+//                              cmon_dyn_arr(cmon_err_report) * _out_errs,
+//                              cmon_src * _src,
+//                              cmon_idx _src_file_idx,
+//                              cmon_idx _tok_idx,
+//                              size_t _max_errors,
+//                              jmp_buf * _jmp,
+//                              const char * _fmt,
+//                              ...)
+// {
+//     va_list args;
+//     cmon_tokens * toks;
+//     va_start(args, _fmt);
+//     cmon_str_builder_clear(_str_builder);
 
-    toks = cmon_src_tokens(_src, _src_file_idx);
-    cmon_str_builder_append_fmt_v(_str_builder, _fmt, args);
-    cmon_dyn_arr_append(_out_errs,
-                        cmon_err_report_make(cmon_src_filename(_src, _src_file_idx),
-                                             cmon_tokens_line(toks, _tok_idx),
-                                             cmon_tokens_line_offset(toks, _tok_idx),
-                                             cmon_str_builder_c_str(_str_builder)));
-    va_end(args);
+//     toks = cmon_src_tokens(_src, _src_file_idx);
+//     cmon_str_builder_append_fmt_v(_str_builder, _fmt, args);
+//     cmon_dyn_arr_append(_out_errs,
+//                         cmon_err_report_make(cmon_src_filename(_src, _src_file_idx),
+//                                              cmon_tokens_line(toks, _tok_idx),
+//                                              cmon_tokens_line_offset(toks, _tok_idx),
+//                                              cmon_str_builder_c_str(_str_builder)));
+//     va_end(args);
 
-    if (cmon_dyn_arr_count(_out_errs) >= _max_errors)
-    {
-        longjmp(*_jmp, 1);
-    }
-}
+//     if (cmon_dyn_arr_count(_out_errs) >= _max_errors)
+//     {
+//         longjmp(*_jmp, 1);
+//     }
+// }
 
 // #define _fr_err(_fr, _tok, _fmt, ...)                                                              \
 //     do                                                                                             \

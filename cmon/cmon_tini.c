@@ -69,7 +69,7 @@ typedef struct
     cmon_idx tok_idx;
     _tini_shared ts;
     // error
-    cmon_err_report err;
+    cmon_tini_err err;
     jmp_buf err_jmp;
     cmon_str_builder * tmp_str_b;
     cmon_str_builder * tk_str_builder;
@@ -88,15 +88,42 @@ typedef struct cmon_tini
     cmon_idx root_obj;
 } cmon_tini;
 
+static inline cmon_tini_err _err_make(const char * _file,
+                                      size_t _line,
+                                      size_t _line_off,
+                                      const char * _msg)
+{
+    cmon_tini_err ret;
+    assert(strlen(_file) < CMON_FILENAME_MAX - 1);
+    assert(strlen(_msg) < CMON_ERR_MSG_MAX - 1);
+    ret.line = _line;
+    ret.line_offset = _line_off;
+    strcpy(ret.filename, _file);
+    strcpy(ret.msg, _msg);
+    return ret;
+}
+
+static inline cmon_tini_err _err_make_empty()
+{
+    cmon_tini_err ret;
+    memset(&ret, 0, sizeof(ret));
+    return ret;
+}
+
+static inline cmon_bool _err_is_empty(cmon_tini_err * _err)
+{
+    return _err->line == 0;
+}
+
 #define _err(_tp, _fmt, ...)                                                                       \
     do                                                                                             \
     {                                                                                              \
         cmon_str_builder_clear(_tp->tmp_str_b);                                                    \
         cmon_str_builder_append_fmt(_tp->tmp_str_b, _fmt, ##__VA_ARGS__);                          \
-        _tp->err = cmon_err_report_make(_tp->name,                                                 \
-                                        _tp->current_line,                                         \
-                                        _tp->current_line_off,                                     \
-                                        cmon_str_builder_c_str(_tp->tmp_str_b));                   \
+        _tp->err = _err_make(_tp->name,                                                            \
+                             _tp->current_line,                                                    \
+                             _tp->current_line_off,                                                \
+                             cmon_str_builder_c_str(_tp->tmp_str_b));                              \
         longjmp(_tp->err_jmp, 1);                                                                  \
     } while (0)
 
@@ -181,34 +208,34 @@ static cmon_bool _next_token(_tokparse * _t, _token * _out_tok, _tokk _prev_kind
         // if (_prev_kind == _tokk_assign || _prev_kind == _tokk_comma ||
         //     _prev_kind == _tokk_square_open)
         // {
-            // if this is an explicit string/multiline string
-            if (*_t->pos == '"')
+        // if this is an explicit string/multiline string
+        if (*_t->pos == '"')
+        {
+            _advance_pos(_t, 1);
+            _out_tok->str_view.begin = _t->pos;
+            while (*_t->pos != '"' && _t->pos != _t->end)
             {
-                _advance_pos(_t, 1);
-                _out_tok->str_view.begin = _t->pos;
-                while (*_t->pos != '"' && _t->pos != _t->end)
+                if (*_t->pos == '\n')
                 {
-                    if (*_t->pos == '\n')
-                    {
-                        _advance_line(_t);
-                    }
-                    _advance_pos(_t, 1);
+                    _advance_line(_t);
                 }
-
-                // skip closing "
-                _out_tok->str_view.end = _t->pos;
                 _advance_pos(_t, 1);
-                _out_tok->kind = _tokk_string;
-                return cmon_true;
-            }
-            else
-            {
-                while (*_t->pos != ',' && *_t->pos != ']' && *_t->pos != '}' && *_t->pos != '=' &&
-                       !isspace(*_t->pos) && _t->pos != _t->end)
-                    _advance_pos(_t, 1);
             }
 
+            // skip closing "
+            _out_tok->str_view.end = _t->pos;
+            _advance_pos(_t, 1);
             _out_tok->kind = _tokk_string;
+            return cmon_true;
+        }
+        else
+        {
+            while (*_t->pos != ',' && *_t->pos != ']' && *_t->pos != '}' && *_t->pos != '=' &&
+                   !isspace(*_t->pos) && _t->pos != _t->end)
+                _advance_pos(_t, 1);
+        }
+
+        _out_tok->kind = _tokk_string;
         // }
         // else
         // {
@@ -269,13 +296,13 @@ static inline cmon_bool _is_valid_identifier(_tokparse * _t, cmon_idx _tok_idx)
 {
     cmon_str_view sv = _tok_str_view(_t, _tok_idx);
     char first = *sv.begin;
-    if(!isalpha(first) && first != '_')
+    if (!isalpha(first) && first != '_')
         return cmon_false;
 
     const char * pos = sv.begin;
-    while(pos != sv.end)
+    while (pos != sv.end)
     {
-        if(!isalnum(*pos) && *pos != '_')
+        if (!isalnum(*pos) && *pos != '_')
             return cmon_false;
 
         ++pos;
@@ -437,7 +464,8 @@ static inline cmon_idx _parse_array(_tokparse * _t)
 
     cmon_idx begin = _add_indices(
         _t, cmon_idx_buf_ptr(_t->idx_buf_mng, ib), cmon_idx_buf_count(_t->idx_buf_mng, ib));
-    cmon_dyn_arr_append(&_t->ts.arr_objs, ((_array_or_obj){ begin, cmon_dyn_arr_count(&_t->ts.idx_buffer) }));
+    cmon_dyn_arr_append(&_t->ts.arr_objs,
+                        ((_array_or_obj){ begin, cmon_dyn_arr_count(&_t->ts.idx_buffer) }));
     cmon_idx_buf_mng_return(_t->idx_buf_mng, ib);
     return _add_node(_t, cmon_tinik_array, cmon_dyn_arr_count(&_t->ts.arr_objs) - 1);
 }
@@ -445,7 +473,7 @@ static inline cmon_idx _parse_array(_tokparse * _t)
 static inline cmon_idx _parse_assign(_tokparse * _t)
 {
     cmon_idx name_tok = _tok_check(_t, _tokk_string);
-    if(!_is_valid_identifier(_t, name_tok))
+    if (!_is_valid_identifier(_t, name_tok))
     {
         cmon_str_view sv = _tok_str_view(_t, name_tok);
         _err(_t, "invalid identifier '%.*s'", sv.end - sv.begin, sv.begin);
@@ -476,7 +504,8 @@ static inline cmon_idx _parse_obj(_tokparse * _t, cmon_bool _is_root_obj)
 
     cmon_idx begin = _add_indices(
         _t, cmon_idx_buf_ptr(_t->idx_buf_mng, ib), cmon_idx_buf_count(_t->idx_buf_mng, ib));
-    cmon_dyn_arr_append(&_t->ts.arr_objs, ((_array_or_obj){ begin, cmon_dyn_arr_count(&_t->ts.idx_buffer)}));
+    cmon_dyn_arr_append(&_t->ts.arr_objs,
+                        ((_array_or_obj){ begin, cmon_dyn_arr_count(&_t->ts.idx_buffer) }));
     cmon_idx_buf_mng_return(_t->idx_buf_mng, ib);
     return _add_node(_t, cmon_tinik_obj, cmon_dyn_arr_count(&_t->ts.arr_objs) - 1);
 }
@@ -517,7 +546,7 @@ static inline void _destroy_shared_data(_tini_shared * _ts)
 cmon_tini * cmon_tini_parse(cmon_allocator * _alloc,
                             const char * _name,
                             const char * _txt,
-                            cmon_err_report * _out_err)
+                            cmon_tini_err * _out_err)
 {
     cmon_tini * ret = NULL;
     size_t len = strlen(_txt);
@@ -540,7 +569,7 @@ cmon_tini * cmon_tini_parse(cmon_allocator * _alloc,
     cmon_dyn_arr_init(&tn.ts.str_values, _alloc, len / 8);
     cmon_dyn_arr_init(&tn.ts.key_value_pairs, _alloc, len / 8);
     cmon_dyn_arr_init(&tn.ts.arr_objs, _alloc, len / 4);
-    tn.err = cmon_err_report_make_empty();
+    tn.err = _err_make_empty();
     tn.tmp_str_b = cmon_str_builder_create(_alloc, 512);
     tn.tk_str_builder = cmon_str_builder_create(_alloc, 256);
 
@@ -575,7 +604,7 @@ cmon_tini * cmon_tini_parse(cmon_allocator * _alloc,
 
 end:
     *_out_err = tn.err;
-    if (!cmon_err_report_is_empty(&tn.err))
+    if (!_err_is_empty(&tn.err))
     {
         _destroy_shared_data(&tn.ts);
     }
@@ -588,14 +617,13 @@ end:
 
 cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc,
                                  const char * _path,
-                                 cmon_err_report * _out_err)
+                                 cmon_tini_err * _out_err)
 {
-
 }
 
 void cmon_tini_destroy(cmon_tini * _t)
 {
-    if(!_t)
+    if (!_t)
         return;
 
     _destroy_shared_data(&_t->ts);
@@ -626,7 +654,8 @@ static inline cmon_idx _get_data(cmon_tini * _t, cmon_idx _idx)
 
 static inline _array_or_obj * _get_array_obj(cmon_tini * _t, cmon_idx _idx)
 {
-    assert(_get_tini_kind(_t, _idx) == cmon_tinik_array || _get_tini_kind(_t, _idx) == cmon_tinik_obj);
+    assert(_get_tini_kind(_t, _idx) == cmon_tinik_array ||
+           _get_tini_kind(_t, _idx) == cmon_tinik_obj);
     cmon_idx data_idx = _get_data(_t, _idx);
     assert(data_idx < cmon_dyn_arr_count(&_t->ts.arr_objs));
     return &_t->ts.arr_objs[data_idx];
@@ -657,10 +686,10 @@ static inline cmon_str_view _get_str_view(cmon_tini * _t, cmon_idx _idx)
 cmon_idx cmon_tini_obj_find(cmon_tini * _t, cmon_idx _idx, const char * _key)
 {
     assert(_get_tini_kind(_t, _idx) == cmon_tinik_obj);
-    for(size_t i=0; i<cmon_tini_child_count(_t, _idx); ++i)
+    for (size_t i = 0; i < cmon_tini_child_count(_t, _idx); ++i)
     {
         cmon_idx child = cmon_tini_child(_t, _idx, i);
-        if(cmon_str_view_c_str_cmp(cmon_tini_pair_key(_t, child), _key) == 0)
+        if (cmon_str_view_c_str_cmp(cmon_tini_pair_key(_t, child), _key) == 0)
         {
             return cmon_tini_pair_value(_t, child);
         }

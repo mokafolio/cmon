@@ -2,7 +2,6 @@
 #define CMON_CMON_TINI_H
 
 #include <cmon/cmon_allocator.h>
-#include <cmon/cmon_err_report.h>
 
 typedef enum
 {
@@ -12,10 +11,18 @@ typedef enum
     cmon_tinik_array
 } cmon_tinik;
 
+typedef struct
+{
+    size_t line;
+    size_t line_offset;
+    char filename[CMON_FILENAME_MAX];
+    char msg[CMON_ERR_MSG_MAX];
+} cmon_tini_err;
+
 typedef struct cmon_tini cmon_tini;
 
-CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _name, const char * _txt, cmon_err_report * _out_err);
-CMON_API cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc, const char * _path, cmon_err_report * _out_err);
+CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _name, const char * _txt, cmon_tini_err * _out_err);
+CMON_API cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc, const char * _path, cmon_tini_err * _out_err);
 CMON_API void cmon_tini_destroy(cmon_tini * _t);
 
 CMON_API cmon_tinik cmon_tini_kind(cmon_tini * _t, cmon_idx _idx);
