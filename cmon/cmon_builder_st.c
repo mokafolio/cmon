@@ -100,7 +100,8 @@ static inline void _add_resolver_errors(cmon_builder_st * _b,
 
 cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
                                 cmon_codegen * _codegen,
-                                const char * _build_dir)
+                                const char * _build_dir,
+                                cmon_log * _log)
 {
     size_t i, j;
 

@@ -78,7 +78,7 @@ int main(int _argc, const char * _args[])
 
     cmon_codegen cgen = cmon_codegen_c_make(&alloc);
 
-    if (cmon_builder_st_build(builder, &cgen, build_path))
+    if (cmon_builder_st_build(builder, &cgen, build_path, NULL))
     {
         cmon_err_report * errs;
         size_t count;

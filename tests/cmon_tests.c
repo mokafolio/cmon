@@ -572,7 +572,7 @@ static cmon_bool _resolve_test_fn_impl(module_adder_fn _fn, codegen_adder_fn _cf
 
     cmon_builder_st * builder = cmon_builder_st_create(&alloc, 1, src, mods);
     cmon_codegen cg = _cfn(&alloc);
-    if (cmon_builder_st_build(builder, &cg, "build"))
+    if (cmon_builder_st_build(builder, &cg, "build", NULL))
     {
         cmon_err_report * errs;
         size_t count;
@@ -850,12 +850,12 @@ UTEST(cmon, log)
     cmon_log * log = cmon_log_create(&a, "test.log", ".", cmon_true);
     cmon_src * src = cmon_src_create(&a);
 
-    cmon_log_write(log, "Hello World!");
+    cmon_log_write(log, "Hello World!\n");
 
     cmon_idx src01_idx = cmon_src_add(src, "foo/foo.cmon", "foo.cmon");
     cmon_src_set_code(src,
                       src01_idx,
-                      "boop #");
+                      "boop := 3.12214e");
 
     cmon_err_report err;
     cmon_tokens * tokens = cmon_tokenize(&a, src, src01_idx, &err);
@@ -864,6 +864,9 @@ UTEST(cmon, log)
     // cmon_err_report err = cmon_err_report_make("foo.cmon", 1, 2, "This is an error msg");
     cmon_log_write_err_report(log, &err, src);
 
+    cmon_log_write_styled(log, cmon_log_color_yellow, cmon_log_color_green, cmon_log_style_bold | cmon_log_style_underline, "whaduuup");
+    cmon_log_write_styled(log, cmon_log_color_default, cmon_log_color_red, cmon_log_style_none, "peeps");
+    cmon_log_write(log, "\n");
     cmon_tokens_destroy(tokens);
     cmon_src_destroy(src);
     cmon_log_destroy(log);
