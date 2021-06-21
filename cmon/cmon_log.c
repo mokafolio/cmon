@@ -286,13 +286,24 @@ static inline void _write_err(cmon_str_builder * _b,
     {
         _append_reset(_b);
     }
-    cmon_str_builder_append_fmt(
-        _b, " %s\n%.*s", _err->msg, tok_sv_first.begin - line_sv.begin, line_sv.begin);
+    // %02lu: %.*s
+    // cmon_err_report_line(_err, _src), tok_sv_first.begin - line_sv.begin, line_sv.begin
+    cmon_str_builder_append_fmt(_b, "%s\n", _err->msg);
+
+    size_t offset = cmon_str_builder_count(_b);
+
+    cmon_str_builder_append_fmt(_b, "%02lu: ", cmon_err_report_line(_err, _src));
+
+    offset = cmon_str_builder_count(_b) - offset;
+
+    cmon_str_builder_append_fmt(_b, "%.*s", tok_sv_first.begin - line_sv.begin, line_sv.begin);
+
     if (_add_styling)
     {
         _append_col_and_style(_b, cmon_log_color_default, cmon_log_color_red, cmon_log_style_none);
     }
-    cmon_str_builder_append_fmt(_b, "%.*s", tok_sv_last.end - tok_sv_first.begin, tok_sv_first.begin);
+    cmon_str_builder_append_fmt(
+        _b, "%.*s", tok_sv_last.end - tok_sv_first.begin, tok_sv_first.begin);
     if (_add_styling)
     {
         _append_reset(_b);
@@ -300,7 +311,8 @@ static inline void _write_err(cmon_str_builder * _b,
     cmon_str_builder_append_fmt(_b, "%.*s", line_sv.end - tok_sv_last.end, tok_sv_last.end);
 
     cmon_str_builder_append(_b, "\n");
-    for (size_t i = 0; i < loff - 1; i++)
+
+    for (size_t i = 0; i < loff + offset - 1; i++)
     {
         cmon_str_builder_append(_b, " ");
     }
@@ -324,27 +336,6 @@ static inline void _write_err(cmon_str_builder * _b,
 
 void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err, cmon_src * _src)
 {
-    // cmon_str_view line_sv = cmon_err_report_line_str_view(_err, _src);
-    // cmon_str_view tok_sv =
-    //     cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->token_idx);
-
-    // cmon_str_builder_clear(_log->str_builder);
-    // cmon_str_builder_append_fmt(_log->str_builder,
-    //                             "error: %s:%lu:%lu: %s\n%.*s\n",
-    //                             cmon_err_report_filename(_err, _src),
-    //                             cmon_err_report_line(_err, _src),
-    //                             cmon_err_report_line_offset(_err, _src),
-    //                             _err->msg,
-    //                             line_sv.end - line_sv.begin,
-    //                             line_sv.begin);
-
-    // for (size_t i = 0; i < loff - 1; i++)
-    // {
-    //     cmon_str_builder_append(_log->printf_str_builder, " ");
-    // }
-
-    cmon_err_report_print(_err, _src);
-
     _write_err(_log->str_builder, _err, _src, cmon_false);
     _write_to_file(_log, "", cmon_str_builder_c_str(_log->str_builder));
 
@@ -352,51 +343,5 @@ void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err, cmon_src
     {
         _write_err(_log->printf_str_builder, _err, _src, cmon_true);
         printf("%s\n", cmon_str_builder_c_str(_log->printf_str_builder));
-        // int loff = (int)cmon_err_report_line_offset(_err, _src);
-        // cmon_str_view line_sv = cmon_err_report_line_str_view(_err, _src);
-        // cmon_str_view tok_sv =
-        //     cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->token_idx);
-
-        // cmon_str_builder_clear(_log->printf_str_builder);
-        // _append_col_and_style(_log->printf_str_builder,
-        //                       cmon_log_color_red,
-        //                       cmon_log_color_default,
-        //                       cmon_log_style_bold);
-        // cmon_str_builder_append(_log->printf_str_builder, "error: ");
-        // _append_reset(_log->printf_str_builder);
-
-        // cmon_str_builder_append_fmt(_log->printf_str_builder,
-        //                             "%s:%lu:%lu: %s\n%.*s",
-        //                             cmon_err_report_filename(_err, _src),
-        //                             cmon_err_report_line(_err, _src),
-        //                             cmon_err_report_line_offset(_err, _src),
-        //                             _err->msg,
-        //                             line_sv.end - tok_sv.begin,
-        //                             line_sv.begin);
-        // _append_col_and_style(_log->printf_str_builder,
-        //                       cmon_log_color_default,
-        //                       cmon_log_color_red,
-        //                       cmon_log_style_none);
-        // cmon_str_builder_append_fmt(
-        //     _log->printf_str_builder, "%.*s", tok_sv.end - tok_sv.begin, tok_sv.begin);
-        // _append_reset(_log->printf_str_builder);
-        // cmon_str_builder_append(_log->printf_str_builder, "\n");
-        // for (size_t i = 0; i < loff - 1; i++)
-        // {
-        //     cmon_str_builder_append(_log->printf_str_builder, " ");
-        // }
-        // _append_col_and_style(_log->printf_str_builder,
-        //                       cmon_log_color_yellow,
-        //                       cmon_log_color_default,
-        //                       cmon_log_style_none);
-        // cmon_str_builder_append(_log->printf_str_builder, "^");
-
-        // for (size_t i = 0; i < tok_sv.end - tok_sv.begin - 1; i++)
-        // {
-        //     cmon_str_builder_append(_log->printf_str_builder, "~");
-        // }
-        // cmon_str_builder_append(_log->printf_str_builder, "\n");
-        // _append_reset(_log->printf_str_builder);
-        // printf("%s\n", cmon_str_builder_c_str(_log->printf_str_builder));
     }
 }
