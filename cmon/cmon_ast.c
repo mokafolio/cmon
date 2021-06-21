@@ -573,7 +573,7 @@ cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx)
     }
     else if (kind == cmon_astk_struct_init_field)
     {
-        return cmon_ast_token_last(_ast, cmon_ast_prefix_expr(_ast, _idx));
+        return cmon_ast_token_last(_ast, cmon_ast_struct_init_field_expr(_ast, _idx));
     }
     else if (kind == cmon_astk_fn_decl)
     {
@@ -586,6 +586,14 @@ cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx)
     else if (kind == cmon_astk_addr)
     {
         return cmon_ast_token_last(_ast, cmon_ast_addr_expr(_ast, _idx));
+    }
+    else if (kind == cmon_astk_selector)
+    {
+        return cmon_ast_selector_name_tok(_ast, _idx);
+    }
+    else if (kind == cmon_astk_var_decl)
+    {
+        return cmon_ast_token_last(_ast, cmon_ast_var_decl_expr(_ast, _idx));
     }
     else if (kind == cmon_astk_import)
     {
@@ -823,8 +831,8 @@ cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx)
     return _get_extra_data(_ast, _ast->left_right[_fn_idx].left + 1);
 }
 
-_extra_data_count_def(cmon_ast_struct_fields_count, cmon_astk_struct_decl, 2);
-_extra_data_getter_def(cmon_ast_struct_field, cmon_ast_struct_fields_count, 2);
+_extra_data_count_def(cmon_ast_struct_fields_count, cmon_astk_struct_decl, 3);
+_extra_data_getter_def(cmon_ast_struct_field, cmon_ast_struct_fields_count, 3);
 
 cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx)
 {
@@ -932,8 +940,8 @@ cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx)
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
-_extra_data_count_def(cmon_ast_call_args_count, cmon_astk_call, 1);
-_extra_data_getter_def(cmon_ast_call_arg, cmon_ast_call_args_count, 1);
+_extra_data_count_def(cmon_ast_call_args_count, cmon_astk_call, 2);
+_extra_data_getter_def(cmon_ast_call_arg, cmon_ast_call_args_count, 2);
 _extra_data_count_def(cmon_ast_array_init_exprs_count, cmon_astk_array_init, 1);
 _extra_data_getter_def(cmon_ast_array_init_expr, cmon_ast_array_init_exprs_count, 1);
 
@@ -946,7 +954,7 @@ cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx)
 cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx)
 {
     assert(_get_kind(_ast, _idx) == cmon_astk_index);
-    return _ast->left_right[_idx].left + 1;
+    return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
 cmon_idx cmon_ast_struct_init_field_name_tok(cmon_ast * _ast, cmon_idx _idx)
@@ -985,8 +993,8 @@ cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx)
     return _ast->left_right[_idx].right;
 }
 
-_extra_data_count_def(cmon_ast_struct_init_fields_count, cmon_astk_struct_init, 2);
-_extra_data_getter_def(cmon_ast_struct_init_field, cmon_ast_struct_init_fields_count, 2);
+_extra_data_count_def(cmon_ast_struct_init_fields_count, cmon_astk_struct_init, 3);
+_extra_data_getter_def(cmon_ast_struct_init_field, cmon_ast_struct_init_fields_count, 3);
 
 void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast,
                                                      cmon_idx _idx,

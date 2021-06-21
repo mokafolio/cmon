@@ -1160,6 +1160,7 @@ static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmo
     cmon_idx idx_expr = cmon_ast_index_expr(_fr_ast(_fr), _ast_idx);
     cmon_idx left_type = _resolve_expr(_fr, _scope, lexpr, CMON_INVALID_IDX);
 
+    // assert(0);
     if (!cmon_is_valid_idx(left_type))
         return CMON_INVALID_IDX;
 
@@ -1339,7 +1340,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
 
         cmon_idx_buf_set(_fr->idx_buf_mng, field_initialized_buf, field_idx, expr);
     }
-
+    
     for (i = 0; i < cmon_idx_buf_count(_fr->idx_buf_mng, field_initialized_buf); ++i)
     {
         if (!cmon_is_valid_idx(cmon_idx_buf_at(_fr->idx_buf_mng, field_initialized_buf, i)))
