@@ -115,11 +115,16 @@ typedef struct cmon_resolver
 // #define _err(_fr, _tok, _fmt, ...) do { cmon_err_handler_err(_fr->err_handler, _tok, _fmt,
 // ##__VA_ARGS__); } while(0)
 
-#define _fr_err(_fr, _tok, _fmt, ...)                                                              \
+#define _fr_err(_fr, _tok_first, _tok_last, _fmt, ...)                                             \
     do                                                                                             \
     {                                                                                              \
-        cmon_err_handler_err(                                                                      \
-            _fr->err_handler, cmon_true, _fr->src_file_idx, _tok, _fmt, ##__VA_ARGS__);            \
+        cmon_err_handler_err(_fr->err_handler,                                                     \
+                             cmon_true,                                                            \
+                             _fr->src_file_idx,                                                    \
+                             _tok_first,                                                           \
+                             _tok_last,                                                            \
+                             _fmt,                                                                 \
+                             ##__VA_ARGS__);                                                       \
     } while (0)
 
 static inline void _unexpected_ast_panic()
@@ -193,6 +198,7 @@ static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon
     {
         _fr_err(_fr,
                 _name_tok,
+                _name_tok,
                 "redeclaration of '%.*s'",
                 str_view.end - str_view.begin,
                 str_view.begin);
@@ -201,17 +207,16 @@ static inline cmon_bool _check_redec(_file_resolver * _fr, cmon_idx _scope, cmon
     return cmon_false;
 }
 
-static inline cmon_bool _validate_conversion(_file_resolver * _fr,
-                                             cmon_idx _tok,
-                                             cmon_idx _from,
-                                             cmon_idx _to)
+static inline cmon_bool _validate_conversion(
+    _file_resolver * _fr, cmon_idx _tok_first, cmon_idx _tok_last, cmon_idx _from, cmon_idx _to)
 {
     cmon_types * t = _fr->resolver->types;
 
     if (cmon_types_is_float(t, _from) && cmon_types_is_int(t, _to))
     {
         _fr_err(_fr,
-                _tok,
+                _tok_first,
+                _tok_last,
                 "truncating '%s' to '%s'",
                 cmon_types_name(t, _from),
                 cmon_types_name(t, _to));
@@ -242,10 +247,11 @@ static inline cmon_bool _validate_conversion(_file_resolver * _fr,
     if (_from != _to)
     {
         _fr_err(_fr,
-                _tok,
+                _tok_first,
+                _tok_last,
                 "cannot convert '%s' to '%s'",
-                cmon_types_name(t, _from),
-                cmon_types_name(t, _to));
+                cmon_types_unique_name(t, _from),
+                cmon_types_unique_name(t, _to));
         return cmon_true;
     }
 
@@ -287,6 +293,7 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
                     name = cmon_ast_ident_name(_fr_ast(_fr), _expr_idx);
                     _fr_err(_fr,
                             cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                            cmon_ast_token_last(_fr_ast(_fr), _expr_idx),
                             "variable '%.*s' is not mutable",
                             name.end - name.begin,
                             name.begin);
@@ -312,6 +319,7 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
 
             _fr_err(_fr,
                     cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                    cmon_ast_token_last(_fr_ast(_fr), _expr_idx),
                     "lvalue expression expected, got %s",
                     kind);
             return cmon_true;
@@ -367,6 +375,7 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
             {
                 _fr_err(_fr,
                         cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                        cmon_ast_token_last(_fr_ast(_fr), _expr_idx),
                         "dereferenced pointer in lvalue expression is not mutable");
                 return cmon_true;
             }
@@ -375,7 +384,10 @@ static inline cmon_bool _validate_lvalue_expr(_file_resolver * _fr,
     else
     {
         //@TODO: add more context to error...
-        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _expr_idx), "lvalue expression expected");
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), _expr_idx),
+                cmon_ast_token_last(_fr_ast(_fr), _expr_idx),
+                "lvalue expression expected");
         return cmon_true;
     }
 
@@ -430,6 +442,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                 {
                     _fr_err(_fr,
                             mod_tok,
+                            mod_tok,
                             "'%s' is not a module",
                             cmon_symbols_name(_fr->resolver->symbols, mod_sym));
                 }
@@ -437,6 +450,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
             else
             {
                 _fr_err(_fr,
+                        mod_tok,
                         mod_tok,
                         "module '%.*s' is not defined",
                         mod_str_view.end - mod_str_view.begin,
@@ -486,6 +500,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                         cmon_str_view name = cmon_symbols_name(_fr->resolver->symbols, type_sym);
                         _fr_err(_fr,
                                 name_tok,
+                                name_tok,
                                 "invalid recursive type alias '%.*s'",
                                 name.end - name.begin,
                                 name.begin);
@@ -513,6 +528,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                 //@TODO: print what it is?
                 _fr_err(_fr,
                         name_tok,
+                        name_tok,
                         "'%s' is not a type",
                         cmon_symbols_name(_fr->resolver->symbols, type_sym));
                 return CMON_INVALID_IDX;
@@ -521,6 +537,7 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
         else
         {
             _fr_err(_fr,
+                    name_tok,
                     name_tok,
                     "'%.*s' is not defined in module %s",
                     name_str_view.end - name_str_view.begin,
@@ -636,7 +653,10 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
                 {
                     if (sym == _fr->resolver->globals_pass_stack[i])
                     {
-                        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), _ast_idx), "typechecking loop");
+                        _fr_err(_fr,
+                                cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                                cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
+                                "typechecking loop");
                         return CMON_INVALID_IDX;
                     }
                 }
@@ -653,6 +673,7 @@ static inline cmon_idx _resolve_ident(_file_resolver * _fr, cmon_idx _scope, cmo
 
     _fr_err(_fr,
             cmon_ast_token(_fr_ast(_fr), _ast_idx),
+            cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
             "undeclared identifier %.*s",
             name.end - name.begin,
             name.begin);
@@ -701,6 +722,7 @@ static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
     {
         _fr_err(_fr,
                 tok,
+                tok,
                 "int literal out of range for '%s'",
                 cmon_types_name(_fr->resolver->types, ret));
     }
@@ -735,6 +757,7 @@ static inline cmon_idx _resolve_int_literal(_file_resolver * _fr,
                 (kind == cmon_typek_s64 && v > LONG_MAX))
             {
                 _fr_err(_fr,
+                        tok,
                         tok,
                         "int literal out of range for '%s'",
                         cmon_types_name(_fr->resolver->types, ret));
@@ -777,6 +800,7 @@ static inline cmon_idx _resolve_float_literal(_file_resolver * _fr,
         //@TODO: print the literal too?
         _fr_err(_fr,
                 cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                 "float literal out of range for '%s'",
                 cmon_types_name(_fr->resolver->types, ret));
     }
@@ -822,7 +846,10 @@ static inline cmon_idx _resolve_deref(_file_resolver * _fr, cmon_idx _scope, cmo
     {
         if (cmon_types_kind(_fr->resolver->types, type) != cmon_typek_ptr)
         {
-            _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), expr), "can't dereference non-pointer type");
+            _fr_err(_fr,
+                    cmon_ast_token(_fr_ast(_fr), expr),
+                    cmon_ast_token_last(_fr_ast(_fr), expr),
+                    "can't dereference non-pointer type");
             return CMON_INVALID_IDX;
         }
         return cmon_types_ptr_type(_fr->resolver->types, type);
@@ -853,7 +880,21 @@ static inline cmon_idx _resolve_prefix(_file_resolver * _fr,
     // {
     //     lht = cmon_types_builtin_s32()
     // }
-    return _resolve_expr(_fr, _scope, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx), _lh_type);
+    cmon_idx ret =
+        _resolve_expr(_fr, _scope, cmon_ast_prefix_expr(_fr_ast(_fr), _ast_idx), _lh_type);
+
+    if (cmon_is_valid_idx(ret) &&
+        *cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_prefix_op_tok(_fr_ast(_fr), _ast_idx))
+                .begin == '-' &&
+        !cmon_types_is_numeric(_fr->resolver->types, ret))
+    {
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
+                "prefix minus with non-numeric type '%s'",
+                cmon_types_name(_fr->resolver->types, ret));
+    }
+    return ret;
 }
 
 static inline cmon_idx _is_arithmetic(_file_resolver * _fr, cmon_idx _ast_idx)
@@ -884,6 +925,7 @@ static inline void _invalid_operands_to_binary_err(_file_resolver * _fr,
         cmon_tokens_str_view(_fr_tokens(_fr), cmon_ast_binary_op_tok(_fr_ast(_fr), _ast_idx));
     _fr_err(_fr,
             cmon_ast_token(_fr_ast(_fr), _ast_idx),
+            cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
             "invalid operands to binary %.*s ('%s' and '%s')",
             op_tok_sv.end - op_tok_sv.begin,
             op_tok_sv.begin,
@@ -1016,6 +1058,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             }
             _fr_err(_fr,
                     name_tok,
+                    name_tok,
                     "could not find '%.*s' in module %s",
                     name_str_view.end - name_str_view.begin,
                     name_str_view.begin,
@@ -1039,6 +1082,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
             {
                 _fr_err(_fr,
                         name_tok,
+                        name_tok,
                         "struct '%s' has no field '%.*s'",
                         cmon_types_name(_fr->resolver->types, tlhs),
                         name_str_view.end - name_str_view.begin,
@@ -1049,6 +1093,7 @@ static inline cmon_idx _resolve_selector(_file_resolver * _fr, cmon_idx _scope, 
     }
 
     _fr_err(_fr,
+            name_tok,
             name_tok,
             "selector '%.*s' requested in something not an object or module identifier",
             name_str_view.end - name_str_view.begin,
@@ -1068,7 +1113,10 @@ static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon
 
     if (cmon_types_kind(_fr->resolver->types, left_type) != cmon_typek_fn)
     {
-        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), left_ast), "not callable");
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), left_ast),
+                cmon_ast_token_last(_fr_ast(_fr), left_ast),
+                "not callable");
         return CMON_INVALID_IDX;
     }
 
@@ -1079,6 +1127,7 @@ static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon
     {
         _fr_err(_fr,
                 cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                 "argument count mismatch (%lu expected, got %lu)",
                 param_count,
                 arg_count);
@@ -1095,7 +1144,11 @@ static inline cmon_idx _resolve_call(_file_resolver * _fr, cmon_idx _scope, cmon
         cmon_idx idx = cmon_ast_call_arg(_fr_ast(_fr), _ast_idx, i);
         cmon_idx param_type = cmon_types_fn_param(_fr->resolver->types, left_type, i);
         cmon_idx arg_type = _resolve_expr(_fr, _scope, idx, param_type);
-        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), arg_type, param_type);
+        _validate_conversion(_fr,
+                             cmon_ast_token(_fr_ast(_fr), idx),
+                             cmon_ast_token_last(_fr_ast(_fr), idx),
+                             arg_type,
+                             param_type);
     }
 
     return cmon_types_fn_return_type(_fr->resolver->types, left_type);
@@ -1114,6 +1167,7 @@ static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmo
     {
         _fr_err(_fr,
                 cmon_ast_token(_fr_ast(_fr), lexpr),
+                cmon_ast_token_last(_fr_ast(_fr), lexpr),
                 "'%s' type is not indexable",
                 cmon_types_name(_fr->resolver->types, left_type));
         return CMON_INVALID_IDX;
@@ -1127,7 +1181,10 @@ static inline cmon_idx _resolve_index(_file_resolver * _fr, cmon_idx _scope, cmo
     //@TODO: Evaluate constant expressions and make sure they are valid indices
     if (!cmon_types_is_int(_fr->resolver->types, idx_expr_type))
     {
-        _fr_err(_fr, cmon_ast_token(_fr_ast(_fr), idx_expr), "non-integer index");
+        _fr_err(_fr,
+                cmon_ast_token(_fr_ast(_fr), idx_expr),
+                cmon_ast_token_last(_fr_ast(_fr), idx_expr),
+                "non-integer index");
         return CMON_INVALID_IDX;
     }
 
@@ -1176,7 +1233,11 @@ static inline cmon_idx _resolve_array_init(_file_resolver * _fr,
         if (!cmon_is_valid_idx(rti))
             continue;
 
-        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), idx), rti, type);
+        _validate_conversion(_fr,
+                             cmon_ast_token(_fr_ast(_fr), idx),
+                             cmon_ast_token_last(_fr_ast(_fr), idx),
+                             rti,
+                             type);
     }
 
     return cmon_types_find_array(_fr->resolver->types, type, expr_count, _fr->resolver->mod_idx);
@@ -1201,6 +1262,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
     {
         _fr_err(_fr,
                 cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                 "'%s' is not a struct type",
                 cmon_types_name(_fr->resolver->types, type));
         return CMON_INVALID_IDX;
@@ -1227,7 +1289,8 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         if (i >= field_count)
         {
             _fr_err(_fr,
-                    cmon_ast_token(_fr_ast(_fr), expr),
+                    cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                    cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                     "too many expressions in '%s' literal",
                     cmon_types_name(_fr->resolver->types, type));
             break;
@@ -1237,7 +1300,8 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
             (!expect_field_names && cmon_is_valid_idx(fname_tok)))
         {
             _fr_err(_fr,
-                    cmon_ast_token(_fr_ast(_fr), expr),
+                    cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                    cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                     "mixture of field: value and value initializers");
             continue;
         }
@@ -1250,6 +1314,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
             if (!cmon_is_valid_idx(field_idx))
             {
                 _fr_err(_fr,
+                        fname_tok,
                         fname_tok,
                         "no field '%.*s' in '%s'",
                         name_str_view.end - name_str_view.begin,
@@ -1266,7 +1331,11 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
         cmon_idx field_type = cmon_types_struct_field_type(_fr->resolver->types, type, field_idx);
         assert(cmon_is_valid_idx(field_type));
         cmon_idx expr_type = _resolve_expr(_fr, _scope, expr, field_type);
-        _validate_conversion(_fr, cmon_ast_token(_fr_ast(_fr), expr), expr_type, field_type);
+        _validate_conversion(_fr,
+                             cmon_ast_token(_fr_ast(_fr), expr),
+                             cmon_ast_token_last(_fr_ast(_fr), expr),
+                             expr_type,
+                             field_type);
 
         cmon_idx_buf_set(_fr->idx_buf_mng, field_initialized_buf, field_idx, expr);
     }
@@ -1280,6 +1349,7 @@ static inline cmon_idx _resolve_struct_init(_file_resolver * _fr,
             {
                 _fr_err(_fr,
                         cmon_ast_token(_fr_ast(_fr), _ast_idx),
+                        cmon_ast_token_last(_fr_ast(_fr), _ast_idx),
                         "field '%s' is not initialized",
                         cmon_types_struct_field_name(_fr->resolver->types, type, i));
             }
@@ -1366,6 +1436,7 @@ static inline cmon_bool _add_fn_param_sym(
     if (cmon_is_valid_idx(sym = cmon_symbols_find_local(_fr->resolver->symbols, _scope, str_view)))
     {
         _fr_err(_fr,
+                _name_tok,
                 _name_tok,
                 "redeclaration of parameter '%.*s'",
                 str_view.end - str_view.begin,
@@ -1584,8 +1655,6 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
     cmon_idx sym;
     if (!is_global)
     {
-        printf("WOOP %lu\n", cmon_is_valid_idx(parsed_type_idx) ? ptype_idx : expr_type_idx);
-        // assert(0);
         cmon_idx sym = cmon_symbols_scope_add_var(
             _fr->resolver->symbols,
             _scope,
@@ -1614,7 +1683,11 @@ static inline void _resolve_var_decl(_file_resolver * _fr, cmon_idx _scope, cmon
 
     if (cmon_is_valid_idx(parsed_type_idx))
     {
-        _validate_conversion(_fr, expr_idx, expr_type_idx, ptype_idx);
+        _validate_conversion(_fr,
+                             cmon_ast_token(_fr_ast(_fr), expr_idx),
+                             cmon_ast_token_last(_fr_ast(_fr), expr_idx),
+                             expr_type_idx,
+                             ptype_idx);
     }
 }
 
@@ -1772,6 +1845,8 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     for (i = 0; i < cmon_types_builtin_count(_r->types); ++i)
     {
         cmon_idx idx = cmon_types_builtin(_r->types, i);
+        printf("ADDING BUILTIN TO GLOBAL SCOPE %lu %s\n", i, cmon_types_name(_r->types, idx));
+        assert(cmon_is_valid_idx(idx));
         cmon_symbols_scope_add_type(_r->symbols,
                                     _r->global_scope,
                                     cmon_str_view_make(cmon_types_name(_r->types, idx)),
@@ -1876,7 +1951,10 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
             // make sure every file declares the module its part of at the top
             if (cmon_ast_kind(ast, idx) != cmon_astk_module)
             {
-                _fr_err(fr, cmon_ast_token(ast, idx), "missing module statement");
+                _fr_err(fr,
+                        cmon_ast_token(ast, idx),
+                        cmon_ast_token_last(ast, idx),
+                        "missing module statement");
             }
             else
             {
@@ -1889,6 +1967,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                                             cmon_modules_name(_r->mods, _r->mod_idx)) != 0)
                 {
                     _fr_err(fr,
+                            mod_name_tok,
                             mod_name_tok,
                             "module '%s' expected, got '%.*s'",
                             cmon_modules_name(_r->mods, _r->mod_idx),
@@ -1920,6 +1999,10 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                     {
                         _fr_err(fr,
                                 cmon_ast_import_pair_path_token(ast, ipp_idx, 0),
+                                cmon_ast_import_pair_path_token(
+                                    ast,
+                                    ipp_idx,
+                                    cmon_ast_import_pair_path_token_count(ast, ipp_idx) - 1),
                                 "could not find module '%.*s'",
                                 path.end - path.begin,
                                 path.begin);
@@ -2068,6 +2151,7 @@ static inline cmon_bool _check_field_name(_file_resolver * _fr,
         {
             _fr_err(_fr,
                     _name_tok,
+                    _name_tok,
                     "duplicate field named '%.*s'",
                     str_view.end - str_view.begin,
                     str_view.begin);
@@ -2170,8 +2254,11 @@ cmon_bool cmon_resolver_usertypes_def_expr_pass(cmon_resolver * _r, cmon_idx _fi
                 cmon_idx expr_type = _resolve_expr(fr, fr->file_scope, def_expr, field_type);
                 if (cmon_is_valid_idx(expr_type))
                 {
-                    _validate_conversion(
-                        fr, cmon_ast_token(_fr_ast(fr), def_expr), expr_type, field_type);
+                    _validate_conversion(fr,
+                                         cmon_ast_token(_fr_ast(fr), def_expr),
+                                         cmon_ast_token_last(_fr_ast(fr), def_expr),
+                                         expr_type,
+                                         field_type);
                 }
             }
         }
@@ -2306,6 +2393,7 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         {
             _fr_err(fr,
                     cmon_types_name_tok(_r->types, a),
+                    cmon_types_name_tok(_r->types, a),
                     "circular dependency between types '%s' and '%s'",
                     cmon_types_name(_r->types, a),
                     cmon_types_name(_r->types, b));
@@ -2313,6 +2401,7 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
         else
         {
             _fr_err(fr,
+                    cmon_types_name_tok(_r->types, a),
                     cmon_types_name_tok(_r->types, a),
                     "recursive type '%s'",
                     cmon_types_name(_r->types, a));
@@ -2573,8 +2662,10 @@ cmon_bool cmon_resolver_main_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 (cmon_types_fn_param_count(_r->types, sig) != 0 &&
                  cmon_types_fn_param_count(_r->types, sig) != 1))
             {
-                _fr_err(
-                    fr, cmon_ast_token(_fr_ast(fr), var_ast_idx), "bad main function signature");
+                _fr_err(fr,
+                        cmon_ast_token(_fr_ast(fr), var_ast_idx),
+                        cmon_ast_token_last(_fr_ast(fr), var_ast_idx),
+                        "bad main function signature");
             }
         }
     }
@@ -3050,7 +3141,8 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     //     // cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
     // }
 
-    // add all dependencies to IR in a sorted fashion, including indirect ones. (i.e. if foo depends on bar, also add bars dependencies etc.)
+    // add all dependencies to IR in a sorted fashion, including indirect ones. (i.e. if foo depends
+    // on bar, also add bars dependencies etc.)
     cmon_dyn_arr_init(&dep_added_map, _r->alloc, cmon_modules_count(_r->mods));
     cmon_dyn_arr_resize(&dep_added_map, cmon_modules_count(_r->mods));
     memset(&dep_added_map[0], cmon_false, cmon_dyn_arr_count(&dep_added_map) * sizeof(cmon_bool));
@@ -3133,6 +3225,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
         cmon_str_view name = cmon_symbols_name(_r->symbols, a);
         _fr_err(fr,
                 cmon_ast_token(_fr_ast(fr), cmon_symbols_ast(_r->symbols, a)),
+                cmon_ast_token_last(_fr_ast(fr), cmon_symbols_ast(_r->symbols, a)),
                 "initialization loop for '%.*s'",
                 name.end - name.begin,
                 name.begin);

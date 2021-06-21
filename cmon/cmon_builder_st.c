@@ -98,6 +98,15 @@ static inline void _add_resolver_errors(cmon_builder_st * _b,
     }
 }
 
+static inline void _log_status(cmon_log * _log, const char * _fmt, ...)
+{
+    va_list args;
+    va_start(args, _fmt);
+    cmon_log_write_styled_v(
+        _log, cmon_log_color_cyan, cmon_log_color_default, cmon_log_style_none, _fmt, args);
+    va_end(args);
+}
+
 cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
                                 cmon_codegen * _codegen,
                                 const char * _build_dir,
@@ -111,6 +120,10 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
     cmon_err_handler_set_jump(_b->err_handler, &_b->err_jmp);
 
+    _log_status(_log, "cmon_builder_st start build\n");
+
+    _log_status(_log, "loading and tokenizing src files\n");
+
     // setup all the things needed per module
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
@@ -123,6 +136,19 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             cmon_err_report err = cmon_err_report_make_empty();
             _per_file_data pfd;
             pfd.src_file_idx = cmon_modules_src_file(_b->mods, i, j);
+
+            //@NOTE: If the src code was already set on the src file (i.e. during unit testing)
+            // the cmon_src_load_code funtions is a noop.
+            if (cmon_src_load_code(_b->src, pfd.src_file_idx))
+            {
+                cmon_err_handler_err(_b->err_handler,
+                                     cmon_true,
+                                     pfd.src_file_idx,
+                                     CMON_INVALID_IDX,
+                                     "failed to load src file %s",
+                                     cmon_src_path(_b->src, pfd.src_file_idx));
+            }
+
             // tokenize the modules files right here
             pfd.tokens = cmon_tokenize(_b->alloc, _b->src, pfd.src_file_idx, &err);
             pfd.parser = cmon_parser_create(_b->alloc);
@@ -143,6 +169,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     cmon_err_handler_jump(_b->err_handler, cmon_true);
 
     // parse all the files
+    _log_status(_log, "parsing src files\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
         _per_module_data * pmd = &_b->mod_data[i];
@@ -150,19 +177,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         // setup everything needed per file
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
-            //@NOTE: If the src code was already set on the src file (i.e. during unit testing)
-            // the cmon_src_load_code funtions is a noop.
             cmon_idx src_file_idx = cmon_modules_src_file(_b->mods, i, j);
-            if (cmon_src_load_code(_b->src, src_file_idx))
-            {
-                cmon_err_handler_err(_b->err_handler,
-                                     cmon_true,
-                                     src_file_idx,
-                                     CMON_INVALID_IDX,
-                                     "failed to load src file %s",
-                                     cmon_src_path(_b->src, src_file_idx));
-            }
-
             _per_file_data * pfd = &pmd->file_data[j];
             pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
             if (!pfd->ast)
@@ -170,11 +185,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
                 cmon_err_report err = cmon_parser_err(pfd->parser);
                 cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
             }
-            // else
-            // {
-            //     // cmon_src_set_tokens(_b->src, pfd->src_file_idx, pfd->tokens);
-            //     // cmon_src_set_ast(_b->src, pfd->src_file_idx, pfd->ast);
-            // }
         }
     }
 
@@ -183,6 +193,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
 
     // resolve all the top level names for each module to determine which other modules they depend
     // on
+    _log_status(_log, "resolving module dependency order\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
         _per_module_data * pmd = &_b->mod_data[i];
@@ -246,6 +257,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
 
     // resolve each module
+    _log_status(_log, "compiling modules\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
         printf("main pass names %lu\n", i);
@@ -296,6 +308,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
 
     // if codegen fails, we panic for now and call it a day.
+    _log_status(_log, "code generation\n");
     if (cmon_codegen_prepare(_codegen, _b->mods, _b->types, _build_dir))
     {
         cmon_panic(cmon_codegen_err_msg(_codegen));
@@ -311,6 +324,8 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         }
         cmon_codegen_end_session(_codegen, session);
     }
+
+    _log_status(_log, "cmon_builder_st finished\n");
 
     return cmon_false;
 err_end:

@@ -24,7 +24,8 @@ typedef enum
 {
     cmon_log_style_none = 1 << 0,
     cmon_log_style_bold = 1 << 1,
-    cmon_log_style_underline = 1 << 2
+    cmon_log_style_light = 1 << 2,
+    cmon_log_style_underline = 1 << 3
 } cmon_log_style;
 
 CMON_API cmon_log * cmon_log_create(cmon_allocator * _alloc,

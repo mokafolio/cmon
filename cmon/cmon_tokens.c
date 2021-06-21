@@ -17,6 +17,7 @@
         cmon_str_builder_append_fmt(_l->tmp_str_b, _msg, ##__VA_ARGS__);                           \
         _l->err = cmon_err_report_make(_l->src_file_idx,                                           \
                                        cmon_dyn_arr_count(&_l->tokens),                            \
+                                       cmon_dyn_arr_count(&_l->tokens),                            \
                                        cmon_str_builder_c_str(_l->tmp_str_b));                     \
     } while (0)
 
@@ -66,8 +67,9 @@ static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
 static inline void _finish_current_line(_tokenize_session * _l, cmon_bool _is_last_line)
 {
     const char * end = _is_last_line ? _l->end : _l->pos;
-    if (_l->line_start != end)
+    // if (_l->line_start != end)
     {
+        // printf("_finish_current_line %lu\n", end - _l->line_start);
         cmon_dyn_arr_append(&_l->lines, ((cmon_str_view){ _l->line_start, end }));
         _l->line_start = _l->pos + 1;
     }
@@ -590,23 +592,18 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
             break;
     }
 
-    if (cmon_err_report_is_empty(&s.err))
-    {
-
-        // printf("DA FOCKING LINES\n");
-        // for (size_t i = 0; i < cmon_dyn_arr_count(&ret->lines); ++i)
-        // {
-        //     printf("%lu: %.*s\n", i, ret->lines[i].end - ret->lines[i].begin,
-        //     ret->lines[i].begin);
-        // }
-        // printf("\n\n");
-    }
-
     tok.str_view.begin = s.end;
     tok.str_view.end = s.end;
     cmon_dyn_arr_append(&s.kinds, cmon_tokk_eof);
     cmon_dyn_arr_append(&s.tokens, tok);
     _finish_current_line(&s, cmon_true);
+
+    printf("DA FOCKING LINES %lu\n", cmon_dyn_arr_count(&s.lines));
+    for (size_t i = 0; i < cmon_dyn_arr_count(&s.lines); ++i)
+    {
+        printf("%lu: %.*s\n", i + 1, s.lines[i].end - s.lines[i].begin, s.lines[i].begin);
+    }
+    printf("\n\n");
 
     ret->tok_idx = 0;
     ret->kinds = s.kinds;

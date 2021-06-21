@@ -11,7 +11,7 @@
     do                                                                                             \
     {                                                                                              \
         cmon_err_handler_err(                                                                      \
-            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _fmt, ##__VA_ARGS__);              \
+            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _tok, _fmt, ##__VA_ARGS__);        \
     } while (0)
 
 typedef enum
@@ -160,14 +160,17 @@ static cmon_idx _parse_type(cmon_parser * _p)
     else if (_accept(_p, &tok, cmon_tokk_square_open))
     {
         //@TODO: Once there is some more elaborate compile time expressions, we need to take that
-        //into account here
+        // into account here
         cmon_idx count_tok;
         cmon_bool is_array = _accept(_p, &count_tok, cmon_tokk_int);
         _tok_check(_p, cmon_true, cmon_tokk_square_close);
 
-        if(is_array)
+        if (is_array)
         {
-            return cmon_astb_add_type_array(_p->ast_builder, tok, atol(cmon_tokens_str_view(_p->tokens, count_tok).begin), _parse_type(_p));
+            return cmon_astb_add_type_array(_p->ast_builder,
+                                            tok,
+                                            atol(cmon_tokens_str_view(_p->tokens, count_tok).begin),
+                                            _parse_type(_p));
         }
         else
         {
@@ -194,7 +197,7 @@ static cmon_idx _parse_type(cmon_parser * _p)
                 break;
         }
 
-        _tok_check(_p, cmon_true, cmon_tokk_paran_close);
+        cmon_idx paran_close = _tok_check(_p, cmon_true, cmon_tokk_paran_close);
 
         if (_accept(_p, &tmp, cmon_tokk_arrow))
         {
@@ -205,11 +208,13 @@ static cmon_idx _parse_type(cmon_parser * _p)
             ret_type = CMON_INVALID_IDX;
         }
 
-        cmon_idx ret = cmon_astb_add_type_fn(_p->ast_builder,
-                                             tok,
-                                             ret_type,
-                                             cmon_idx_buf_ptr(_p->idx_buf_mng, param_buf),
-                                             cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
+        cmon_idx ret = cmon_astb_add_type_fn(
+            _p->ast_builder,
+            tok,
+            cmon_is_valid_idx(ret_type) ? cmon_tokens_current(_p->tokens) : paran_close,
+            ret_type,
+            cmon_idx_buf_ptr(_p->idx_buf_mng, param_buf),
+            cmon_idx_buf_count(_p->idx_buf_mng, param_buf));
         cmon_idx_buf_mng_return(_p->idx_buf_mng, param_buf);
         return ret;
     }
@@ -229,9 +234,9 @@ static cmon_idx _parse_type(cmon_parser * _p)
     return CMON_INVALID_IDX;
 }
 
-static inline void _parse_comma_separated_exprs(cmon_parser * _p,
-                                                cmon_idx _idx_buf,
-                                                cmon_tokk _end_tkind)
+static inline cmon_idx _parse_comma_separated_exprs(cmon_parser * _p,
+                                                    cmon_idx _idx_buf,
+                                                    cmon_tokk _end_tkind)
 {
     cmon_idx tmp;
     while (!cmon_tokens_is_current(_p->tokens, _end_tkind, cmon_tokk_eof))
@@ -251,7 +256,7 @@ static inline void _parse_comma_separated_exprs(cmon_parser * _p,
         else
             break;
     }
-    _tok_check(_p, cmon_true, _end_tkind);
+    return _tok_check(_p, cmon_true, _end_tkind);
 }
 
 static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
@@ -261,10 +266,10 @@ static cmon_idx _parse_call_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 
     b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
 
-    _parse_comma_separated_exprs(_p, b, cmon_tokk_paran_close);
-
+    cmon_idx closing_tok = _parse_comma_separated_exprs(_p, b, cmon_tokk_paran_close);
     ret = cmon_astb_add_call(_p->ast_builder,
                              _tok,
+                             closing_tok,
                              _lhs,
                              cmon_idx_buf_ptr(_p->idx_buf_mng, b),
                              cmon_idx_buf_count(_p->idx_buf_mng, b));
@@ -281,10 +286,9 @@ static cmon_idx _parse_selector_expr(cmon_parser * _p, cmon_idx _tok, cmon_idx _
 
 static cmon_idx _parse_index(cmon_parser * _p, cmon_idx _tok, cmon_idx _lhs)
 {
-    cmon_idx expr;
-    expr = _parse_expr(_p, _precedence_nil);
-    _tok_check(_p, cmon_true, cmon_tokk_square_close);
-    return cmon_astb_add_index(_p->ast_builder, _tok, _lhs, expr);
+    cmon_idx expr = _parse_expr(_p, _precedence_nil);
+    cmon_idx closing_tok = _tok_check(_p, cmon_true, cmon_tokk_square_close);
+    return cmon_astb_add_index(_p->ast_builder, _tok, closing_tok, _lhs, expr);
 }
 
 static cmon_idx _parse_fn(cmon_parser * _p, cmon_idx _fn_tok_idx)
@@ -402,8 +406,9 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
         else
             break;
     }
-    _tok_check(_p, cmon_true, cmon_tokk_curl_close);
+    cmon_idx closing_tok = _tok_check(_p, cmon_true, cmon_tokk_curl_close);
     cmon_idx ret = cmon_astb_add_struct_init(_p->ast_builder,
+                                             closing_tok,
                                              ptype,
                                              cmon_idx_buf_ptr(_p->idx_buf_mng, b),
                                              cmon_idx_buf_count(_p->idx_buf_mng, b));
@@ -414,9 +419,10 @@ static cmon_idx _parse_struct_init(cmon_parser * _p)
 static cmon_idx _parse_array_init(cmon_parser * _p, cmon_idx _tok)
 {
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_p->idx_buf_mng);
-    _parse_comma_separated_exprs(_p, idx_buf, cmon_tokk_square_close);
+    cmon_idx closing_tok = _parse_comma_separated_exprs(_p, idx_buf, cmon_tokk_square_close);
     cmon_idx ret = cmon_astb_add_array_init(_p->ast_builder,
                                             _tok,
+                                            closing_tok,
                                             cmon_idx_buf_ptr(_p->idx_buf_mng, idx_buf),
                                             cmon_idx_buf_count(_p->idx_buf_mng, idx_buf));
     cmon_idx_buf_mng_return(_p->idx_buf_mng, idx_buf);
@@ -462,8 +468,9 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     }
     else if (_accept(_p, &tok, cmon_tokk_paran_open))
     {
-        ret = cmon_astb_add_paran(_p->ast_builder, tok, _parse_expr(_p, _precedence_nil));
-        _tok_check(_p, cmon_true, cmon_tokk_paran_close);
+        cmon_idx expr = _parse_expr(_p, _precedence_nil);
+        cmon_idx close_tok = _tok_check(_p, cmon_true, cmon_tokk_paran_close);
+        ret = cmon_astb_add_paran(_p->ast_builder, tok, close_tok, expr);
     }
     else if (_accept(_p, &tok, cmon_tokk_fn))
     {
@@ -564,10 +571,11 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
         }
     }
     printf("ADDING STMT c\n\n");
-    _tok_check(_p, cmon_true, cmon_tokk_curl_close);
+    cmon_idx close_tok = _tok_check(_p, cmon_true, cmon_tokk_curl_close);
 
     ret = cmon_astb_add_block(_p->ast_builder,
                               _open_tok,
+                              close_tok,
                               cmon_idx_buf_ptr(_p->idx_buf_mng, b),
                               cmon_idx_buf_count(_p->idx_buf_mng, b));
     cmon_idx_buf_mng_return(_p->idx_buf_mng, b);
@@ -662,10 +670,11 @@ static cmon_idx _parse_struct_decl(cmon_parser * _p)
         _check_stmt_end(_p);
     }
 
-    _tok_check(_p, cmon_true, cmon_tokk_curl_close);
+    cmon_idx close_tok = _tok_check(_p, cmon_true, cmon_tokk_curl_close);
 
     cmon_idx ret = cmon_astb_add_struct_decl(_p->ast_builder,
                                              name_tok,
+                                             close_tok,
                                              is_pub,
                                              cmon_idx_buf_ptr(_p->idx_buf_mng, b),
                                              cmon_idx_buf_count(_p->idx_buf_mng, b));
@@ -861,7 +870,7 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
                              cmon_idx _src_file_idx,
                              cmon_tokens * _tokens)
 {
-    cmon_idx stmt_idx, root_block_idx, first_tok;
+    cmon_idx stmt_idx, root_block_idx, first_tok, last_tok;
     cmon_ast * ast;
     cmon_idx b;
 
@@ -877,6 +886,7 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
     _p->ast_builder = cmon_astb_create(_p->alloc, _tokens);
 
     first_tok = cmon_tokens_count(_p->tokens) ? 0 : CMON_INVALID_IDX;
+    last_tok = cmon_tokens_count(_p->tokens) ? cmon_tokens_count(_p->tokens) - 1 : CMON_INVALID_IDX;
 
     cmon_src_set_tokens(_src, _src_file_idx, _tokens);
     cmon_err_handler_set_src(_p->err_handler, _src);
@@ -900,6 +910,7 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
 
     root_block_idx = cmon_astb_add_block(_p->ast_builder,
                                          first_tok,
+                                         last_tok,
                                          cmon_idx_buf_ptr(_p->idx_buf_mng, b),
                                          cmon_idx_buf_count(_p->idx_buf_mng, b));
     cmon_astb_set_root_block(_p->ast_builder, root_block_idx);

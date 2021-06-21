@@ -74,9 +74,16 @@ CMON_API cmon_idx cmon_astb_add_binary(cmon_astb * _b,
                                        cmon_idx _left,
                                        cmon_idx _right);
 CMON_API cmon_idx cmon_astb_add_prefix(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _right);
-CMON_API cmon_idx cmon_astb_add_paran(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr);
-CMON_API cmon_idx cmon_astb_add_call(
-    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr_idx, cmon_idx * _arg_indices, size_t _count);
+CMON_API cmon_idx cmon_astb_add_paran(cmon_astb * _b,
+                                      cmon_idx _open_tok_idx,
+                                      cmon_idx _close_tok_idx,
+                                      cmon_idx _expr);
+CMON_API cmon_idx cmon_astb_add_call(cmon_astb * _b,
+    cmon_idx _open_tok_idx,
+                                     cmon_idx _close_tok_idx,
+                                     cmon_idx _expr_idx,
+                                     cmon_idx * _arg_indices,
+                                     size_t _count);
 CMON_API cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                         cmon_idx _tok_idx,
                                         cmon_idx _ret_type,
@@ -88,6 +95,7 @@ CMON_API cmon_idx cmon_astb_add_struct_init_field(cmon_astb * _b,
                                                   cmon_idx _name_tok,
                                                   cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_struct_init(cmon_astb * _b,
+                                            cmon_idx _close_tok_idx,
                                             cmon_idx _parsed_type_idx,
                                             cmon_idx * _fields,
                                             size_t _count);
@@ -96,11 +104,13 @@ CMON_API cmon_idx cmon_astb_add_selector(cmon_astb * _b,
                                          cmon_idx _left,
                                          cmon_idx _name_tok);
 CMON_API cmon_idx cmon_astb_add_array_init(cmon_astb * _b,
-                                           cmon_idx _tok_idx,
+                                           cmon_idx _open_tok_idx,
+                                           cmon_idx _close_tok_idx,
                                            cmon_idx * _exprs,
                                            size_t _count);
 CMON_API cmon_idx cmon_astb_add_index(cmon_astb * _b,
-                                      cmon_idx _tok_idx,
+                                      cmon_idx _open_tok_idx,
+                                      cmon_idx _close_tok_idx,
                                       cmon_idx _lhs,
                                       cmon_idx _index_expr);
 
@@ -112,7 +122,8 @@ CMON_API cmon_idx cmon_astb_add_var_decl(cmon_astb * _b,
                                          cmon_idx _type,
                                          cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_block(cmon_astb * _b,
-                                      cmon_idx _tok_idx,
+                                      cmon_idx _open_tok_idx,
+                                      cmon_idx _close_tok_idx,
                                       cmon_idx * _stmt_indices,
                                       size_t _count);
 CMON_API cmon_idx cmon_astb_add_module(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _name_tok_idx);
@@ -150,15 +161,15 @@ CMON_API cmon_idx cmon_astb_add_type_ptr(cmon_astb * _b,
                                          cmon_bool _is_mut,
                                          cmon_idx _type_idx);
 CMON_API cmon_idx cmon_astb_add_type_view(cmon_astb * _b,
-                                         cmon_idx _tok_idx,
-                                         cmon_bool _is_mut,
-                                         cmon_idx _type_idx);
+                                          cmon_idx _tok_idx,
+                                          cmon_bool _is_mut,
+                                          cmon_idx _type_idx);
 CMON_API cmon_idx cmon_astb_add_type_array(cmon_astb * _b,
-                                         cmon_idx _tok_idx,
-                                         size_t _count,
-                                         cmon_idx _type_idx);
+                                           cmon_idx _tok_idx,
+                                           size_t _count,
+                                           cmon_idx _type_idx);
 CMON_API cmon_idx cmon_astb_add_type_fn(
-    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _ret_type, cmon_idx * _params, size_t _count);
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _last_tok, cmon_idx _ret_type, cmon_idx * _params, size_t _count);
 
 // adding type declarations
 CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
@@ -166,7 +177,7 @@ CMON_API cmon_idx cmon_astb_add_struct_field(cmon_astb * _b,
                                              cmon_idx _type,
                                              cmon_idx _expr);
 CMON_API cmon_idx cmon_astb_add_struct_decl(
-    cmon_astb * _b, cmon_idx _tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count);
+    cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _close_tok_idx, cmon_bool _is_pub, cmon_idx * _fields, size_t _count);
 
 // getting the ast without taking ownership
 CMON_API cmon_ast * cmon_astb_ast(cmon_astb * _b);
@@ -181,6 +192,8 @@ CMON_API cmon_idx cmon_ast_root_block(cmon_ast * _ast);
 CMON_API size_t cmon_ast_count(cmon_ast * _ast);
 CMON_API cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_token(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_token_first(cmon_ast * _ast, cmon_idx _idx);
+CMON_API cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_right(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx);
@@ -288,8 +301,11 @@ CMON_API cmon_idx cmon_ast_struct_init_field_expr(cmon_ast * _ast, cmon_idx _idx
 CMON_API cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx);
 CMON_API size_t cmon_ast_struct_init_fields_count(cmon_ast * _ast, cmon_idx _idx);
 CMON_API cmon_idx cmon_ast_struct_init_field(cmon_ast * _ast, cmon_idx _idx, size_t _fidx);
-//used by resolver to set an index buffer that holds the sorted field expressions to initialize the struct.
-CMON_API void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx, cmon_idx _idx_buf);
+// used by resolver to set an index buffer that holds the sorted field expressions to initialize the
+// struct.
+CMON_API void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast,
+                                                              cmon_idx _idx,
+                                                              cmon_idx _idx_buf);
 CMON_API cmon_idx cmon_ast_struct_init_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx);
 
 // alias specific getters

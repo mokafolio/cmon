@@ -93,15 +93,12 @@ static cmon_hashmap_node ** _getref(cmon_hashmap_base * _m,
     cmon_hashmap_node ** next;
     if (_m->bucket_count > 0)
     {
-        printf("aswoop %lu %lu\n", _m->bucket_count, _bucket_idx(_m, _hash));
         size_t hash = _hash;
         next = &_m->buckets[_bucket_idx(_m, hash)];
         while (*next)
         {
-            printf("woop\n");
             if ((*next)->hash == hash && _m->cmp_fn(_key_ref, (*next)->key, _key_size, _m->cmp_user_data))
             {
-                printf("FOOOUN!\n");
                 return next;
             }
             next = &(*next)->next;

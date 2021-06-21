@@ -10,13 +10,15 @@ cmon_err_report cmon_err_report_make_empty()
 }
 
 cmon_err_report cmon_err_report_make(cmon_idx _src_file_idx,
-                                     cmon_idx _tok_idx,
+                                     cmon_idx _toks_first,
+                                     cmon_idx _toks_last,
                                      const char * _msg)
 {
     cmon_err_report ret;
     assert(strlen(_msg) < CMON_ERR_MSG_MAX - 1);
     ret.src_file_idx = _src_file_idx;
-    ret.token_idx = _tok_idx;
+    ret.toks_first = _toks_first;
+    ret.toks_last = _toks_last;
     strcpy(ret.msg, _msg);
     return ret;
 }
@@ -39,12 +41,12 @@ const char * cmon_err_report_filename(cmon_err_report * _er, cmon_src * _src)
 
 size_t cmon_err_report_line(cmon_err_report * _er, cmon_src * _src)
 {
-    return cmon_tokens_line(_err_toks(_er, _src), _er->token_idx);
+    return cmon_tokens_line(_err_toks(_er, _src), _er->toks_first);
 }
 
 size_t cmon_err_report_line_offset(cmon_err_report * _er, cmon_src * _src)
 {
-    return cmon_tokens_line_offset(_err_toks(_er, _src), _er->token_idx);
+    return cmon_tokens_line_offset(_err_toks(_er, _src), _er->toks_first);
 }
 
 cmon_str_view cmon_err_report_line_str_view(cmon_err_report * _er, cmon_src * _src)

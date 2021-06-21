@@ -120,10 +120,8 @@ typedef struct cmon_types
 
 static inline const char * _intern_c_str(cmon_types * _t, const char * _c_str)
 {
-    printf("_intern_c_str %s\n\n", _c_str);
     cmon_dyn_arr_append(&_t->name_buf, cmon_short_str_make(_t->alloc, _c_str));
     cmon_short_str str = cmon_dyn_arr_last(&_t->name_buf);
-    printf("_intern_c_str 02 %s\n\n", cmon_short_str_c_str(&str));
     return cmon_short_str_c_str(&cmon_dyn_arr_last(&_t->name_buf));
 }
 
@@ -174,10 +172,10 @@ static inline cmon_idx _add_type(cmon_types * _t,
         t.mod_idx = CMON_INVALID_IDX;
     }
 
-    printf("ADDING FOCKING TYPE %s\n", _unique);
-
     cmon_dyn_arr_append(&_t->types, t);
     cmon_hashmap_set(&_t->name_map, _unique, cmon_dyn_arr_count(&_t->types) - 1);
+
+    printf("adding type %s\n", t.unique_name_str);
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
@@ -224,7 +222,6 @@ cmon_types * cmon_types_create(cmon_allocator * _alloc, cmon_modules * _mods)
     ret->builtin_f64 = _add_builtin(ret, cmon_typek_f64, "f64", cmon_false);
     ret->builtin_void = _add_builtin(ret, cmon_typek_void, "void", cmon_false);
     ret->builtin_bool = _add_builtin(ret, cmon_typek_bool, "bool", cmon_false);
-    // ret->builtin_u8_view;
     ret->builtin_modident = _add_builtin(ret, cmon_typek_modident, "__modident", cmon_true);
     ret->builtin_typeident = _add_builtin(ret, cmon_typek_typeident, "__typeident", cmon_true);
 
@@ -303,7 +300,6 @@ cmon_idx cmon_types_struct_add_field(cmon_types * _t,
                                      cmon_idx _type,
                                      cmon_idx _def_expr_ast)
 {
-    printf("DA STRUCKT %lu\n", _struct);
     cmon_dyn_arr_append(
         &_t->structs[_get_type(_t, _struct).data_idx].fields,
         ((_struct_field){
@@ -366,13 +362,10 @@ cmon_idx cmon_types_find_array(cmon_types * _t, cmon_idx _type, size_t _size, cm
     const char * unique_name;
     unique_name = cmon_str_builder_tmp_str(
         _t->str_builder, "Array%lu_%s", _size, cmon_types_unique_name(_t, _type));
-    printf("ARRAY BRUH %s\n", unique_name);
     _return_if_found(_t, unique_name, _mod_idx);
-    printf("ARRAY BRUH020202020 %s\n", unique_name);
     arr.count = _size;
     arr.type = _type;
     cmon_dyn_arr_append(&_t->arrays, arr);
-    printf("HM COUNT %lu\n\n", cmon_hashmap_count(&_t->name_map));
     unique_name = _intern_c_str(_t, unique_name);
     return _add_type(_t,
                      cmon_typek_array,
@@ -411,11 +404,9 @@ cmon_idx cmon_types_find_fn(
     const char * unique_name;
 
     unique_name = _fn_name(_t, _ret_type, _params, _param_count, cmon_types_unique_name);
-    printf("FINDING FN %s %lu\n", unique_name, _param_count);
 
     _return_if_found(_t, unique_name, _mod_idx);
 
-    printf("ADDING FN %s\n", unique_name);
     cmon_dyn_arr_init(&sig.params, _t->alloc, _param_count);
 
     size_t i;
@@ -428,6 +419,7 @@ cmon_idx cmon_types_find_fn(
     cmon_dyn_arr_append(&_t->fns, sig);
 
     unique_name = _intern_c_str(_t, unique_name);
+    printf("addinf fn sig %s\n", unique_name);
     return _add_type(
         _t,
         cmon_typek_fn,
@@ -443,10 +435,8 @@ cmon_idx cmon_types_find_fn(
 cmon_idx cmon_types_find(cmon_types * _t, const char * _unique_name)
 {
     cmon_idx * idx_ptr;
-    printf("trying to find %s\n", _unique_name);
     if ((idx_ptr = cmon_hashmap_get(&_t->name_map, _unique_name)))
     {
-        printf("found iiiiit\n");
         return *idx_ptr;
     }
     return CMON_INVALID_IDX;
@@ -459,6 +449,7 @@ const char * cmon_types_unique_name(cmon_types * _t, cmon_idx _type_idx)
 
 const char * cmon_types_name(cmon_types * _t, cmon_idx _type_idx)
 {
+    printf("getting type name %lu %s\n", _type_idx, _get_type(_t, _type_idx).name_str);
     return _get_type(_t, _type_idx).name_str;
 }
 
@@ -469,7 +460,6 @@ const char * cmon_types_full_name(cmon_types * _t, cmon_idx _type_idx)
 
 cmon_typek cmon_types_kind(cmon_types * _t, cmon_idx _type_idx)
 {
-    printf("TIDX %lu\n", _type_idx);
     return _get_type(_t, _type_idx).kind;
 }
 
@@ -492,9 +482,6 @@ static inline _struct_field * _get_struct_field(cmon_types * _t,
                                                 cmon_idx _struct_idx,
                                                 cmon_idx _field_idx)
 {
-    printf("_get_struct_field %lu %lu\n",
-           _field_idx,
-           cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
     assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
     assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
     assert(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));

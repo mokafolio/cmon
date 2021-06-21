@@ -8,12 +8,15 @@ typedef struct cmon_src cmon_src;
 typedef struct
 {
     cmon_idx src_file_idx;
-    cmon_idx token_idx;
+    cmon_idx toks_first, toks_last;
     char msg[CMON_ERR_MSG_MAX];
 } cmon_err_report;
 
 CMON_API cmon_err_report cmon_err_report_make_empty();
-CMON_API cmon_err_report cmon_err_report_make(cmon_idx _src_file_idx, cmon_idx _tok_idx, const char * _msg);
+CMON_API cmon_err_report cmon_err_report_make(cmon_idx _src_file_idx,
+                                              cmon_idx _toks_first,
+                                              cmon_idx _toks_last,
+                                              const char * _msg);
 CMON_API cmon_bool cmon_err_report_is_empty(cmon_err_report * _er);
 CMON_API const char * cmon_err_report_filename(cmon_err_report * _er, cmon_src * _src);
 CMON_API size_t cmon_err_report_line(cmon_err_report * _er, cmon_src * _src);
