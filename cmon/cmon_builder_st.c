@@ -103,7 +103,7 @@ static inline void _log_status(cmon_log * _log, const char * _fmt, ...)
     va_list args;
     va_start(args, _fmt);
     cmon_log_write_styled_v(
-        _log, cmon_log_color_cyan, cmon_log_color_default, cmon_log_style_none, _fmt, args);
+        _log, cmon_log_level_info, cmon_log_color_cyan, cmon_log_color_default, cmon_log_style_none, _fmt, args);
     va_end(args);
 }
 

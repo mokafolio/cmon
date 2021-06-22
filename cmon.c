@@ -92,16 +92,22 @@ int main(int _argc, const char * _args[])
     }
 
     builder = cmon_builder_st_create(&alloc, atoi(cmon_argparse_value(ap, "-e")), src, mods);
-    log = cmon_log_create(&alloc, "cmon_build.log", build_path, cmon_true);
+    log = cmon_log_create(&alloc,
+                          "cmon_build.log",
+                          build_path,
+                          cmon_argparse_is_set(ap, "-v") ? cmon_log_level_info
+                                                         : cmon_log_level_error);
     if (cmon_argparse_is_set(ap, "-v"))
     {
         cmon_log_write_styled(log,
+                              cmon_log_level_info,
                               cmon_log_color_default,
                               cmon_log_color_red,
                               cmon_log_style_underline | cmon_log_style_bold,
                               "cmon");
-        cmon_log_write(log, " compiler ");
+        cmon_log_write(log, cmon_log_level_info, " compiler ");
         cmon_log_write_styled(log,
+                              cmon_log_level_info,
                               cmon_log_color_default,
                               cmon_log_color_default,
                               cmon_log_style_light,
@@ -109,7 +115,7 @@ int main(int _argc, const char * _args[])
                               CMON_VERSION_MAJOR,
                               CMON_VERSION_MINOR,
                               CMON_VERSION_PATCH);
-        cmon_log_write(log, "\n");
+        cmon_log_write(log, cmon_log_level_info, "\n");
     }
 
     cmon_codegen cgen = cmon_codegen_c_make(&alloc);

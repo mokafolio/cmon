@@ -28,15 +28,23 @@ typedef enum
     cmon_log_style_underline = 1 << 3
 } cmon_log_style;
 
+//@NOTE: Keep as few log levels as possible for simplicity
+typedef enum
+{
+    cmon_log_level_error,
+    cmon_log_level_info,
+    cmon_log_level_debug
+} cmon_log_level;
+
 CMON_API cmon_log * cmon_log_create(cmon_allocator * _alloc,
                                     const char * _name,
                                     const char * _path,
-                                    cmon_bool _verbose);
+                                    cmon_log_level _print_level);
 CMON_API void cmon_log_destroy(cmon_log * _log);
-CMON_API void cmon_log_write_v(cmon_log * _log, const char * _fmt, va_list _args);
-CMON_API void cmon_log_write(cmon_log * _log, const char * _fmt, ...);
-CMON_API void cmon_log_write_styled_v(cmon_log * _log, cmon_log_color _color, cmon_log_color _bg_color, cmon_log_style _style, const char * _fmt, va_list _args);
-CMON_API void cmon_log_write_styled(cmon_log * _log, cmon_log_color _color, cmon_log_color _bg_color, cmon_log_style _style, const char * _fmt, ...);
+CMON_API void cmon_log_write_v(cmon_log * _log, cmon_log_level _lvl, const char * _fmt, va_list _args);
+CMON_API void cmon_log_write(cmon_log * _log, cmon_log_level _lvl, const char * _fmt, ...);
+CMON_API void cmon_log_write_styled_v(cmon_log * _log, cmon_log_level _lvl, cmon_log_color _color, cmon_log_color _bg_color, cmon_log_style _style, const char * _fmt, va_list _args);
+CMON_API void cmon_log_write_styled(cmon_log * _log, cmon_log_level _lvl, cmon_log_color _color, cmon_log_color _bg_color, cmon_log_style _style, const char * _fmt, ...);
 CMON_API void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err, cmon_src * _src);
 
 #endif // CMON_CMON_LOG_H

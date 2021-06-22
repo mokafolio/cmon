@@ -21,7 +21,7 @@ typedef struct cmon_log
     FILE * file;
     size_t writes_since_last_flush;
     size_t flush_every_n;
-    cmon_bool verbose;
+    cmon_log_level print_lvl;
 } cmon_log;
 
 static inline void _write_to_file(cmon_log * _l, const char * _prefix, const char * _txt)
@@ -58,7 +58,7 @@ static inline const char * _timestamp(char * _buf, size_t _buf_size)
 cmon_log * cmon_log_create(cmon_allocator * _alloc,
                            const char * _name,
                            const char * _path,
-                           cmon_bool _verbose)
+                           cmon_log_level _prinf_lvl)
 {
     cmon_log * ret = CMON_CREATE(_alloc, cmon_log);
     ret->str_builder = cmon_str_builder_create(_alloc, 512);
@@ -67,18 +67,18 @@ cmon_log * cmon_log_create(cmon_allocator * _alloc,
     ret->alloc = _alloc;
     strcpy(ret->name, _name);
     cmon_join_paths(_path, _name, ret->path, sizeof(ret->path));
-    
+
     ret->file = fopen(ret->path, "w");
     if (!ret->file)
     {
         cmon_panic("could not open log file at %s", _path);
     }
-    ret->verbose = _verbose;
+    ret->print_lvl = _prinf_lvl;
     ret->flush_every_n = 4; //@TODO: make this customizable?
     ret->writes_since_last_flush = 0;
 
     char tbuf[128];
-    cmon_log_write(ret, "log '%s', started at %s\n", _name, _tstamp(tbuf));
+    cmon_log_write(ret, cmon_log_level_info, "log '%s', started at %s\n", _name, _tstamp(tbuf));
 
     return ret;
 }
@@ -94,22 +94,22 @@ void cmon_log_destroy(cmon_log * _log)
     CMON_DESTROY(_log->alloc, _log);
 }
 
-void cmon_log_write_v(cmon_log * _log, const char * _fmt, va_list _args)
+void cmon_log_write_v(cmon_log * _log, cmon_log_level _lvl, const char * _fmt, va_list _args)
 {
     cmon_str_builder_clear(_log->str_builder);
     cmon_str_builder_append_fmt_v(_log->str_builder, _fmt, _args);
     _write_to_file(_log, "", cmon_str_builder_c_str(_log->str_builder));
-    if (_log->verbose)
+    if (_lvl <= _log->print_lvl)
     {
         printf("%s", cmon_str_builder_c_str(_log->str_builder));
     }
 }
 
-void cmon_log_write(cmon_log * _log, const char * _fmt, ...)
+void cmon_log_write(cmon_log * _log, cmon_log_level _lvl, const char * _fmt, ...)
 {
     va_list args;
     va_start(args, _fmt);
-    cmon_log_write_v(_log, _fmt, args);
+    cmon_log_write_v(_log, _lvl, _fmt, args);
     va_end(args);
 }
 
@@ -222,6 +222,7 @@ static inline void _printf_styled(cmon_log * _log,
 }
 
 void cmon_log_write_styled_v(cmon_log * _log,
+                             cmon_log_level _lvl,
                              cmon_log_color _color,
                              cmon_log_color _bg_color,
                              cmon_log_style _style,
@@ -231,10 +232,14 @@ void cmon_log_write_styled_v(cmon_log * _log,
     cmon_str_builder_clear(_log->str_builder);
     cmon_str_builder_append_fmt_v(_log->str_builder, _fmt, _args);
     _write_to_file(_log, "", cmon_str_builder_c_str(_log->str_builder));
-    _printf_styled(_log, _color, _bg_color, _style, cmon_str_builder_c_str(_log->str_builder));
+    if (_lvl <= _log->print_lvl)
+    {
+        _printf_styled(_log, _color, _bg_color, _style, cmon_str_builder_c_str(_log->str_builder));
+    }
 }
 
 void cmon_log_write_styled(cmon_log * _log,
+                           cmon_log_level _lvl,
                            cmon_log_color _color,
                            cmon_log_color _bg_color,
                            cmon_log_style _style,
@@ -243,7 +248,7 @@ void cmon_log_write_styled(cmon_log * _log,
 {
     va_list args;
     va_start(args, _fmt);
-    cmon_log_write_styled_v(_log, _color, _bg_color, _style, _fmt, args);
+    cmon_log_write_styled_v(_log, _lvl, _color, _bg_color, _style, _fmt, args);
     va_end(args);
 }
 
@@ -254,11 +259,13 @@ static inline void _write_err(cmon_str_builder * _b,
 {
     cmon_str_view line_sv, tok_sv_first, tok_sv_last;
 
-    if(cmon_is_valid_idx(_err->toks_first))
+    if (cmon_is_valid_idx(_err->toks_first))
     {
         line_sv = cmon_err_report_line_str_view(_err, _src);
-        tok_sv_first = cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_first);
-        tok_sv_last = cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_last);
+        tok_sv_first =
+            cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_first);
+        tok_sv_last =
+            cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_last);
     }
 
     cmon_str_builder_clear(_b);
@@ -277,7 +284,7 @@ static inline void _write_err(cmon_str_builder * _b,
             _b, cmon_log_color_default, cmon_log_color_default, cmon_log_style_light);
     }
 
-    if(cmon_is_valid_idx(_err->toks_first))
+    if (cmon_is_valid_idx(_err->toks_first))
     {
         cmon_str_builder_append_fmt(_b,
                                     "%s:%lu:%lu:",
@@ -294,7 +301,7 @@ static inline void _write_err(cmon_str_builder * _b,
     // cmon_err_report_line(_err, _src), tok_sv_first.begin - line_sv.begin, line_sv.begin
     cmon_str_builder_append_fmt(_b, "%s\n", _err->msg);
 
-    if(!cmon_is_valid_idx(_err->toks_first))
+    if (!cmon_is_valid_idx(_err->toks_first))
     {
         return;
     }
@@ -349,9 +356,9 @@ void cmon_log_write_err_report(cmon_log * _log, cmon_err_report * _err, cmon_src
     _write_err(_log->str_builder, _err, _src, cmon_false);
     _write_to_file(_log, "", cmon_str_builder_c_str(_log->str_builder));
 
-    if (_log->verbose)
+    if (cmon_log_level_error <= _log->print_lvl)
     {
         _write_err(_log->printf_str_builder, _err, _src, cmon_true);
-        printf("%s\n", cmon_str_builder_c_str(_log->printf_str_builder));
+        printf("%s", cmon_str_builder_c_str(_log->printf_str_builder));
     }
 }
