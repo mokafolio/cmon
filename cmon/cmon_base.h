@@ -56,6 +56,11 @@
 #error "I don't know what architecture this is!"
 #endif
 
+//semantic version of cmon
+#define CMON_VERSION_MAJOR 0
+#define CMON_VERSION_MINOR 0
+#define CMON_VERSION_PATCH 1
+
 #define CMON_PATH_MAX 4096
 #define CMON_FILENAME_MAX 256
 #define CMON_EXT_MAX 32

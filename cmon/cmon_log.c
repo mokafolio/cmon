@@ -252,13 +252,14 @@ static inline void _write_err(cmon_str_builder * _b,
                               cmon_src * _src,
                               cmon_bool _add_styling)
 {
-    int loff = (int)cmon_err_report_line_offset(_err, _src);
-    cmon_str_view line_sv = cmon_err_report_line_str_view(_err, _src);
-    cmon_str_view tok_sv_first =
-        cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_first);
+    cmon_str_view line_sv, tok_sv_first, tok_sv_last;
 
-    cmon_str_view tok_sv_last =
-        cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_last);
+    if(cmon_is_valid_idx(_err->toks_first))
+    {
+        line_sv = cmon_err_report_line_str_view(_err, _src);
+        tok_sv_first = cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_first);
+        tok_sv_last = cmon_tokens_str_view(cmon_src_tokens(_src, _err->src_file_idx), _err->toks_last);
+    }
 
     cmon_str_builder_clear(_b);
 
@@ -276,11 +277,14 @@ static inline void _write_err(cmon_str_builder * _b,
             _b, cmon_log_color_default, cmon_log_color_default, cmon_log_style_light);
     }
 
-    cmon_str_builder_append_fmt(_b,
-                                "%s:%lu:%lu:",
-                                cmon_err_report_filename(_err, _src),
-                                cmon_err_report_line(_err, _src),
-                                cmon_err_report_line_offset(_err, _src));
+    if(cmon_is_valid_idx(_err->toks_first))
+    {
+        cmon_str_builder_append_fmt(_b,
+                                    "%s:%lu:%lu:",
+                                    cmon_err_report_filename(_err, _src),
+                                    cmon_err_report_line(_err, _src),
+                                    cmon_err_report_line_offset(_err, _src));
+    }
 
     if (_add_styling)
     {
@@ -289,6 +293,11 @@ static inline void _write_err(cmon_str_builder * _b,
     // %02lu: %.*s
     // cmon_err_report_line(_err, _src), tok_sv_first.begin - line_sv.begin, line_sv.begin
     cmon_str_builder_append_fmt(_b, "%s\n", _err->msg);
+
+    if(!cmon_is_valid_idx(_err->toks_first))
+    {
+        return;
+    }
 
     size_t offset = cmon_str_builder_count(_b);
 
@@ -312,6 +321,7 @@ static inline void _write_err(cmon_str_builder * _b,
 
     cmon_str_builder_append(_b, "\n");
 
+    int loff = (int)cmon_err_report_line_offset(_err, _src);
     for (size_t i = 0; i < loff + offset - 1; i++)
     {
         cmon_str_builder_append(_b, " ");

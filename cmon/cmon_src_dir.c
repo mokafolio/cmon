@@ -20,7 +20,8 @@ cmon_src_dir * cmon_src_dir_create(cmon_allocator * _alloc,
 {
     cmon_src_dir * ret = CMON_CREATE(_alloc, cmon_src_dir);
     ret->alloc = _alloc;
-    memset(ret->path, 0, sizeof(ret->path));
+    // memset(ret->path, 0, sizeof(ret->path));
+    strcpy(ret->path, _path);
     ret->str_builder = cmon_str_builder_create(_alloc, CMON_PATH_MAX);
     ret->mods = _mods;
     ret->src = _src;
@@ -75,6 +76,7 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
             cmon_modules_add(_dir->mods, "_dirname", cmon_str_builder_c_str(_dir->str_builder));
     }
 
+    printf("pathsas %s\n", _parent_mod_path);
     if (cmon_fs_open(_path, &d) == -1)
     {
         //@TODO: errno description and path?

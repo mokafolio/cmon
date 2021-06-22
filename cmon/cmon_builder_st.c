@@ -145,19 +145,23 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
                                      cmon_true,
                                      pfd.src_file_idx,
                                      CMON_INVALID_IDX,
+                                     CMON_INVALID_IDX,
                                      "failed to load src file %s",
                                      cmon_src_path(_b->src, pfd.src_file_idx));
             }
-
-            // tokenize the modules files right here
-            pfd.tokens = cmon_tokenize(_b->alloc, _b->src, pfd.src_file_idx, &err);
-            pfd.parser = cmon_parser_create(_b->alloc);
-            pfd.ast = NULL;
-
-            // buffer potential tokenize errors
-            if (!cmon_err_report_is_empty(&err))
+            else
             {
-                cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
+                printf("SRC CODE %s\n", cmon_src_code(_b->src, pfd.src_file_idx));
+                // tokenize the modules files right here
+                pfd.tokens = cmon_tokenize(_b->alloc, _b->src, pfd.src_file_idx, &err);
+                pfd.parser = cmon_parser_create(_b->alloc);
+                pfd.ast = NULL;
+
+                // buffer potential tokenize errors
+                if (!cmon_err_report_is_empty(&err))
+                {
+                    cmon_err_handler_add_err(_b->err_handler, cmon_true, &err);
+                }
             }
 
             cmon_dyn_arr_append(&mod_data.file_data, pfd);
@@ -248,6 +252,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         cmon_err_handler_err(_b->err_handler,
                              cmon_true,
                              src_idx,
+                             tok_idx,
                              tok_idx,
                              "circular dependency between modules '%s' and '%s'",
                              cmon_modules_path(_b->mods, a),

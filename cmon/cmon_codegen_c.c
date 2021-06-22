@@ -318,10 +318,7 @@ static inline cmon_bool _codegen_c_prep_fn(void * _cg, cmon_modules *_mods, cmon
 
     if (!cmon_fs_exists(cg->build_dir))
     {
-        if (cmon_fs_mkdir(cg->build_dir) == -1)
-        {
-            return _set_err(cg, "failed to create build directory");
-        }
+        return _set_err(cg, "missing build directory");
     }
 
     cmon_join_paths(cg->build_dir, "cgen", cg->cgen_dir, sizeof(cg->cgen_dir));
@@ -493,12 +490,6 @@ static inline cmon_bool _gen_fn(_session * _s)
         _write_global_init_fn_name(_s, cmon_modules_prefix(_s->cgen->mods, _s->mod_idx));
         cmon_str_builder_append(_s->str_builder, ";\n\n");
 
-        cmon_str_builder_append_fmt(
-            _s->str_builder,
-            "printf(%s);\n",
-            cmon_str_builder_tmp_str(_s->tmp_str_builder,
-                                     "\"Hell cmon %%i %%i\\n\", foo0_foo_glob, bar1_boink"));
-
         // call cmon main function
         _write_indent(_s, 1);
         cmon_idx ret_type = cmon_ir_fn_return_type(_s->ir, main_fn);
@@ -511,7 +502,6 @@ static inline cmon_bool _gen_fn(_session * _s)
         cmon_str_builder_append(_s->str_builder, "}\n");
     }
 
-    printf("DA FOGGING C CODE\n%s\n", cmon_str_builder_c_str(_s->str_builder));
     cmon_join_paths(_s->cgen->c_dir,
                     cmon_str_builder_tmp_str(_s->tmp_str_builder,
                                              "%s.c",

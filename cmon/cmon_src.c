@@ -2,6 +2,7 @@
 #include <cmon/cmon_src.h>
 #include <cmon/cmon_tokens.h>
 #include <cmon/cmon_util.h>
+#include <cmon/cmon_fs.h>
 
 typedef struct
 {
@@ -58,11 +59,14 @@ cmon_idx cmon_src_add(cmon_src * _src, const char * _path, const char * _filenam
 }
 
 cmon_bool cmon_src_load_code(cmon_src * _src, cmon_idx _file_idx)
-{
-    if (_get_file(_src, _file_idx)->code)
+{   
+    cmon_src_file * s = _get_file(_src, _file_idx);
+    if (s->code)
         return cmon_false;
 
-    return cmon_false;
+    s->code = cmon_fs_load_txt_file(_src->alloc, s->path);
+
+    return s->code == NULL;
 }
 
 void cmon_src_set_code(cmon_src * _src, cmon_idx _file_idx, const char * _code)

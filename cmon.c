@@ -5,12 +5,20 @@
 #include <cmon/cmon_src_dir.h>
 #include <cmon/cmon_util.h>
 
+#define _panic(_fmt, ...)                                                                          \
+    do                                                                                             \
+    {                                                                                              \
+        fprintf(stderr, "Panic: " _fmt "\n", ##__VA_ARGS__);                                       \
+        goto end;                                                                                  \
+    } while (0)
+
 int main(int _argc, const char * _args[])
 {
     cmon_allocator alloc = cmon_mallocator_make();
     cmon_argparse * ap = cmon_argparse_create(&alloc, "cmon");
     cmon_src * src = cmon_src_create(&alloc);
     cmon_modules * mods = cmon_modules_create(&alloc, src);
+    cmon_log * log = NULL;
     cmon_builder_st * builder = NULL;
     cmon_src_dir * sd = NULL;
     char cwd[CMON_PATH_MAX];
@@ -31,6 +39,7 @@ int main(int _argc, const char * _args[])
     cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
     CMON_UNUSED(cmon_argparse_add_arg(
         ap, "-v", "--verbose", cmon_false, "print detailed compilation output"));
+    CMON_UNUSED(cmon_argparse_add_arg(ap, "-c", "--clean", cmon_false, "clean build directory"));
 
     cmon_argparse_parse(ap, _args, _argc);
 
@@ -40,14 +49,12 @@ int main(int _argc, const char * _args[])
         goto end;
     }
 
-    cmon_builder_st_create(&alloc, atoi(cmon_argparse_value(ap, "-e")), src, mods);
-
     const char * project_dir = cmon_argparse_value(ap, "-d");
     if (strcmp(project_dir, "cwd") == 0)
     {
         if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
         {
-            cmon_panic("could not get current working directory.");
+            _panic("could not get current working directory.");
         }
         strcpy(project_path, cwd);
     }
@@ -55,11 +62,11 @@ int main(int _argc, const char * _args[])
     {
         if (!cmon_fs_exists(project_dir))
         {
-            cmon_panic("the project path does not exist");
+            _panic("the project path does not exist");
         }
         else if (!cmon_fs_is_dir(project_dir))
         {
-            cmon_panic("the project path does not point to a directory");
+            _panic("the project path does not point to a directory");
         }
         strcpy(project_path, project_dir);
     }
@@ -68,24 +75,53 @@ int main(int _argc, const char * _args[])
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
     if (!cmon_fs_exists(src_path))
-        cmon_panic("missing src directory at %s", project_path);
+        _panic("missing src directory at %s", project_path);
 
     sd = cmon_src_dir_create(&alloc, src_path, mods, src);
     if (cmon_src_dir_parse(sd))
     {
-        cmon_panic("failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
+        _panic("failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
+    }
+
+    if (!cmon_fs_exists(build_path))
+    {
+        if (cmon_fs_mkdir(build_path) == -1)
+        {
+            _panic("failed to create build directory at %s", build_path);
+        }
+    }
+
+    builder = cmon_builder_st_create(&alloc, atoi(cmon_argparse_value(ap, "-e")), src, mods);
+    log = cmon_log_create(&alloc, "cmon_build.log", build_path, cmon_true);
+    if (cmon_argparse_is_set(ap, "-v"))
+    {
+        cmon_log_write_styled(log,
+                              cmon_log_color_default,
+                              cmon_log_color_red,
+                              cmon_log_style_underline | cmon_log_style_bold,
+                              "cmon");
+        cmon_log_write(log, " compiler ");
+        cmon_log_write_styled(log,
+                              cmon_log_color_default,
+                              cmon_log_color_default,
+                              cmon_log_style_light,
+                              "(v%i.%i.%i)",
+                              CMON_VERSION_MAJOR,
+                              CMON_VERSION_MINOR,
+                              CMON_VERSION_PATCH);
+        cmon_log_write(log, "\n");
     }
 
     cmon_codegen cgen = cmon_codegen_c_make(&alloc);
 
-    if (cmon_builder_st_build(builder, &cgen, build_path, NULL))
+    if (cmon_builder_st_build(builder, &cgen, build_path, log))
     {
         cmon_err_report * errs;
         size_t count;
         cmon_builder_st_errors(builder, &errs, &count);
-        for(size_t i=0; i<count; ++i)
+        for (size_t i = 0; i < count; ++i)
         {
-            cmon_err_report_print(&errs[i], src);
+            cmon_log_write_err_report(log, &errs[i], src);
         }
     }
 
@@ -93,6 +129,7 @@ end:
     cmon_codegen_dealloc(&cgen);
     cmon_builder_st_destroy(builder);
     cmon_src_dir_destroy(sd);
+    cmon_log_destroy(log);
     cmon_modules_destroy(mods);
     cmon_src_destroy(src);
     cmon_argparse_destroy(ap);

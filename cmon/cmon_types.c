@@ -154,6 +154,7 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.unique_name_str = _unique;
     t.full_name_str = _full;
     t.data_idx = _extra_data;
+    assert(cmon_modules_count(_t->mods));
     cmon_dyn_arr_init(&t.mod_map, _t->alloc, cmon_modules_count(_t->mods));
     cmon_dyn_arr_resize(&t.mod_map, cmon_modules_count(_t->mods));
     memset(&t.mod_map[0], cmon_false, cmon_dyn_arr_count(&t.mod_map) * sizeof(cmon_bool));
@@ -249,6 +250,7 @@ void cmon_types_destroy(cmon_types * _t)
     {
         cmon_dyn_arr_dealloc(&_t->types[i].mod_map);
     }
+
     cmon_dyn_arr_dealloc(&_t->types);
     cmon_dyn_arr_dealloc(&_t->arrays);
     cmon_dyn_arr_dealloc(&_t->views);
