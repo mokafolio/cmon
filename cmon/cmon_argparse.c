@@ -56,8 +56,6 @@ void cmon_argparse_parse(cmon_argparse * _a, const char ** _args, size_t _count)
     // skip bin name hence start at 1
     for (i = 1; i < _count; ++i)
     {
-        printf("arg %s\n", _args[i]);
-
         cmon_idx idx = CMON_INVALID_IDX;
         for (j = 0; j < cmon_dyn_arr_count(&_a->args); ++j)
         {

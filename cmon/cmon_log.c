@@ -67,7 +67,7 @@ cmon_log * cmon_log_create(cmon_allocator * _alloc,
     ret->alloc = _alloc;
     strcpy(ret->name, _name);
     cmon_join_paths(_path, _name, ret->path, sizeof(ret->path));
-    printf("path %s\n", ret->path);
+    
     ret->file = fopen(ret->path, "w");
     if (!ret->file)
     {

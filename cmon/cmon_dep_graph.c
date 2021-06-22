@@ -88,12 +88,10 @@ static cmon_dep_graph_node * _find_or_create_node(cmon_dep_graph * _g,
     cmon_dep_graph_node * n = _find_node(_g, _data);
     if (n)
     {
-        printf("existing node, updating deps\n");
         if (_deps)
             _set_deps(_g, n, _deps, _count);
         return n;
     }
-    printf("new node\n");
     return _create_node(_g, _data, _deps, _count);
 }
 
@@ -139,7 +137,6 @@ void cmon_dep_graph_clear(cmon_dep_graph * _g)
 
 void cmon_dep_graph_add(cmon_dep_graph * _g, cmon_idx _data, cmon_idx * _deps, size_t _count)
 {
-    printf("cmon_dep_graph_add\n");
     _find_or_create_node(_g, _data, _deps, _count);
 }
 
@@ -147,18 +144,13 @@ static cmon_bool _visit(cmon_dep_graph * _g, cmon_dep_graph_node * _n)
 {
     size_t i;
 
-    printf("visiiit\n\n");
-
     if (_n->mark == cmon_dep_graph_mark_perm)
         return cmon_false;
-
-    printf("visiiit 02\n\n");
 
     //@TODO: set error message on _g
     // Graph can't be solved
     if (_n->mark == cmon_dep_graph_mark_tmp)
     {
-        printf("err bruh\n");
         _g->conflict_b = _n->data;
         return cmon_true;
     }
@@ -202,10 +194,7 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
 
     while (cmon_dyn_arr_count(&_g->unresolved))
     {
-        printf("woop %lu\n", cmon_dyn_arr_count(&_g->unmarked));
-
         cmon_dep_graph_node * n = cmon_dyn_arr_last(&_g->unmarked);
-        printf("DA DATA %lu\n", n->data);
         assert(n->mark == cmon_dep_graph_mark_none);
         if (_visit(_g, n))
         {
@@ -217,7 +206,6 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
     if (err)
         return (cmon_dep_graph_result){ NULL, 0 };
 
-    printf("resolve no err\n");
     return (cmon_dep_graph_result){ _g->resolved, cmon_dyn_arr_count(&_g->resolved) };
 }
 

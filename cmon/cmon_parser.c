@@ -244,9 +244,6 @@ static inline cmon_idx _parse_comma_separated_exprs(cmon_parser * _p,
         cmon_idx_buf_append(_p->idx_buf_mng, _idx_buf, _parse_expr(_p, _precedence_nil));
         if (_accept(_p, &tmp, cmon_tokk_comma))
         {
-            // printf("current %s\n",
-            //        cmon_tokk_to_str(cmon_tokens_kind(_p->tokens,
-            //        cmon_tokens_current(_p->tokens))));
             if (cmon_tokens_is_current(_p->tokens, _end_tkind))
             {
                 _err(_p, tmp, "unexpected comma");
@@ -433,7 +430,6 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
 {
     cmon_idx tok, ret;
 
-    printf("_parse_expr\n\n");
     if (cmon_tokens_is_current(_p->tokens, cmon_tokk_ident))
     {
         cmon_idx ctok = cmon_tokens_current(_p->tokens);
@@ -459,7 +455,6 @@ static cmon_idx _parse_expr(cmon_parser * _p, _precedence _prec)
     }
     else if (_accept(_p, &tok, cmon_tokk_int))
     {
-        printf("int liiiit\n");
         ret = cmon_astb_add_int_lit(_p->ast_builder, tok);
     }
     else if (_accept(_p, &tok, cmon_tokk_string))
@@ -559,10 +554,8 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
     b = cmon_idx_buf_mng_get(_p->idx_buf_mng);
     while (!cmon_tokens_is_current(_p->tokens, cmon_tokk_curl_close, cmon_tokk_eof))
     {
-        printf("ADDING STMT a\n\n");
         if (cmon_is_valid_idx(stmt = _parse_stmt(_p)))
         {
-            printf("ADDING STMT b\n\n");
             cmon_idx_buf_append(_p->idx_buf_mng, b, stmt);
         }
         else
@@ -570,7 +563,6 @@ static cmon_idx _parse_block(cmon_parser * _p, cmon_idx _open_tok)
             return CMON_INVALID_IDX;
         }
     }
-    printf("ADDING STMT c\n\n");
     cmon_idx close_tok = _tok_check(_p, cmon_true, cmon_tokk_curl_close);
 
     ret = cmon_astb_add_block(_p->ast_builder,
@@ -721,7 +713,6 @@ static cmon_idx _parse_stmt(cmon_parser * _p)
     }
     else if (_peek_var_decl(_p))
     {
-        printf("var decl\n");
         ret = _parse_var_decl(_p, cmon_false);
     }
     else
@@ -753,7 +744,6 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
         while (_accept(_p, &tok, cmon_tokk_ident))
         {
             cmon_str_view sv = cmon_tokens_str_view(_p->tokens, tok);
-            printf("APPENDING DA TOK %lu: %*.s\n", tok, sv.end - sv.begin, sv.begin);
             assert(cmon_tokens_kind(_p->tokens, tok) == cmon_tokk_ident);
 
             cmon_idx_buf_append(_p->idx_buf_mng, path_tok_buf, tok);

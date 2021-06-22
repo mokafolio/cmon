@@ -151,7 +151,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             }
             else
             {
-                printf("SRC CODE %s\n", cmon_src_code(_b->src, pfd.src_file_idx));
                 // tokenize the modules files right here
                 pfd.tokens = cmon_tokenize(_b->alloc, _b->src, pfd.src_file_idx, &err);
                 pfd.parser = cmon_parser_create(_b->alloc);
@@ -265,7 +264,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     _log_status(_log, "compiling modules\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
-        printf("main pass names %lu\n", i);
         _per_module_data * pmd = &_b->mod_data[i];
 
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)

@@ -490,11 +490,9 @@ static inline cmon_idx _resolve_parsed_type(_file_resolver * _fr,
                 size_t i;
                 for (i = 0; i < cmon_dyn_arr_count(&_fr->resolver->globals_pass_stack); ++i)
                 {
-                    printf("muck %lu %lu\n\n", _fr->resolver->globals_pass_stack[i], type_sym);
                     cmon_str_view a = cmon_symbols_name(_fr->resolver->symbols,
                                                         _fr->resolver->globals_pass_stack[i]);
                     cmon_str_view b = cmon_symbols_name(_fr->resolver->symbols, type_sym);
-                    printf("%.*s %.*s\n\n", a.end - a.begin, a.begin, b.end - b.begin, b.begin);
                     if (_fr->resolver->globals_pass_stack[i] == type_sym)
                     {
                         cmon_str_view name = cmon_symbols_name(_fr->resolver->symbols, type_sym);
@@ -1386,13 +1384,9 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
 
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
 
-    // cmon_ast_iter param_it = cmon_ast_fn_params_iter(_fr_ast(_fr), _ast_idx);
     cmon_bool param_err = cmon_false;
-    // while (cmon_is_valid_idx(idx = cmon_ast_iter_next(_fr_ast(_fr), &param_it)))
-    printf("DA FOCKING PARAM COUNT %lu\n", cmon_ast_fn_params_count(_fr_ast(_fr), _ast_idx));
     for (size_t i = 0; i < cmon_ast_fn_params_count(_fr_ast(_fr), _ast_idx); ++i)
     {
-        printf("DA FOCKING I %lu\n", i);
         cmon_idx idx = cmon_ast_fn_param(_fr_ast(_fr), _ast_idx, i);
         cmon_astk kind = cmon_ast_kind(_fr_ast(_fr), idx);
         if (kind == cmon_astk_var_decl)
@@ -1417,7 +1411,6 @@ static inline cmon_idx _resolve_fn_sig(_file_resolver * _fr, cmon_idx _scope, cm
     }
     else
     {
-        printf("FOCKING PARAM COUNT %lu\n\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
         ret = cmon_types_find_fn(_fr->resolver->types,
                                  ret_type,
                                  cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
@@ -1846,7 +1839,6 @@ void cmon_resolver_set_input(cmon_resolver * _r,
     for (i = 0; i < cmon_types_builtin_count(_r->types); ++i)
     {
         cmon_idx idx = cmon_types_builtin(_r->types, i);
-        printf("ADDING BUILTIN TO GLOBAL SCOPE %lu %s\n", i, cmon_types_name(_r->types, idx));
         assert(cmon_is_valid_idx(idx));
         cmon_symbols_scope_add_type(_r->symbols,
                                     _r->global_scope,
@@ -1991,10 +1983,7 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 {
                     cmon_idx ipp_idx = cmon_ast_import_pair(ast, idx, j);
                     cmon_str_view path = cmon_ast_import_pair_path(ast, ipp_idx);
-
-                    printf("finding module %.*s\n", path.end - path.begin, path.begin);
                     imod_idx = cmon_modules_find(fr->resolver->mods, path);
-                    printf("imod_idx %lu\n", imod_idx);
 
                     if (!cmon_is_valid_idx(imod_idx))
                     {
@@ -2731,7 +2720,6 @@ static inline cmon_idx _ir_add_var_decl_impl(cmon_resolver * _r,
                             ? CMON_INVALID_IDX
                             : _ir_add(_r, _fr, cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx));
 
-    printf("_ir_add_var_decl_impl %s\n", _name);
     cmon_idx ret;
 
     if (_is_global)
@@ -2752,7 +2740,6 @@ static inline cmon_idx _ir_add_var_decl_impl(cmon_resolver * _r,
                                     expr_idx);
     }
 
-    printf("end\n");
     _r->symbol_ir_map[sym] = ret;
 
     cmon_short_str_dealloc(&name_buf);
@@ -2778,12 +2765,10 @@ static inline cmon_idx _ir_add_global_var_decl(cmon_resolver * _r,
                                                const char * _prefix,
                                                cmon_bool _is_external)
 {
-    printf("_ir_add_global_var_decl %s\n", cmon_symbols_unique_name(_r->symbols, _sym));
     cmon_idx mod_idx = cmon_symbols_module(_r->symbols, _sym);
     cmon_idx src_file_idx = cmon_symbols_src_file(_r->symbols, _sym);
     cmon_resolver * r = cmon_modules_resolver(_r->mods, mod_idx);
     _file_resolver * fr = &r->file_resolvers[cmon_src_mod_src_idx(_r->src, src_file_idx)];
-    printf("boop %lu\n", src_file_idx);
     return _ir_add_var_decl_impl(
         _r,
         fr,
@@ -2804,7 +2789,6 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     }
     else if (kind == cmon_astk_var_decl)
     {
-        printf("LOC VAR DEC\n\n");
         return _ir_add_local_var_decl(_r, _fr, _ast_idx);
     }
     else if (kind == cmon_astk_int_literal)
@@ -2845,7 +2829,6 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     {
         cmon_idx sym = cmon_ast_ident_sym(_fr_ast(_fr), _ast_idx);
         assert(cmon_is_valid_idx(sym));
-        printf("ded focking sym %lu\n", sym);
         return cmon_irb_add_ident(_r->ir_builder, _ir_for_sym(_r, sym));
     }
     else if (kind == cmon_astk_addr)
@@ -2879,8 +2862,6 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     {
         cmon_typek left_kind = cmon_types_kind(
             _r->types, _fr->resolved_types[cmon_ast_selector_left(_fr_ast(_fr), _ast_idx)]);
-        // printf("DA FOCKING KIND %lu\n", left_kind);
-        // assert(0);
         if (left_kind == cmon_typek_modident)
         {
             //@NOTE: If the symbol is in a different module, simply add an ident referring to it to
@@ -2942,19 +2923,16 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
     else if (kind == cmon_astk_struct_init)
     {
         cmon_idx idx_buf = cmon_idx_buf_mng_get(_fr->idx_buf_mng);
-        printf("DA FOCKING IDX BUF %lu\n", idx_buf);
         cmon_idx field_expr_idx_buf =
             cmon_ast_struct_init_resolved_field_idx_buf(_fr_ast(_fr), _ast_idx);
         for (size_t i = 0; i < cmon_idx_buf_count(_fr->idx_buf_mng, field_expr_idx_buf); ++i)
         {
-            printf("DA I %lu\n", i);
             cmon_idx_buf_append(
                 _fr->idx_buf_mng,
                 idx_buf,
                 _ir_add(_r, _fr, cmon_idx_buf_at(_fr->idx_buf_mng, field_expr_idx_buf, i)));
         }
 
-        printf("buf count %lu\n", cmon_idx_buf_count(_fr->idx_buf_mng, idx_buf));
         cmon_idx ret = cmon_irb_add_struct_init(_r->ir_builder,
                                                 _fr->resolved_types[_ast_idx],
                                                 cmon_idx_buf_ptr(_fr->idx_buf_mng, idx_buf),
@@ -3034,7 +3012,6 @@ static inline cmon_idx _ir_add_fn_from_sym(cmon_resolver * _r,
 static inline void _ir_add_fn_body(cmon_resolver * _r, _file_resolver * _fr, cmon_idx _sym)
 {
     assert(cmon_is_valid_idx(_sym));
-    printf("ADDING FN BODY %s\n", cmon_symbols_unique_name(_r->symbols, _sym));
     cmon_idx ast_idx = cmon_symbols_ast(_r->symbols, _sym);
     cmon_idx fn_ast = cmon_ast_var_decl_expr(_fr_ast(_fr), ast_idx);
     cmon_idx fn_ir = _ir_for_sym(_r, _sym);
@@ -3159,7 +3136,6 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
         cmon_irb_add_type(_r->ir_builder, _r->sorted_types[i]);
     }
 
-    printf("EXTERNAL VARS\n\n");
     // add external symbols to IR
     for (i = 0; i < cmon_dyn_arr_count(&external_vars); ++i)
     {
@@ -3169,7 +3145,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
             cmon_modules_prefix(_r->mods, cmon_symbols_module(_r->symbols, external_vars[i])),
             cmon_true);
     }
-    printf("EXTERNAL FNS\n\n");
+
     for (i = 0; i < cmon_dyn_arr_count(&external_fns); ++i)
     {
         _ir_add_fn_from_sym(
@@ -3193,26 +3169,20 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
                 cmon_symbols_ast(fr->resolver->symbols, fr->global_var_decls[j]);
             assert(cmon_is_valid_idx(var_decl_ast));
 
-            printf("PRE DEATH %s\n",
-                   cmon_symbols_unique_name(fr->resolver->symbols, fr->global_var_decls[j]));
-            printf("ASTK %lu\n", cmon_ast_kind(_fr_ast(fr), var_decl_ast));
             // ignore functions
             if (cmon_ast_kind(_fr_ast(fr), cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast)) !=
                 cmon_astk_fn_decl)
             {
-                printf("boink\n");
                 cmon_dyn_arr_clear(&_r->dep_buffer);
                 _add_global_init_dep(fr,
                                      fr->global_var_decls[j],
                                      cmon_ast_var_decl_expr(_fr_ast(fr), var_decl_ast),
                                      &_r->dep_buffer);
-                printf("boin2k\n");
                 cmon_dep_graph_add(_r->dep_graph,
                                    fr->global_var_decls[j],
                                    &_r->dep_buffer[0],
                                    cmon_dyn_arr_count(&_r->dep_buffer));
             }
-            printf("POST DEATH\n");
         }
     }
 
@@ -3258,39 +3228,28 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
         }
     }
 
-    printf("uno\n\n");
-
     // add sorted globals to ir builder
     for (i = 0; i < res.count; ++i)
     {
-        printf("ADDING GLOBAL\n\n");
         _ir_add_global_var_decl(_r, res.array[i], mod_pref, cmon_false);
     }
-
-    printf("dos\n\n");
 
     // generate IR for all (non-external) function bodies
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
-        printf("GLOB FNS COUNT %lu\n", cmon_dyn_arr_count(&_r->file_resolvers[i].global_fns));
         for (j = 0; j < cmon_dyn_arr_count(&_r->file_resolvers[i].global_fns); ++j)
         {
             _ir_add_fn_body(_r, &_r->file_resolvers[i], _r->file_resolvers[i].global_fns[j]);
         }
     }
 
-    printf("tres\n\n");
-
     for (i = 0; i < cmon_dyn_arr_count(&_r->file_resolvers); ++i)
     {
-        printf("LOC FNS COUNT %lu\n", cmon_dyn_arr_count(&_r->file_resolvers[i].local_fns));
         for (j = 0; j < cmon_dyn_arr_count(&_r->file_resolvers[i].local_fns); ++j)
         {
             _ir_add_fn_body(_r, &_r->file_resolvers[i], _r->file_resolvers[i].local_fns[j]);
         }
     }
-
-    printf("fin\n\n");
 
     ret = cmon_irb_ir(_r->ir_builder);
 

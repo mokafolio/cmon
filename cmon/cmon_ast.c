@@ -127,7 +127,6 @@ static inline cmon_idx _add_node(
 {
     cmon_dyn_arr_append(&_b->kinds, _kind);
     cmon_dyn_arr_append(&_b->main_tokens, _main_tok);
-    printf("adding node %lu %lu %lu\n", _left, _right, cmon_dyn_arr_count(&_b->extra_data));
     cmon_dyn_arr_append(&_b->left_right, ((_left_right){ _left, _right }));
     return cmon_dyn_arr_count(&_b->kinds) - 1;
 }
@@ -226,7 +225,6 @@ cmon_idx cmon_astb_add_fn_decl(cmon_astb * _b,
                                size_t _count,
                                cmon_idx _block_idx)
 {
-    printf("ADD FN DECL\n");
     cmon_idx left = _add_extra_data(_b, _ret_type);
     _add_extra_data(_b, _block_idx);
     _add_extra_data_arr(_b, _params, _count);
@@ -626,8 +624,6 @@ cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx)
         return cmon_ast_token(_ast, _idx);
     }
 
-    printf("WOWOWOWOWOOW\n\n\n");
-    printf("KIND %i\n", kind);
     assert(0);
     return CMON_INVALID_IDX;
 }
@@ -785,7 +781,6 @@ cmon_bool cmon_ast_var_decl_is_pub(cmon_ast * _ast, cmon_idx _vidx)
 cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx)
 {
     assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
-    printf("is mut %lu\n", _get_extra_data(_ast, _ast->left_right[_vidx].left + 1));
     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 1);
 }
 

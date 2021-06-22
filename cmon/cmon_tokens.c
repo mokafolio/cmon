@@ -67,12 +67,8 @@ static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
 static inline void _finish_current_line(_tokenize_session * _l, cmon_bool _is_last_line)
 {
     const char * end = _is_last_line ? _l->end : _l->pos;
-    // if (_l->line_start != end)
-    {
-        // printf("_finish_current_line %lu\n", end - _l->line_start);
-        cmon_dyn_arr_append(&_l->lines, ((cmon_str_view){ _l->line_start, end }));
-        _l->line_start = _l->pos + 1;
-    }
+    cmon_dyn_arr_append(&_l->lines, ((cmon_str_view){ _l->line_start, end }));
+    _l->line_start = _l->pos + 1;
 }
 
 static inline void _advance_line(_tokenize_session * _l)
@@ -513,7 +509,6 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_tokk * _out_kind, _tok
             _err(_l, "invalid character '%c' in source code", *_l->pos);
         }
 
-        // printf("IDENT BRUV %s %s\n", _out_tok->str_view.begin, _l->pos);
         _out_tok->str_view.end = _l->pos;
         return cmon_true;
     }
@@ -539,7 +534,6 @@ static inline void _tokenize_session_init(_tokenize_session * _s,
     const char * code;
     code = cmon_src_code(_src, _src_file_idx);
 
-    printf("session init %s\n", cmon_src_filename(_src, _src_file_idx));
     _s->alloc = _alloc;
     _s->src = _src;
     _s->src_file_idx = _src_file_idx;
@@ -598,12 +592,12 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
     cmon_dyn_arr_append(&s.tokens, tok);
     _finish_current_line(&s, cmon_true);
 
-    printf("DA FOCKING LINES %lu\n", cmon_dyn_arr_count(&s.lines));
-    for (size_t i = 0; i < cmon_dyn_arr_count(&s.lines); ++i)
-    {
-        printf("%lu: %.*s\n", i + 1, s.lines[i].end - s.lines[i].begin, s.lines[i].begin);
-    }
-    printf("\n\n");
+    // printf("DA FOCKING LINES %lu\n", cmon_dyn_arr_count(&s.lines));
+    // for (size_t i = 0; i < cmon_dyn_arr_count(&s.lines); ++i)
+    // {
+    //     printf("%lu: %.*s\n", i + 1, s.lines[i].end - s.lines[i].begin, s.lines[i].begin);
+    // }
+    // printf("\n\n");
 
     ret->tok_idx = 0;
     ret->kinds = s.kinds;
@@ -770,7 +764,6 @@ cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...)
 
 cmon_str_view cmon_tokens_line_str_view(cmon_tokens * _t, size_t _line)
 {
-    printf("DA FOCKING LINE %lu %lu\n", _line, cmon_dyn_arr_count(&_t->lines));
     assert(_line > 0);
     assert(_line <= cmon_dyn_arr_count(&_t->lines));
     return _t->lines[_line - 1];

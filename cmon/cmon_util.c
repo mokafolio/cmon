@@ -26,7 +26,6 @@ char * cmon_str_view_copy(cmon_allocator * _alloc, cmon_str_view _view)
     char * ret = cmon_allocator_alloc(_alloc, len + 1).ptr;
     memcpy(ret, _view.begin, len);
     ret[len] = '\0';
-    printf("DA NEW LEN %lu %s\n", len, ret);
     return ret;
 }
 

@@ -149,7 +149,6 @@ cmon_bool _cmon_hashmap_set(cmon_hashmap_base * _m,
     next = _getref(_m, _hash, _key_ref, _ksize);
     if (next)
     {
-        printf("REPLACEING\n");
         memcpy((*next)->value, _value, _vsize);
         return cmon_true;
     }
@@ -217,7 +216,6 @@ uint64_t _cmon_ptr_hash(const void * _ptr)
     // in theory this should be a bad idea due to alignment and distribution. In practice it seems
     // to be pretty fast, and std::hash on GCC is identical:
     // https://stackoverflow.com/questions/20953390/what-is-the-fastest-hash-function-for-pointers
-    printf("PTR HASH %lu\n", (uint64_t)_ptr);
     return (uint64_t)_ptr;
 }
 
@@ -309,7 +307,6 @@ cmon_bool _cmon_str_cmp(const void * _stra,
                         size_t _byte_count,
                         void * _user_data)
 {
-    printf("cmp %s %s\n", *(const char **)_stra, *(const char **)_strb);
     return strcmp(*(const char **)_stra, *(const char **)_strb) == 0;
 }
 

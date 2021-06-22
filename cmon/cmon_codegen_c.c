@@ -624,7 +624,6 @@ static inline void _codegen_c_shutdown_fn(void * _cg)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
     cmon_dyn_arr_dealloc(&cg->free_sessions);
-    printf("SESSION COUNT %lu\n", cmon_dyn_arr_count(&cg->sessions));
     for (size_t i = 0; i < cmon_dyn_arr_count(&cg->sessions); ++i)
     {
         _session * s = &cg->sessions[i];
@@ -633,8 +632,6 @@ static inline void _codegen_c_shutdown_fn(void * _cg)
         cmon_str_builder_destroy(s->str_builder);
     }
     cmon_dyn_arr_dealloc(&cg->sessions);
-    // cmon_str_builder_destroy(cg->tmp_str_builder);
-    // cmon_str_builder_destroy(cg->str_builder);
     CMON_DESTROY(cg->alloc, cg);
 }
 

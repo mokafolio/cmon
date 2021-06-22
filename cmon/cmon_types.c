@@ -175,8 +175,6 @@ static inline cmon_idx _add_type(cmon_types * _t,
 
     cmon_dyn_arr_append(&_t->types, t);
     cmon_hashmap_set(&_t->name_map, _unique, cmon_dyn_arr_count(&_t->types) - 1);
-
-    printf("adding type %s\n", t.unique_name_str);
     return cmon_dyn_arr_count(&_t->types) - 1;
 }
 
@@ -421,7 +419,6 @@ cmon_idx cmon_types_find_fn(
     cmon_dyn_arr_append(&_t->fns, sig);
 
     unique_name = _intern_c_str(_t, unique_name);
-    printf("addinf fn sig %s\n", unique_name);
     return _add_type(
         _t,
         cmon_typek_fn,
@@ -451,7 +448,6 @@ const char * cmon_types_unique_name(cmon_types * _t, cmon_idx _type_idx)
 
 const char * cmon_types_name(cmon_types * _t, cmon_idx _type_idx)
 {
-    printf("getting type name %lu %s\n", _type_idx, _get_type(_t, _type_idx).name_str);
     return _get_type(_t, _type_idx).name_str;
 }
 

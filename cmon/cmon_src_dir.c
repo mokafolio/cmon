@@ -76,7 +76,6 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
             cmon_modules_add(_dir->mods, "_dirname", cmon_str_builder_c_str(_dir->str_builder));
     }
 
-    printf("pathsas %s\n", _parent_mod_path);
     if (cmon_fs_open(_path, &d) == -1)
     {
         //@TODO: errno description and path?
