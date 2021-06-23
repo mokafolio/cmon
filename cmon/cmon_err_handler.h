@@ -14,8 +14,9 @@ CMON_API void cmon_err_handler_destroy(cmon_err_handler * _e);
 CMON_API void cmon_err_handler_err(cmon_err_handler * _e,
                                    cmon_bool _jump,
                                    cmon_idx _src_file_idx,
-                                   cmon_idx _toks_first,
-                                   cmon_idx _toks_last,
+                                   cmon_idx _tok_first,
+                                   cmon_idx _tok_of_interest,
+                                   cmon_idx _tok_last,
                                    const char * _fmt,
                                    ...);
 CMON_API void cmon_err_handler_add_err(cmon_err_handler * _e,

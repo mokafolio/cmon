@@ -41,8 +41,9 @@ void cmon_err_handler_destroy(cmon_err_handler * _e)
 void cmon_err_handler_err(cmon_err_handler * _e,
                           cmon_bool _jump,
                           cmon_idx _src_file_idx,
-                          cmon_idx _toks_first,
-                          cmon_idx _toks_last,
+                          cmon_idx _tok_first,
+                          cmon_idx _tok_of_interest,
+                          cmon_idx _tok_last,
                           const char * _fmt,
                           ...)
 {
@@ -63,8 +64,9 @@ void cmon_err_handler_err(cmon_err_handler * _e,
     // }
 
     cmon_err_report err = cmon_err_report_make(_src_file_idx,
-                                               _toks_first,
-                                               _toks_last,
+                                               _tok_first,
+                                               _tok_of_interest,
+                                               _tok_last,
                                                cmon_str_builder_c_str(_e->str_builder));
     va_end(args);
     cmon_err_handler_add_err(_e, _jump, &err);

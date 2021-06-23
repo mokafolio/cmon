@@ -18,6 +18,7 @@
         _l->err = cmon_err_report_make(_l->src_file_idx,                                           \
                                        cmon_dyn_arr_count(&_l->tokens),                            \
                                        cmon_dyn_arr_count(&_l->tokens),                            \
+                                       cmon_dyn_arr_count(&_l->tokens),                            \
                                        cmon_str_builder_c_str(_l->tmp_str_b));                     \
     } while (0)
 
@@ -31,12 +32,18 @@ typedef struct
     cmon_bool follows_nl;
 } _token;
 
+typedef struct
+{
+    cmon_idx tok_begin, tok_end;
+    cmon_str_view str_view;
+} _line;
+
 typedef struct cmon_tokens
 {
     cmon_allocator * alloc;
     cmon_dyn_arr(cmon_tokk) kinds;
     cmon_dyn_arr(_token) tokens;
-    cmon_dyn_arr(cmon_str_view) lines;
+    cmon_dyn_arr(_line) lines;
     cmon_idx tok_idx;
 } cmon_tokens;
 
@@ -49,9 +56,10 @@ typedef struct
     const char * pos;
     const char * end;
     const char * line_start;
+    cmon_idx line_tok_start;
     cmon_dyn_arr(cmon_tokk) kinds;
     cmon_dyn_arr(_token) tokens;
-    cmon_dyn_arr(cmon_str_view) lines;
+    cmon_dyn_arr(_line) lines;
     cmon_idx current_line;
     cmon_idx current_line_off;
     cmon_err_report err;
@@ -64,16 +72,22 @@ static inline void _advance_pos(_tokenize_session * _l, size_t _advance)
     _l->current_line_off += _advance;
 }
 
-static inline void _finish_current_line(_tokenize_session * _l, cmon_bool _is_last_line)
+static inline void _finish_current_line(_tokenize_session * _l, cmon_bool _is_last_line, _token * _current)
 {
     const char * end = _is_last_line ? _l->end : _l->pos;
-    cmon_dyn_arr_append(&_l->lines, ((cmon_str_view){ _l->line_start, end }));
+
+    //this is a little messy to accomodate tokens that span over multiple lines.
+    cmon_dyn_arr_append(&_l->lines,
+                        ((_line){ _l->line_tok_start,
+                                  _current ? cmon_dyn_arr_count(&_l->tokens) + 1 : cmon_dyn_arr_count(&_l->tokens),
+                                  (cmon_str_view){ _l->line_start, end } }));
     _l->line_start = _l->pos + 1;
+    _l->line_tok_start = cmon_dyn_arr_count(&_l->tokens);
 }
 
-static inline void _advance_line(_tokenize_session * _l)
+static inline void _advance_line(_tokenize_session * _l, _token * _current)
 {
-    _finish_current_line(_l, cmon_false);
+    _finish_current_line(_l, cmon_false, _current);
     ++_l->current_line;
     _l->current_line_off = 0;
 }
@@ -85,7 +99,7 @@ static inline size_t _skip_whitespace(_tokenize_session * _l)
     {
         if (*_l->pos == '\n')
         {
-            _advance_line(_l);
+            _advance_line(_l, NULL);
             ++count;
         }
         _advance_pos(_l, 1);
@@ -456,7 +470,7 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_tokk * _out_kind, _tok
                 else
                 {
                     if (*_l->pos == '\n')
-                        _advance_line(_l);
+                        _advance_line(_l, _out_tok);
                     _advance_pos(_l, 1);
                 }
             }
@@ -541,6 +555,7 @@ static inline void _tokenize_session_init(_tokenize_session * _s,
     _s->pos = code;
     _s->end = code + strlen(code);
     _s->line_start = code;
+    _s->line_tok_start = 0;
     _s->current_line = 1;
     _s->current_line_off = 1;
     cmon_dyn_arr_init(&_s->kinds, _alloc, 128);
@@ -586,23 +601,24 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
             break;
     }
 
+    _finish_current_line(&s, cmon_true, NULL);
+
     tok.str_view.begin = s.end;
     tok.str_view.end = s.end;
     cmon_dyn_arr_append(&s.kinds, cmon_tokk_eof);
     cmon_dyn_arr_append(&s.tokens, tok);
-    _finish_current_line(&s, cmon_true);
-
-    // printf("DA FOCKING LINES %lu\n", cmon_dyn_arr_count(&s.lines));
-    // for (size_t i = 0; i < cmon_dyn_arr_count(&s.lines); ++i)
-    // {
-    //     printf("%lu: %.*s\n", i + 1, s.lines[i].end - s.lines[i].begin, s.lines[i].begin);
-    // }
-    // printf("\n\n");
 
     ret->tok_idx = 0;
     ret->kinds = s.kinds;
     ret->tokens = s.tokens;
     ret->lines = s.lines;
+
+    // printf("DA FOCKING LINES %lu %lu\n", cmon_dyn_arr_count(&s.lines), cmon_dyn_arr_count(&s.tokens));
+    // for (size_t i = 0; i < cmon_dyn_arr_count(&s.lines); ++i)
+    // {
+    //     printf("%lu: %.*s (tok count: %lu %lu)\n", i + 1, s.lines[i].str_view.end - s.lines[i].str_view.begin, s.lines[i].str_view.begin, s.lines[i].tok_begin, s.lines[i].tok_end);
+    // }
+    // printf("\n\n");
 
     *_out_err = s.err;
     _tokenize_session_dealloc(&s, ret != NULL);
@@ -687,6 +703,43 @@ cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx)
     return _get_token(_t, _idx).line;
 }
 
+static inline _line * _get_line(cmon_tokens * _t, cmon_idx _l)
+{
+    assert(_l <= cmon_dyn_arr_count(&_t->lines));
+    return &_t->lines[_l - 1];
+}
+
+size_t cmon_tokens_line_token_count(cmon_tokens * _t, cmon_idx _l)
+{
+    _line * l = _get_line(_t, _l);
+    return l->tok_end - l->tok_begin;
+}
+
+cmon_idx cmon_tokens_line_token(cmon_tokens * _t, cmon_idx _l, size_t _toki)
+{
+    _line * l = _get_line(_t, _l);
+    assert(_toki < cmon_tokens_line_token_count(_t, _l));
+    return l->tok_begin + _toki;
+}
+
+// size_t cmon_tokens_line_count(cmon_tokens * _t, cmon_idx _idx)
+// {
+//     cmon_idx next_idx = _idx + 1;
+//     if (next_idx < cmon_dyn_arr_count(&_t->kinds))
+//     {
+//         size_t a = cmon_tokens_line(_t, _idx);
+//         cmon_str_view sv = cmon_tokens_str_view(_t, _idx);
+//         size_t count = 0;
+//         while (_t->lines[a - 1].str_view.begin <= sv.end)
+//         {
+//             ++count;
+//             ++a;
+//         }
+//         return count;
+//     }
+//     return 1;
+// }
+
 cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx)
 {
     return _get_token(_t, _idx).line_off;
@@ -766,7 +819,7 @@ cmon_str_view cmon_tokens_line_str_view(cmon_tokens * _t, size_t _line)
 {
     assert(_line > 0);
     assert(_line <= cmon_dyn_arr_count(&_t->lines));
-    return _t->lines[_line - 1];
+    return _t->lines[_line - 1].str_view;
 }
 
 // cmon_bool cmon_tokens_is(cmon_tokens * _t, cmon_idx _idx, cmon_tokk _kind)

@@ -11,7 +11,7 @@
     do                                                                                             \
     {                                                                                              \
         cmon_err_handler_err(                                                                      \
-            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _tok, _fmt, ##__VA_ARGS__);        \
+            _p->err_handler, cmon_true, _p->src_file_idx, _tok, _tok, _tok, _fmt, ##__VA_ARGS__);  \
     } while (0)
 
 typedef enum

@@ -120,13 +120,14 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
     cmon_err_handler_set_jump(_b->err_handler, &_b->err_jmp);
 
-    _log_status(_log, "cmon_builder_st start build\n");
+    _log_status(_log, "-> cmon_builder_st start build\n");
 
-    _log_status(_log, "loading and tokenizing src files\n");
+    _log_status(_log, "    01. loading and tokenizing src files\n");
 
     // setup all the things needed per module
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
         _per_module_data mod_data;
         mod_data.resolver = cmon_resolver_create(_b->alloc, _b->max_errors);
         cmon_dyn_arr_init(&mod_data.file_data, _b->alloc, cmon_modules_src_file_count(_b->mods, i));
@@ -136,6 +137,8 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             cmon_err_report err = cmon_err_report_make_empty();
             _per_file_data pfd;
             pfd.src_file_idx = cmon_modules_src_file(_b->mods, i, j);
+
+            _log_status(_log, "            » %s\n", cmon_src_filename(_b->src, pfd.src_file_idx));
 
             //@NOTE: If the src code was already set on the src file (i.e. during unit testing)
             // the cmon_src_load_code funtions is a noop.
@@ -172,15 +175,19 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     cmon_err_handler_jump(_b->err_handler, cmon_true);
 
     // parse all the files
-    _log_status(_log, "parsing src files\n");
+    _log_status(_log, "    02. parsing src files\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
         _per_module_data * pmd = &_b->mod_data[i];
 
         // setup everything needed per file
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             cmon_idx src_file_idx = cmon_modules_src_file(_b->mods, i, j);
+            
+            _log_status(_log, "            » %s\n", cmon_src_filename(_b->src, src_file_idx));
+
             _per_file_data * pfd = &pmd->file_data[j];
             pfd->ast = cmon_parser_parse(pfd->parser, _b->src, pfd->src_file_idx, pfd->tokens);
             if (!pfd->ast)
@@ -196,9 +203,10 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
 
     // resolve all the top level names for each module to determine which other modules they depend
     // on
-    _log_status(_log, "resolving module dependency order\n");
+    _log_status(_log, "    03. resolving top level names\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_resolver_set_input(pmd->resolver, _b->src, _b->types, _b->symbols, _b->mods, i);
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
@@ -220,6 +228,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
 
     //@TODO: move that somewhere else so it can be used by different build implementations
     // resolve dependency order between modules
+    _log_status(_log, "    04. resolving module dependency order\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
         cmon_dyn_arr_clear(&_b->dep_buf);
@@ -261,11 +270,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
 
     // resolve each module
-    _log_status(_log, "compiling modules\n");
+    _log_status(_log, "    05. compiling modules\n");
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
         _per_module_data * pmd = &_b->mod_data[i];
 
+        _log_status(_log, "        01. user type pass\n");
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_usertypes_pass(pmd->resolver, j))
@@ -274,11 +285,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             }
         }
 
+        _log_status(_log, "        02. globals pass\n");
         if (cmon_resolver_globals_pass(pmd->resolver))
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
+        _log_status(_log, "        03. user type default expression pass\n");
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_usertypes_def_expr_pass(pmd->resolver, j))
@@ -287,11 +300,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             }
         }
 
+        _log_status(_log, "        04. dependency order pass\n");
         if (cmon_resolver_circ_pass(pmd->resolver))
         {
             _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
+        _log_status(_log, "        05. main pass\n");
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             if (cmon_resolver_main_pass(pmd->resolver, j))
@@ -300,6 +315,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             }
         }
 
+        _log_status(_log, "        06. IR generation\n");
         cmon_ir * ir = cmon_resolver_finalize(pmd->resolver);
 
         if (!ir)
@@ -311,7 +327,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
     }
 
     // if codegen fails, we panic for now and call it a day.
-    _log_status(_log, "code generation\n");
+    _log_status(_log, "    06. code generation\n");
     if (cmon_codegen_prepare(_codegen, _b->mods, _b->types, _build_dir))
     {
         cmon_panic(cmon_codegen_err_msg(_codegen));
@@ -319,6 +335,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
 
     for (i = 0; i < cmon_modules_count(_b->mods); ++i)
     {
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
         _per_module_data * pmd = &_b->mod_data[i];
         cmon_idx session = cmon_codegen_begin_session(_codegen, (cmon_idx)i, pmd->ir);
         if (cmon_codegen_gen(_codegen, session))
@@ -328,7 +345,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         cmon_codegen_end_session(_codegen, session);
     }
 
-    _log_status(_log, "cmon_builder_st finished\n");
+    _log_status(_log, "<- cmon_builder_st finished\n");
 
     return cmon_false;
 err_end:

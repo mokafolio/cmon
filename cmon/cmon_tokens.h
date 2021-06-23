@@ -113,6 +113,9 @@ CMON_API cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments
 CMON_API cmon_tokk cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_str_view cmon_tokens_str_view(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx);
+CMON_API size_t cmon_tokens_line_token_count(cmon_tokens * _t, cmon_idx _line);
+CMON_API cmon_idx cmon_tokens_line_token(cmon_tokens * _t, cmon_idx _line, size_t _toki);
+// CMON_API size_t cmon_tokens_line_count(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_idx cmon_tokens_line_offset(cmon_tokens * _t, cmon_idx _idx);
 CMON_API cmon_bool cmon_tokens_follows_nl(cmon_tokens * _t, cmon_idx _idx);
 

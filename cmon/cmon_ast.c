@@ -186,7 +186,6 @@ cmon_idx cmon_astb_add_deref(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx _expr)
 
 cmon_idx cmon_astb_add_binary(cmon_astb * _b, cmon_idx _op_tok_idx, cmon_idx _left, cmon_idx _right)
 {
-    //@TODO: save op tok
     return _add_node(_b, cmon_astk_binary, _op_tok_idx, _left, _right);
 }
 
@@ -532,15 +531,15 @@ cmon_idx cmon_ast_token_first(cmon_ast * _ast, cmon_idx _idx)
     cmon_astk kind = _get_kind(_ast, _idx);
     if (kind == cmon_astk_binary)
     {
-        cmon_ast_token_first(_ast, cmon_ast_binary_left(_ast, _idx));
+        return cmon_ast_token_first(_ast, cmon_ast_binary_left(_ast, _idx));
     }
     else if (kind == cmon_astk_selector)
     {
-        cmon_ast_token_first(_ast, cmon_ast_selector_left(_ast, _idx));
+        return cmon_ast_token_first(_ast, cmon_ast_selector_left(_ast, _idx));
     }
     else if (kind == cmon_astk_index)
     {
-        cmon_ast_token_first(_ast, cmon_ast_index_left(_ast, _idx));
+        return cmon_ast_token_first(_ast, cmon_ast_index_left(_ast, _idx));
     }
 
     return cmon_ast_token(_ast, _idx);
