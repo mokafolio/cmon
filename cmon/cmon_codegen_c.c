@@ -80,7 +80,16 @@ static inline void _write_indent(_session * _s, size_t _indent)
 static inline void _write_type(_session * _s, cmon_idx _idx)
 {
     assert(cmon_is_valid_idx(_idx));
-    cmon_str_builder_append(_s->str_builder, cmon_types_unique_name(_s->cgen->types, _idx));
+    if(cmon_types_kind(_s->cgen->types, _idx) == cmon_typek_ptr)
+    {
+        _write_type(_s, cmon_types_ptr_type(_s->cgen->types, _idx));
+        //@TODO: Add const for non mutable pointers? Should not make a difference at this level I guess...
+        cmon_str_builder_append(_s->str_builder, " *");
+    }
+    else
+    {
+        cmon_str_builder_append(_s->str_builder, cmon_types_unique_name(_s->cgen->types, _idx));
+    }
 }
 
 // helper to retrieve the type for an ast node and write it
@@ -262,10 +271,10 @@ static inline void _write_var_decl(_session * _s, cmon_idx _idx, cmon_bool _is_g
     {
         cmon_str_builder_append(_s->str_builder, "extern ");
     }
+    _write_type(_s, cmon_ir_var_decl_type(_s->ir, _idx));
     cmon_str_builder_append_fmt(
         _s->str_builder,
-        "%s %s",
-        cmon_types_unique_name(_s->cgen->types, cmon_ir_var_decl_type(_s->ir, _idx)),
+        " %s",
         cmon_ir_var_decl_name(_s->ir, _idx));
     if (!_is_global && cmon_is_valid_idx(expr))
     {
