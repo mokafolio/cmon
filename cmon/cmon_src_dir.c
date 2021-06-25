@@ -73,7 +73,7 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
         }
 
         mod_idx =
-            cmon_modules_add(_dir->mods, _dirname, cmon_str_builder_c_str(_dir->str_builder));
+            cmon_modules_add(_dir->mods, cmon_str_builder_c_str(_dir->str_builder), _dirname);
     }
 
     if (cmon_fs_open(_path, &d) == -1)
