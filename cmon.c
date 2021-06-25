@@ -5,11 +5,11 @@
 #include <cmon/cmon_src_dir.h>
 #include <cmon/cmon_util.h>
 
-#define _panic(_fmt, ...)                                                                          \
+#define _panic(_goto, _fmt, ...)                                                                          \
     do                                                                                             \
     {                                                                                              \
         fprintf(stderr, "Panic: " _fmt "\n", ##__VA_ARGS__);                                       \
-        goto end;                                                                                  \
+        goto _goto;                                                                                  \
     } while (0)
 
 int main(int _argc, const char * _args[])
@@ -54,7 +54,7 @@ int main(int _argc, const char * _args[])
     {
         if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
         {
-            _panic("could not get current working directory.");
+            _panic(end, "could not get current working directory.");
         }
         strcpy(project_path, cwd);
     }
@@ -62,11 +62,11 @@ int main(int _argc, const char * _args[])
     {
         if (!cmon_fs_exists(project_dir))
         {
-            _panic("the project path does not exist");
+            _panic(end, "the project path does not exist");
         }
         else if (!cmon_fs_is_dir(project_dir))
         {
-            _panic("the project path does not point to a directory");
+            _panic(end, "the project path does not point to a directory");
         }
         strcpy(project_path, project_dir);
     }
@@ -74,20 +74,56 @@ int main(int _argc, const char * _args[])
     cmon_join_paths(project_path, "src", src_path, sizeof(src_path));
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
+    //clean and exit
+    if (cmon_argparse_is_set(ap, "-c"))
+    {   
+        if(cmon_fs_exists(build_path))
+        {
+            cmon_fs_dir dir;
+            if(cmon_fs_open(build_path, &dir) != -1)
+            {
+                cmon_fs_dirent ent;
+                while(cmon_fs_has_next(&dir))
+                {
+                    if(cmon_fs_next(&dir, &ent) == -1)
+                    {
+                        _panic(close_build_dir, "failed to advance directory iterator while cleaning");
+                    }
+                    if(strcmp(ent.name, ".") == 0 || strcmp(ent.name, "..") == 0)
+                    {
+                        continue;
+                    }
+                    if(cmon_fs_remove_all(ent.path) == -1)
+                    {
+                        _panic(close_build_dir, "failed to remove %s while cleaning build directory", ent.name);
+                    }
+                }
+                close_build_dir:
+                cmon_fs_close(&dir);
+                goto end;
+            }
+            else
+            {
+                _panic(end, "failed to open build directory for cleaning");
+            }
+        }
+        goto end;
+    }
+
     if (!cmon_fs_exists(src_path))
-        _panic("missing src directory at %s", project_path);
+        _panic(end, "missing src directory at %s", project_path);
 
     sd = cmon_src_dir_create(&alloc, src_path, mods, src);
     if (cmon_src_dir_parse(sd))
     {
-        _panic("failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
+        _panic(end, "failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
     }
 
     if (!cmon_fs_exists(build_path))
     {
         if (cmon_fs_mkdir(build_path) == -1)
         {
-            _panic("failed to create build directory at %s", build_path);
+            _panic(end, "failed to create build directory at %s", build_path);
         }
     }
 
