@@ -3172,23 +3172,9 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
                 cmon_ast_kind(ast, cmon_symbols_ast(_r->symbols, fr->external_variables[j])) ==
                 cmon_astk_var_decl);
             cmon_idx type_idx = cmon_symbols_var_type(_r->symbols, fr->external_variables[j]);
-            // if (cmon_ast_kind(
-            //         _fr_ast(fr),
-            //         cmon_ast_var_decl_expr(
-            //             _fr_ast(fr), cmon_symbols_ast(_r->symbols, fr->external_variables[j])))
-            //             !=
-            //     cmon_astk_fn_decl)
 
-            printf("WOOP\n");
-            printf("da kind %lu\n",
-                   cmon_ast_kind(ast, cmon_symbols_ast(_r->symbols, fr->external_variables[j])));
-            // CMON_ASSERT(cmon_ast_kind(_fr_ast(fr),
-            //                           cmon_symbols_ast(_r->symbols, fr->external_variables[j]))
-            //                           ==
-            //             cmon_astk_var_decl);
-
-            // if(cmon_types_kind(fr->resolver->types, type_idx) == cmon_typek_fn)
-
+            //We only want to treat actual function declarations as "functions" and variable declarations that happen to refer to a function as a var decl.
+            //@TODO: clean this up, feels very messy
             if (cmon_ast_kind(ast,
                               cmon_ast_var_decl_expr(
                                   ast, cmon_symbols_ast(_r->symbols, fr->external_variables[j]))) ==

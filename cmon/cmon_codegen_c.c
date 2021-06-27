@@ -84,7 +84,7 @@ static inline void _write_type(_session * _s, cmon_idx _idx)
     {
         _write_type(_s, cmon_types_ptr_type(_s->cgen->types, _idx));
         //@TODO: Add const for non mutable pointers? Should not make a difference at this level I
-        //guess...
+        // guess...
         cmon_str_builder_append(_s->str_builder, " *");
     }
     else
@@ -265,6 +265,20 @@ static inline void _write_expr(_session * _s, cmon_idx _idx)
 
 static inline void _write_stmt(_session * _s, cmon_idx _idx, size_t _indent);
 
+// Since function pointers/declarations are rather weird in C, we need this helper :/
+static inline void _write_named_fn_ptr(_session * _s, const char * _name, cmon_idx _fn_type)
+{
+    _write_type(_s, cmon_types_fn_return_type(_s->cgen->types, _fn_type));
+    cmon_str_builder_append_fmt(_s->str_builder, "(*%s)(", _name);
+    for (size_t i = 0; i < cmon_types_fn_param_count(_s->cgen->types, _fn_type); ++i)
+    {
+        _write_type(_s, cmon_types_fn_param(_s->cgen->types, _fn_type, i));
+        if (i < cmon_types_fn_param_count(_s->cgen->types, _fn_type) - 1)
+            cmon_str_builder_append(_s->str_builder, ", ");
+    }
+    cmon_str_builder_append(_s->str_builder, ")");
+}
+
 static inline void _write_var_decl(_session * _s, cmon_idx _idx, cmon_bool _is_global)
 {
     cmon_idx expr = cmon_ir_var_decl_expr(_s->ir, _idx);
@@ -272,18 +286,10 @@ static inline void _write_var_decl(_session * _s, cmon_idx _idx, cmon_bool _is_g
     {
         cmon_str_builder_append(_s->str_builder, "extern ");
     }
-    if(cmon_types_kind(_s->cgen->types, cmon_ir_var_decl_type(_s->ir, _idx)) == cmon_typek_fn)
+    if (cmon_types_kind(_s->cgen->types, cmon_ir_var_decl_type(_s->ir, _idx)) == cmon_typek_fn)
     {
-        cmon_idx tidx = cmon_ir_var_decl_type(_s->ir, _idx);
-        _write_type(_s, cmon_types_fn_return_type(_s->cgen->types, tidx));
-        cmon_str_builder_append_fmt(_s->str_builder, "(*%s)(", cmon_ir_var_decl_name(_s->ir, _idx));
-        for (size_t i = 0; i < cmon_types_fn_param_count(_s->cgen->types, tidx); ++i)
-        {
-            _write_type(_s, cmon_types_fn_param(_s->cgen->types, tidx, i));
-            if (i < cmon_types_fn_param_count(_s->cgen->types, tidx) - 1)
-                cmon_str_builder_append(_s->str_builder, ", ");
-        }
-        cmon_str_builder_append(_s->str_builder, ")");
+        _write_named_fn_ptr(
+            _s, cmon_ir_var_decl_name(_s->ir, _idx), cmon_ir_var_decl_type(_s->ir, _idx));
     }
     else
     {
@@ -412,10 +418,20 @@ static inline cmon_bool _gen_fn(_session * _s)
             for (j = 0; j < cmon_types_struct_field_count(_s->cgen->types, tidx); ++j)
             {
                 _write_indent(_s, 1);
-                _write_type(_s, cmon_types_struct_field_type(_s->cgen->types, tidx, j));
-                cmon_str_builder_append_fmt(_s->str_builder,
-                                            " %s;\n",
-                                            cmon_types_struct_field_name(_s->cgen->types, tidx, j));
+                cmon_idx field_tidx = cmon_types_struct_field_type(_s->cgen->types, tidx, j);
+                if (cmon_types_kind(_s->cgen->types, field_tidx))
+                {
+                    _write_named_fn_ptr(_s, cmon_types_struct_field_name(_s->cgen->types, tidx, j), field_tidx);
+                    cmon_str_builder_append(_s->str_builder, ";\n");
+                }
+                else
+                {
+                    _write_type(_s, cmon_types_struct_field_type(_s->cgen->types, tidx, j));
+                    cmon_str_builder_append_fmt(
+                        _s->str_builder,
+                        " %s;\n",
+                        cmon_types_struct_field_name(_s->cgen->types, tidx, j));
+                }
             }
             cmon_str_builder_append_fmt(_s->str_builder, "} %s;\n\n", uname);
         }
