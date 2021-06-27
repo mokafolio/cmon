@@ -62,13 +62,13 @@ static inline cmon_bool _str_view_cmp(const void * _stra, const void * _strb, si
 
 static inline _scope * _get_scope(cmon_symbols * _s, cmon_idx _scope)
 {
-    assert(_scope < cmon_dyn_arr_count(&_s->scopes));
+    CMON_ASSERT(_scope < cmon_dyn_arr_count(&_s->scopes));
     return &_s->scopes[_scope];
 }
 
 static inline _symbol * _get_symbol(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_sym < cmon_dyn_arr_count(&_s->symbols));
+    CMON_ASSERT(_sym < cmon_dyn_arr_count(&_s->symbols));
     return &_s->symbols[_sym];
 }
 
@@ -210,7 +210,7 @@ cmon_idx cmon_symbols_scope_add_var(cmon_symbols * _s,
 
 void cmon_symbols_var_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_var);
     _get_symbol(_s, _sym)->data.var.type_idx = _type;
 }
 
@@ -256,7 +256,7 @@ cmon_idx cmon_symbols_scope_add_alias(cmon_symbols * _s,
 
 void cmon_symbols_alias_set_type(cmon_symbols * _s, cmon_idx _sym, cmon_idx _type_idx)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_alias);
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_alias);
     _get_symbol(_s, _sym)->data.idx = _type_idx;
 }
 
@@ -347,26 +347,26 @@ cmon_idx cmon_symbols_ast(cmon_symbols * _s, cmon_idx _sym)
 
 cmon_idx cmon_symbols_import_module(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_import);
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_import);
     return _get_symbol(_s, _sym)->data.idx;
 }
 
 cmon_idx cmon_symbols_type(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_type ||
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_type ||
            _get_symbol(_s, _sym)->kind == cmon_symk_alias);
     return _get_symbol(_s, _sym)->data.idx;
 }
 
 cmon_idx cmon_symbols_var_type(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_var);
     return _get_symbol(_s, _sym)->data.var.type_idx;
 }
 
 cmon_bool cmon_symbols_var_is_mut(cmon_symbols * _s, cmon_idx _sym)
 {
-    assert(_get_symbol(_s, _sym)->kind == cmon_symk_var);
+    CMON_ASSERT(_get_symbol(_s, _sym)->kind == cmon_symk_var);
     return _get_symbol(_s, _sym)->data.var.is_mut;
 }
 
@@ -388,7 +388,7 @@ size_t cmon_symbols_scope_recursive_symbol_count(cmon_symbols * _s, cmon_idx _sc
 
 cmon_idx cmon_symbols_scope_symbol(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx)
 {
-    assert(_idx < cmon_symbols_scope_symbol_count(_s, _scope));
+    CMON_ASSERT(_idx < cmon_symbols_scope_symbol_count(_s, _scope));
     return _get_scope(_s, _scope)->symbols[_idx];
 }
 
@@ -399,7 +399,7 @@ size_t cmon_symbols_scope_child_count(cmon_symbols * _s, cmon_idx _scope)
 
 cmon_idx cmon_symbols_scope_child(cmon_symbols * _s, cmon_idx _scope, cmon_idx _idx)
 {
-    assert(_idx < cmon_symbols_scope_child_count(_s, _scope));
+    CMON_ASSERT(_idx < cmon_symbols_scope_child_count(_s, _scope));
     return _get_scope(_s, _scope)->children[_idx];
 }
 

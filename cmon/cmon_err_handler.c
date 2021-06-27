@@ -107,7 +107,7 @@ size_t cmon_err_handler_count(cmon_err_handler * _e)
 
 cmon_err_report * cmon_err_handler_err_report(cmon_err_handler * _e, size_t _idx)
 {
-    assert(_idx < cmon_dyn_arr_count(&_e->errs));
+    CMON_ASSERT(_idx < cmon_dyn_arr_count(&_e->errs));
     return &_e->errs[_idx];
 }
 

@@ -4,7 +4,7 @@
 
 static int _advance(cmon_fs_dir * _dir)
 {
-    assert(_dir && _dir->_native_dir);
+    CMON_ASSERT(_dir && _dir->_native_dir);
     _dir->_native_dirent = readdir(_dir->_native_dir);
     if (!_dir->_native_dirent)
     {
@@ -17,7 +17,7 @@ static int _advance(cmon_fs_dir * _dir)
 
 int cmon_fs_open(const char * _path, cmon_fs_dir * _dir)
 {
-    assert(_dir);
+    CMON_ASSERT(_dir);
     _dir->_native_dirent = NULL;
     _dir->path_len = 0;
 
@@ -26,7 +26,7 @@ int cmon_fs_open(const char * _path, cmon_fs_dir * _dir)
         goto err;
 
     int len = strlen(_path);
-    assert(len < CMON_PATH_MAX);
+    CMON_ASSERT(len < CMON_PATH_MAX);
 
     memcpy(_dir->path, _path, len);
     _dir->path_len = len;
@@ -62,12 +62,12 @@ int cmon_fs_close(cmon_fs_dir * _dir)
 
 int cmon_fs_next(cmon_fs_dir * _dir, cmon_fs_dirent * _dirent)
 {
-    assert(_dirent);
-    assert(_dir->_native_dirent);
+    CMON_ASSERT(_dirent);
+    CMON_ASSERT(_dir->_native_dirent);
 
     int name_len = strlen(_dir->_native_dirent->d_name);
-    assert(name_len);
-    assert(_dir->path_len + name_len < CMON_PATH_MAX);
+    CMON_ASSERT(name_len);
+    CMON_ASSERT(_dir->path_len + name_len < CMON_PATH_MAX);
 
     int off = _dir->path_len;
     memset(_dirent->path, 0, sizeof(_dirent->path));

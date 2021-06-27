@@ -138,13 +138,13 @@ static inline size_t _extra_data_count(cmon_astb * _b)
 
 // static inline cmon_idx _node_first_tok(cmon_astb * _b, cmon_idx _idx)
 // {
-//     assert(_idx < cmon_dyn_arr_count(&_b->main_tokens));
+//     CMON_ASSERT(_idx < cmon_dyn_arr_count(&_b->main_tokens));
 //     return _b->main_tokens[_idx].first;
 // }
 
 // static inline cmon_idx _node_last_tok(cmon_astb * _b, cmon_idx _idx)
 // {
-//     assert(_idx < cmon_dyn_arr_count(&_b->main_tokens));
+//     CMON_ASSERT(_idx < cmon_dyn_arr_count(&_b->main_tokens));
 //     return _b->main_tokens[_idx].last;
 // }
 
@@ -338,7 +338,7 @@ cmon_idx cmon_astb_add_import_pair(cmon_astb * _b,
 
 cmon_idx cmon_astb_add_import(cmon_astb * _b, cmon_idx _tok_idx, cmon_idx * _pairs, size_t _count)
 {
-    assert(_count);
+    CMON_ASSERT(_count);
     cmon_idx left = _add_extra_data_arr(_b, _pairs, _count);
     return _add_node(_b, cmon_astk_import, _tok_idx, left, cmon_dyn_arr_count(&_b->extra_data));
 }
@@ -369,8 +369,8 @@ cmon_idx cmon_astb_add_typedef(cmon_astb * _b,
 
 void cmon_astb_set_root_block(cmon_astb * _b, cmon_idx _idx)
 {
-    assert(_idx < cmon_dyn_arr_count(&_b->kinds));
-    assert(_b->kinds[_idx] == cmon_astk_block);
+    CMON_ASSERT(_idx < cmon_dyn_arr_count(&_b->kinds));
+    CMON_ASSERT(_b->kinds[_idx] == cmon_astk_block);
     _b->root_block_idx = _idx;
 }
 
@@ -473,33 +473,33 @@ void cmon_ast_destroy(cmon_ast * _ast)
 // ast getters
 static inline cmon_astk _get_kind(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
     return _ast->kinds[_idx];
 }
 
 // static inline cmon_idx _get_token(cmon_ast * _ast, cmon_idx _idx)
 // {
-//     assert(_idx < _ast->count);
+//     CMON_ASSERT(_idx < _ast->count);
 //     return _ast->main_tokens[_idx].left;
 // }
 
 static inline cmon_idx _get_extra_data(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->extra_data_count);
+    CMON_ASSERT(_idx < _ast->extra_data_count);
     return _ast->extra_data[_idx];
 }
 
 #define _extra_data_count_def(_name, _kind, _off)                                                  \
     size_t _name(cmon_ast * _ast, cmon_idx _idx)                                                   \
     {                                                                                              \
-        assert(_get_kind(_ast, _idx) == _kind);                                                    \
+        CMON_ASSERT(_get_kind(_ast, _idx) == _kind);                                                    \
         return _ast->left_right[_idx].right - (_ast->left_right[_idx].left + _off);                \
     }
 
 #define _extra_data_getter_def(_name, _count_fn_name, _off)                                        \
     cmon_idx _name(cmon_ast * _ast, cmon_idx _idx, size_t _gidx)                                   \
     {                                                                                              \
-        assert(_gidx < _count_fn_name(_ast, _idx));                                                \
+        CMON_ASSERT(_gidx < _count_fn_name(_ast, _idx));                                                \
         return _get_extra_data(_ast, _ast->left_right[_idx].left + _gidx + _off);                  \
     }
 
@@ -520,13 +520,13 @@ cmon_astk cmon_ast_kind(cmon_ast * _ast, cmon_idx _idx)
 
 cmon_idx cmon_ast_token(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
     return _ast->main_tokens[_idx];
 }
 
 cmon_idx cmon_ast_token_first(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
 
     cmon_astk kind = _get_kind(_ast, _idx);
     if (kind == cmon_astk_binary)
@@ -547,7 +547,7 @@ cmon_idx cmon_ast_token_first(cmon_ast * _ast, cmon_idx _idx)
 
 cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
 
     cmon_astk kind = _get_kind(_ast, _idx);
     if (kind == cmon_astk_binary)
@@ -623,31 +623,31 @@ cmon_idx cmon_ast_token_last(cmon_ast * _ast, cmon_idx _idx)
         return cmon_ast_token(_ast, _idx);
     }
 
-    assert(0);
+    CMON_ASSERT(0);
     return CMON_INVALID_IDX;
 }
 
 cmon_idx cmon_ast_left(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
     return _ast->left_right[_idx].left;
 }
 
 cmon_idx cmon_ast_right(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_idx < _ast->count);
+    CMON_ASSERT(_idx < _ast->count);
     return _ast->left_right[_idx].right;
 }
 
 cmon_idx cmon_ast_extra_data(cmon_ast * _ast, cmon_idx _extra_idx)
 {
-    assert(_extra_idx < _ast->extra_data_count);
+    CMON_ASSERT(_extra_idx < _ast->extra_data_count);
     return _ast->extra_data[_extra_idx];
 }
 
 cmon_idx cmon_ast_module_name_tok(cmon_ast * _ast, cmon_idx _mod_idx)
 {
-    assert(_get_kind(_ast, _mod_idx) == cmon_astk_module);
+    CMON_ASSERT(_get_kind(_ast, _mod_idx) == cmon_astk_module);
     return _ast->left_right[_mod_idx].left;
 }
 
@@ -657,7 +657,7 @@ _extra_data_getter_def(cmon_ast_import_pair, cmon_ast_import_pairs_count, 0);
 cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx)
 {
     cmon_str_view b, e;
-    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    CMON_ASSERT(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     b = cmon_tokens_str_view(_ast->tokens, cmon_ast_import_pair_path_token(_ast, _importp_idx, 0));
     e = cmon_tokens_str_view(
         _ast->tokens,
@@ -668,7 +668,7 @@ cmon_str_view cmon_ast_import_pair_path(cmon_ast * _ast, cmon_idx _importp_idx)
 
 cmon_idx cmon_ast_import_pair_path_first_tok(cmon_ast * _ast, cmon_idx _importp_idx)
 {
-    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    CMON_ASSERT(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     return cmon_ast_import_pair_path_token(_ast, _importp_idx, 0);
 }
 
@@ -677,7 +677,7 @@ _extra_data_getter_def(cmon_ast_import_pair_path_token, cmon_ast_import_pair_pat
 
 cmon_idx cmon_ast_import_pair_alias(cmon_ast * _ast, cmon_idx _importp_idx)
 {
-    assert(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
+    CMON_ASSERT(_get_kind(_ast, _importp_idx) == cmon_astk_import_pair);
     return _get_extra_data(_ast, _ast->left_right[_importp_idx].left);
 }
 
@@ -692,73 +692,73 @@ cmon_idx cmon_ast_import_pair_ident(cmon_ast * _ast, cmon_idx _importp_idx)
 
 cmon_str_view cmon_ast_ident_name(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_ident);
     return cmon_tokens_str_view(_ast->tokens, cmon_ast_token(_ast, _tidx));
 }
 
 void cmon_ast_ident_set_sym(cmon_ast * _ast, cmon_idx _tidx, cmon_idx _sym)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_ident);
     _ast->left_right[_tidx].left = _sym;
 }
 
 cmon_idx cmon_ast_ident_sym(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_ident);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_ident);
     return _ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_named_module_tok(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_named);
     return _ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_named_name_tok(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_named);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_named);
     return _ast->left_right[_tidx].right;
 }
 
 cmon_idx cmon_ast_type_ptr_type(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
     return _ast->left_right[_tidx].right;
 }
 
 cmon_bool cmon_ast_type_ptr_is_mut(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_ptr);
     return (cmon_bool)_ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_view_type(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_view);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_view);
     return _ast->left_right[_tidx].right;
 }
 
 cmon_bool cmon_ast_type_view_is_mut(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_view);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_view);
     return (cmon_bool)_ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_array_type(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_array);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_array);
     return _ast->left_right[_tidx].right;
 }
 
 size_t cmon_ast_type_array_count(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_array);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_array);
     return (size_t)_ast->left_right[_tidx].left;
 }
 
 cmon_idx cmon_ast_type_fn_return_type(cmon_ast * _ast, cmon_idx _tidx)
 {
-    assert(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
+    CMON_ASSERT(_get_kind(_ast, _tidx) == cmon_astk_type_fn);
     return _get_extra_data(_ast, _ast->left_right[_tidx].left + 1);
 }
 
@@ -767,44 +767,44 @@ _extra_data_getter_def(cmon_ast_type_fn_param, cmon_ast_type_fn_params_count, 2)
 
 cmon_idx cmon_ast_var_decl_name_tok(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return cmon_ast_token(_ast, _vidx);
 }
 
 cmon_bool cmon_ast_var_decl_is_pub(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _get_extra_data(_ast, _ast->left_right[_vidx].left);
 }
 
 cmon_bool cmon_ast_var_decl_is_mut(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 1);
 }
 
 cmon_idx cmon_ast_var_decl_type(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 2);
 }
 
 cmon_idx cmon_ast_var_decl_expr(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _ast->left_right[_vidx].right;
 }
 
 void cmon_ast_var_decl_set_sym(cmon_ast * _ast, cmon_idx _vidx, cmon_idx _sym)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     cmon_idx sym_ed_idx = _ast->left_right[_vidx].left + 3;
     return _ast->extra_data[sym_ed_idx] = _sym;
 }
 
 cmon_idx cmon_ast_var_decl_sym(cmon_ast * _ast, cmon_idx _vidx)
 {
-    assert(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
+    CMON_ASSERT(_get_kind(_ast, _vidx) == cmon_astk_var_decl);
     return _get_extra_data(_ast, _ast->left_right[_vidx].left + 3);
 }
 
@@ -815,13 +815,13 @@ _extra_data_getter_def(cmon_ast_fn_param, cmon_ast_fn_params_count, 2);
 
 cmon_idx cmon_ast_fn_ret_type(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    CMON_ASSERT(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
     return _get_extra_data(_ast, _ast->left_right[_fn_idx].left);
 }
 
 cmon_idx cmon_ast_fn_block(cmon_ast * _ast, cmon_idx _fn_idx)
 {
-    assert(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
+    CMON_ASSERT(_get_kind(_ast, _fn_idx) == cmon_astk_fn_decl);
     return _get_extra_data(_ast, _ast->left_right[_fn_idx].left + 1);
 }
 
@@ -830,91 +830,91 @@ _extra_data_getter_def(cmon_ast_struct_field, cmon_ast_struct_fields_count, 3);
 
 cmon_bool cmon_ast_struct_is_pub(cmon_ast * _ast, cmon_idx _struct_idx)
 {
-    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    CMON_ASSERT(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return _get_extra_data(_ast, _ast->left_right[_struct_idx].left + 1);
 }
 
 cmon_idx cmon_ast_struct_name(cmon_ast * _ast, cmon_idx _struct_idx)
 {
-    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    CMON_ASSERT(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return cmon_ast_token(_ast, _struct_idx);
 }
 
 void cmon_ast_struct_set_type(cmon_ast * _ast, cmon_idx _struct_idx, cmon_idx _type_idx)
 {
-    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    CMON_ASSERT(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     _ast->extra_data[_ast->left_right[_struct_idx].left + 1] = _type_idx;
 }
 
 cmon_idx cmon_ast_struct_type(cmon_ast * _ast, cmon_idx _struct_idx)
 {
-    assert(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
+    CMON_ASSERT(_get_kind(_ast, _struct_idx) == cmon_astk_struct_decl);
     return _get_extra_data(_ast, _ast->left_right[_struct_idx].left + 1);
 }
 
 cmon_idx cmon_ast_addr_expr(cmon_ast * _ast, cmon_idx _addr_idx)
 {
-    assert(_get_kind(_ast, _addr_idx) == cmon_astk_addr);
+    CMON_ASSERT(_get_kind(_ast, _addr_idx) == cmon_astk_addr);
     return _ast->left_right[_addr_idx].right;
 }
 
 cmon_idx cmon_ast_deref_expr(cmon_ast * _ast, cmon_idx _deref_idx)
 {
-    assert(_get_kind(_ast, _deref_idx) == cmon_astk_deref);
+    CMON_ASSERT(_get_kind(_ast, _deref_idx) == cmon_astk_deref);
     return _ast->left_right[_deref_idx].right;
 }
 
 cmon_idx cmon_ast_prefix_op_tok(cmon_ast * _ast, cmon_idx _pref_idx)
 {
-    assert(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
+    CMON_ASSERT(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
     return cmon_ast_token(_ast, _pref_idx);
 }
 
 cmon_idx cmon_ast_prefix_expr(cmon_ast * _ast, cmon_idx _pref_idx)
 {
-    assert(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
+    CMON_ASSERT(_get_kind(_ast, _pref_idx) == cmon_astk_prefix);
     return _ast->left_right[_pref_idx].right;
 }
 
 cmon_idx cmon_ast_binary_op_tok(cmon_ast * _ast, cmon_idx _bin_idx)
 {
-    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    CMON_ASSERT(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return cmon_ast_token(_ast, _bin_idx);
 }
 
 cmon_idx cmon_ast_binary_left(cmon_ast * _ast, cmon_idx _bin_idx)
 {
-    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    CMON_ASSERT(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return _ast->left_right[_bin_idx].left;
 }
 
 cmon_idx cmon_ast_binary_right(cmon_ast * _ast, cmon_idx _bin_idx)
 {
-    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    CMON_ASSERT(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return _ast->left_right[_bin_idx].right;
 }
 
 cmon_bool cmon_ast_binary_is_assignment(cmon_ast * _ast, cmon_idx _bin_idx)
 {
-    assert(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
+    CMON_ASSERT(_get_kind(_ast, _bin_idx) == cmon_astk_binary);
     return cmon_tokens_is(_ast->tokens, cmon_ast_binary_op_tok(_ast, _bin_idx), CMON_ASSIGN_TOKS);
 }
 
 cmon_idx cmon_ast_paran_expr(cmon_ast * _ast, cmon_idx _paran_idx)
 {
-    assert(_get_kind(_ast, _paran_idx) == cmon_astk_paran_expr);
+    CMON_ASSERT(_get_kind(_ast, _paran_idx) == cmon_astk_paran_expr);
     return _ast->left_right[_paran_idx].left;
 }
 
 cmon_idx cmon_ast_selector_left(cmon_ast * _ast, cmon_idx _sel_idx)
 {
-    assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
+    CMON_ASSERT(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
     return _ast->left_right[_sel_idx].left;
 }
 
 cmon_idx cmon_ast_selector_name_tok(cmon_ast * _ast, cmon_idx _sel_idx)
 {
-    assert(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
+    CMON_ASSERT(_get_kind(_ast, _sel_idx) == cmon_astk_selector);
     return _get_extra_data(_ast, _ast->left_right[_sel_idx].right);
 }
 
@@ -930,7 +930,7 @@ cmon_idx cmon_ast_selector_sym(cmon_ast * _ast, cmon_idx _sel_idx)
 
 cmon_idx cmon_ast_call_left(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_call);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_call);
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
@@ -941,49 +941,49 @@ _extra_data_getter_def(cmon_ast_array_init_expr, cmon_ast_array_init_exprs_count
 
 cmon_idx cmon_ast_index_left(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_index);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_index);
     return _ast->left_right[_idx].right;
 }
 
 cmon_idx cmon_ast_index_expr(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_index);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_index);
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
 cmon_idx cmon_ast_struct_init_field_name_tok(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init_field);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_init_field);
     return _ast->left_right[_idx].left;
 }
 
 cmon_idx cmon_ast_struct_init_field_expr(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init_field);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_init_field);
     return _ast->left_right[_idx].right;
 }
 
 cmon_idx cmon_ast_struct_init_parsed_type(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_init);
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
 cmon_idx cmon_ast_struct_field_name(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_field);
     return cmon_ast_token(_ast, _idx);
 }
 
 cmon_idx cmon_ast_struct_field_type(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_field);
     return _ast->left_right[_idx].left;
 }
 
 cmon_idx cmon_ast_struct_field_expr(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_field);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_field);
     return _ast->left_right[_idx].right;
 }
 
@@ -994,42 +994,42 @@ void cmon_ast_struct_init_set_resolved_field_idx_buf(cmon_ast * _ast,
                                                      cmon_idx _idx,
                                                      cmon_idx _idx_buf)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_init);
     _ast->extra_data[_ast->left_right[_idx].left + 1] = _idx_buf;
 }
 
 cmon_idx cmon_ast_struct_init_resolved_field_idx_buf(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_struct_init);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_struct_init);
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
 cmon_idx cmon_ast_alias_name_tok(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_alias);
     return _get_extra_data(_ast, _ast->left_right[_idx].left);
 }
 
 cmon_bool cmon_ast_alias_is_pub(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_alias);
     return (cmon_bool)_get_extra_data(_ast, _ast->left_right[_idx].left + 1);
 }
 
 cmon_idx cmon_ast_alias_parsed_type(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_alias);
     return _ast->left_right[_idx].right;
 }
 
 void cmon_ast_alias_set_sym(cmon_ast * _ast, cmon_idx _idx, cmon_idx _sym)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_alias);
     return _ast->extra_data[_ast->left_right[_idx].left + 2] = _sym;
 }
 
 cmon_idx cmon_ast_alias_sym(cmon_ast * _ast, cmon_idx _idx)
 {
-    assert(_get_kind(_ast, _idx) == cmon_astk_alias);
+    CMON_ASSERT(_get_kind(_ast, _idx) == cmon_astk_alias);
     return _get_extra_data(_ast, _ast->left_right[_idx].left + 2);
 }

@@ -47,37 +47,37 @@ cmon_codegen cmon_codegen_make_empty()
 
 cmon_bool cmon_codegen_prepare(cmon_codegen * _cg, cmon_modules * _mods, cmon_types * _types, const char * _build_dir)
 {
-    assert(_cg->prep_fn);
+    CMON_ASSERT(_cg->prep_fn);
     return _cg->prep_fn(_cg->obj, _mods, _types, _build_dir);
 }
 
 cmon_idx cmon_codegen_begin_session(cmon_codegen * _cg, cmon_idx _mod_idx, cmon_ir * _ir)
 {
-    assert(_cg->begin_session_fn);
+    CMON_ASSERT(_cg->begin_session_fn);
     return _cg->begin_session_fn(_cg->obj, _mod_idx, _ir);
 }
 
 void cmon_codegen_end_session(cmon_codegen * _cg, cmon_idx _session_idx)
 {
-    assert(_cg->end_session_fn);
+    CMON_ASSERT(_cg->end_session_fn);
     return _cg->end_session_fn(_cg->obj, _session_idx);
 }
 
 cmon_bool cmon_codegen_gen(cmon_codegen * _cg, cmon_idx _session_idx)
 {
-    assert(_cg->fn);
+    CMON_ASSERT(_cg->fn);
     return _cg->fn(_cg->obj, _session_idx);
 }
 
 const char * cmon_codegen_err_msg(cmon_codegen * _cg)
 {
-    assert(_cg->err_msg_fn);
+    CMON_ASSERT(_cg->err_msg_fn);
     return _cg->err_msg_fn(_cg->obj);
 }
 
 const char * cmon_codegen_session_err_msg(cmon_codegen * _cg, cmon_idx _session_idx)
 {
-    assert(_cg->sess_err_msg_fn);
+    CMON_ASSERT(_cg->sess_err_msg_fn);
     return _cg->sess_err_msg_fn(_cg->obj, _session_idx);
 }
 

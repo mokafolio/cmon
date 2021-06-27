@@ -109,7 +109,7 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
 
             if (strcmp(ext_buf, ".cmon") == 0 && !_is_root_dir)
             {
-                assert(cmon_is_valid_idx(mod_idx));
+                CMON_ASSERT(cmon_is_valid_idx(mod_idx));
                 cmon_modules_add_src_file(_dir->mods, mod_idx, cmon_src_add(_dir->src, ent.path, ent.name));
             }
             else

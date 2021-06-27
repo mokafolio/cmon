@@ -757,22 +757,22 @@ RESOLVE_TEST(resolve_many_lines03, "a : s32 = 1 +   true //foo ", cmon_false);
 //     EXPECT_EQ(cmon_false, _resolve_test_fn(_module_selector_test_adder_fn));
 // }
 
-// void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
-// {
-//     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
-//     cmon_src_set_code(_src, src01_idx, "module foo; import bar");
-//     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
-//     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
-//     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon");
-//     cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
-//     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
-//     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
-// }
+void _module_circ_dep_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
+{
+    cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
+    cmon_src_set_code(_src, src01_idx, "module foo; import bar");
+    cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
+    cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
+    cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon");
+    cmon_src_set_code(_src, src02_idx, "module bar; import foo;");
+    cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
+    cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
+}
 
-// UTEST(cmon, resolve_module_circ_dep)
-// {
-//     EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
-// }
+UTEST(cmon, resolve_module_circ_dep)
+{
+    EXPECT_EQ(cmon_true, _resolve_test_fn(_module_circ_dep_test_adder_fn));
+}
 
 // void _module_circ_dep_test_adder_fn02(cmon_src * _src, cmon_modules * _mods)
 // {

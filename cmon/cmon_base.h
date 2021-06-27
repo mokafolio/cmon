@@ -66,23 +66,17 @@
 #define CMON_EXT_MAX 32
 #define CMON_ERR_MSG_MAX 4096
 #define CMON_INVALID_IDX (cmon_idx)-1
+#define CMON_ASSERT(x) assert(x)
+
 #define cmon_is_valid_idx(_idx) ((_idx) != CMON_INVALID_IDX)
-// //@TODO: Remove all of these that are not used anymore
-// //@TODO: start using this for fixed size arrays
-// //how many *mut[]mut****mut[] type prefixes dow we want to support?
-// #define CMON_TYPE_PREFIX_MAX 128
-// //max types per tuple
-// #define CMON_TUPLE_MAX 128
-// //max params per function signature
-// #define CMON_PARAMS_MAX 128
 
 //@TODO: Maybe only include assert here and the rest only where its needed?
-#include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 
 // #include <setjmp.h>

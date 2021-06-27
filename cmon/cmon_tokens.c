@@ -257,7 +257,7 @@ static inline void _parse_float_or_int_literal(_tokenize_session * _l, cmon_bool
                 _err(_l, "exponent has no digits");
             }
         }
-        // assert(cmon_false);
+        // CMON_ASSERT(cmon_false);
     }
 
     // @TODO: if the literal does not end on a whitespace or semicolon, something obiously went
@@ -423,7 +423,7 @@ static cmon_bool _next_token(_tokenize_session * _l, cmon_tokk * _out_kind, _tok
     }
     else if (*_l->pos == '"' || *_l->pos == '\'')
     {
-        // assert(0);
+        // CMON_ASSERT(0);
         char marks = *_l->pos;
         _advance_pos(_l, 1);
         while (*_l->pos != marks && _l->pos != _l->end)
@@ -593,7 +593,7 @@ cmon_tokens * cmon_tokenize(cmon_allocator * _alloc,
     while (_next_token(&s, &kind, &tok))
     {
         // sanity check. tokens can't consume no characters
-        // assert(tok.str_view.begin < tok.str_view.end);
+        // CMON_ASSERT(tok.str_view.begin < tok.str_view.end);
         cmon_dyn_arr_append(&s.kinds, kind);
         cmon_dyn_arr_append(&s.tokens, tok);
 
@@ -685,8 +685,8 @@ cmon_idx cmon_tokens_advance(cmon_tokens * _t, cmon_bool _skip_comments)
     return ret;
 }
 
-#define _get_token(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->tokens)), _t->tokens[_idx])
-#define _get_kind(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->kinds)), _t->kinds[_idx])
+#define _get_token(_t, _idx) (CMON_ASSERT(_idx < cmon_dyn_arr_count(&_t->tokens)), _t->tokens[_idx])
+#define _get_kind(_t, _idx) (CMON_ASSERT(_idx < cmon_dyn_arr_count(&_t->kinds)), _t->kinds[_idx])
 
 cmon_tokk cmon_tokens_kind(cmon_tokens * _t, cmon_idx _idx)
 {
@@ -705,7 +705,7 @@ cmon_idx cmon_tokens_line(cmon_tokens * _t, cmon_idx _idx)
 
 static inline _line * _get_line(cmon_tokens * _t, cmon_idx _l)
 {
-    assert(_l <= cmon_dyn_arr_count(&_t->lines));
+    CMON_ASSERT(_l <= cmon_dyn_arr_count(&_t->lines));
     return &_t->lines[_l - 1];
 }
 
@@ -718,7 +718,7 @@ size_t cmon_tokens_line_token_count(cmon_tokens * _t, cmon_idx _l)
 cmon_idx cmon_tokens_line_token(cmon_tokens * _t, cmon_idx _l, size_t _toki)
 {
     _line * l = _get_line(_t, _l);
-    assert(_toki < cmon_tokens_line_token_count(_t, _l));
+    CMON_ASSERT(_toki < cmon_tokens_line_token_count(_t, _l));
     return l->tok_begin + _toki;
 }
 
@@ -817,8 +817,8 @@ cmon_idx cmon_tokens_accept_impl(cmon_tokens * _t, ...)
 
 cmon_str_view cmon_tokens_line_str_view(cmon_tokens * _t, size_t _line)
 {
-    assert(_line > 0);
-    assert(_line <= cmon_dyn_arr_count(&_t->lines));
+    CMON_ASSERT(_line > 0);
+    CMON_ASSERT(_line <= cmon_dyn_arr_count(&_t->lines));
     return _t->lines[_line - 1].str_view;
 }
 

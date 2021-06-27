@@ -147,8 +147,6 @@ static cmon_bool _visit(cmon_dep_graph * _g, cmon_dep_graph_node * _n)
     if (_n->mark == cmon_dep_graph_mark_perm)
         return cmon_false;
 
-    //@TODO: set error message on _g
-    // Graph can't be solved
     if (_n->mark == cmon_dep_graph_mark_tmp)
     {
         _g->conflict_b = _n->data;
@@ -195,7 +193,7 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
     while (cmon_dyn_arr_count(&_g->unresolved))
     {
         cmon_dep_graph_node * n = cmon_dyn_arr_last(&_g->unmarked);
-        assert(n->mark == cmon_dep_graph_mark_none);
+        CMON_ASSERT(n->mark == cmon_dep_graph_mark_none);
         if (_visit(_g, n))
         {
             err = cmon_true;

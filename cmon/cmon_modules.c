@@ -86,7 +86,7 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
 
 static inline _module * _get_module(cmon_modules * _m, cmon_idx _mod_idx)
 {
-    assert(_mod_idx < cmon_dyn_arr_count(&_m->mods));
+    CMON_ASSERT(_mod_idx < cmon_dyn_arr_count(&_m->mods));
     return &_m->mods[_mod_idx];
 }
 
@@ -104,7 +104,7 @@ void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _s
 
 void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _scope)
 {
-    assert(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
+    CMON_ASSERT(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
     _get_module(_m, _mod_idx)->global_scope = _scope;
 }
 
@@ -156,7 +156,7 @@ const char * cmon_modules_prefix(cmon_modules * _m, cmon_idx _mod_idx)
 
 cmon_idx cmon_modules_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file_idx)
 {
-    assert(_src_file_idx < cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files));
+    CMON_ASSERT(_src_file_idx < cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files));
     return _get_module(_m, _mod_idx)->src_files[_src_file_idx];
 }
 
@@ -196,6 +196,7 @@ cmon_idx cmon_modules_find_dep_idx(cmon_modules * _m, cmon_idx _mod_idx, cmon_id
     
     for(i=0; i<cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->deps); ++i)
     {
+        printf("Wopp %lu %lu\n", _dep_mod_idx, cmon_modules_dep_mod_idx(_m, _mod_idx, i));
         if(cmon_modules_dep_mod_idx(_m, _mod_idx, i) == _dep_mod_idx)
         {
             return i;

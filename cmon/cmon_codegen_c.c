@@ -36,14 +36,14 @@ typedef struct _codegen_c
 
 static inline cmon_bool _set_err(_codegen_c * _cg, const char * _msg)
 {
-    assert(sizeof(_cg->err_msg) > strlen(_msg));
+    CMON_ASSERT(sizeof(_cg->err_msg) > strlen(_msg));
     strcpy(_cg->err_msg, _msg);
     return cmon_true;
 }
 
 static inline cmon_bool _set_sess_err(_session * _s, const char * _msg)
 {
-    assert(sizeof(_s->err_msg) > strlen(_msg));
+    CMON_ASSERT(sizeof(_s->err_msg) > strlen(_msg));
     strcpy(_s->err_msg, _msg);
     return cmon_true;
 }
@@ -79,11 +79,12 @@ static inline void _write_indent(_session * _s, size_t _indent)
 
 static inline void _write_type(_session * _s, cmon_idx _idx)
 {
-    assert(cmon_is_valid_idx(_idx));
-    if(cmon_types_kind(_s->cgen->types, _idx) == cmon_typek_ptr)
+    CMON_ASSERT(cmon_is_valid_idx(_idx));
+    if (cmon_types_kind(_s->cgen->types, _idx) == cmon_typek_ptr)
     {
         _write_type(_s, cmon_types_ptr_type(_s->cgen->types, _idx));
-        //@TODO: Add const for non mutable pointers? Should not make a difference at this level I guess...
+        //@TODO: Add const for non mutable pointers? Should not make a difference at this level I
+        //guess...
         cmon_str_builder_append(_s->str_builder, " *");
     }
     else
@@ -258,7 +259,7 @@ static inline void _write_expr(_session * _s, cmon_idx _idx)
     }
     else
     {
-        assert(0);
+        CMON_ASSERT(0);
     }
 }
 
@@ -271,11 +272,24 @@ static inline void _write_var_decl(_session * _s, cmon_idx _idx, cmon_bool _is_g
     {
         cmon_str_builder_append(_s->str_builder, "extern ");
     }
-    _write_type(_s, cmon_ir_var_decl_type(_s->ir, _idx));
-    cmon_str_builder_append_fmt(
-        _s->str_builder,
-        " %s",
-        cmon_ir_var_decl_name(_s->ir, _idx));
+    if(cmon_types_kind(_s->cgen->types, cmon_ir_var_decl_type(_s->ir, _idx)) == cmon_typek_fn)
+    {
+        cmon_idx tidx = cmon_ir_var_decl_type(_s->ir, _idx);
+        _write_type(_s, cmon_types_fn_return_type(_s->cgen->types, tidx));
+        cmon_str_builder_append_fmt(_s->str_builder, "(*%s)(", cmon_ir_var_decl_name(_s->ir, _idx));
+        for (size_t i = 0; i < cmon_types_fn_param_count(_s->cgen->types, tidx); ++i)
+        {
+            _write_type(_s, cmon_types_fn_param(_s->cgen->types, tidx, i));
+            if (i < cmon_types_fn_param_count(_s->cgen->types, tidx) - 1)
+                cmon_str_builder_append(_s->str_builder, ", ");
+        }
+        cmon_str_builder_append(_s->str_builder, ")");
+    }
+    else
+    {
+        _write_type(_s, cmon_ir_var_decl_type(_s->ir, _idx));
+        cmon_str_builder_append_fmt(_s->str_builder, " %s", cmon_ir_var_decl_name(_s->ir, _idx));
+    }
     if (!_is_global && cmon_is_valid_idx(expr))
     {
         cmon_str_builder_append(_s->str_builder, " = ");
@@ -317,7 +331,10 @@ static inline void _write_stmt(_session * _s, cmon_idx _idx, size_t _indent)
     }
 }
 
-static inline cmon_bool _codegen_c_prep_fn(void * _cg, cmon_modules *_mods, cmon_types * _types, const char * _build_dir)
+static inline cmon_bool _codegen_c_prep_fn(void * _cg,
+                                           cmon_modules * _mods,
+                                           cmon_types * _types,
+                                           const char * _build_dir)
 {
     _codegen_c * cg = (_codegen_c *)_cg;
 
@@ -419,7 +436,7 @@ static inline cmon_bool _gen_fn(_session * _s)
         }
         else
         {
-            assert(0);
+            CMON_ASSERT(0);
         }
     }
 

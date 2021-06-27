@@ -76,7 +76,7 @@
     {                                                                                              \
         size_t _i;                                                                                 \
         _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md(_arr);                                         \
-        assert(_idx >= 0 && _idx < _md->count);                                                    \
+        CMON_ASSERT(_idx >= 0 && _idx < _md->count);                                                    \
         if (_md->count > _idx)                                                                     \
         {                                                                                          \
             for (_i = _idx; _i < _md->count - 1; ++_i)                                             \
@@ -91,7 +91,7 @@
     {                                                                                              \
         size_t _i;                                                                                 \
         _cmon_dyn_arr_meta * _md = _cmon_dyn_arr_md(_arr);                                         \
-        assert(_idx >= 0 && _idx <= _md->count);                                                   \
+        CMON_ASSERT(_idx >= 0 && _idx <= _md->count);                                                   \
         cmon_dyn_arr_reserve((_arr), _md->count + 1);                                              \
         for (_i = _md->count++; _i > (_idx); --_i)                                                 \
         {                                                                                          \

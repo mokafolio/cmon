@@ -102,8 +102,13 @@ static inline void _log_status(cmon_log * _log, const char * _fmt, ...)
 {
     va_list args;
     va_start(args, _fmt);
-    cmon_log_write_styled_v(
-        _log, cmon_log_level_info, cmon_log_color_cyan, cmon_log_color_default, cmon_log_style_none, _fmt, args);
+    cmon_log_write_styled_v(_log,
+                            cmon_log_level_info,
+                            cmon_log_color_cyan,
+                            cmon_log_color_default,
+                            cmon_log_style_none,
+                            _fmt,
+                            args);
     va_end(args);
 }
 
@@ -185,7 +190,7 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
             cmon_idx src_file_idx = cmon_modules_src_file(_b->mods, i, j);
-            
+
             _log_status(_log, "            » %s\n", cmon_src_filename(_b->src, src_file_idx));
 
             _per_file_data * pfd = &pmd->file_data[j];
@@ -248,18 +253,24 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         a = cmon_dep_graph_conflict_a(_b->dep_graph);
         b = cmon_dep_graph_conflict_b(_b->dep_graph);
 
+        printf("booo\n");
+        printf("circular dependency between modules '%s' and '%s'\n",
+               cmon_modules_path(_b->mods, a),
+               cmon_modules_path(_b->mods, b));
+
         cmon_idx dep_idx = cmon_modules_find_dep_idx(_b->mods, a, b);
-        assert(cmon_is_valid_idx(dep_idx));
+        CMON_ASSERT(cmon_is_valid_idx(dep_idx));
 
         cmon_idx src_idx = cmon_modules_dep_src_file_idx(_b->mods, a, dep_idx);
-        assert(cmon_is_valid_idx(src_idx));
+        CMON_ASSERT(cmon_is_valid_idx(src_idx));
 
         cmon_idx tok_idx = cmon_modules_dep_tok_idx(_b->mods, a, dep_idx);
-        assert(cmon_is_valid_idx(tok_idx));
+        CMON_ASSERT(cmon_is_valid_idx(tok_idx));
 
         cmon_err_handler_err(_b->err_handler,
                              cmon_true,
                              src_idx,
+                             tok_idx,
                              tok_idx,
                              tok_idx,
                              "circular dependency between modules '%s' and '%s'",
@@ -271,10 +282,10 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
 
     // resolve each module
     _log_status(_log, "    05. compiling modules\n");
-    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    for (i = 0; i < result.count; ++i)
     {
-        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
-        _per_module_data * pmd = &_b->mod_data[i];
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, result.array[i]));
+        _per_module_data * pmd = &_b->mod_data[result.array[i]];
 
         _log_status(_log, "        01. user type pass\n");
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
@@ -300,12 +311,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             }
         }
 
-        _log_status(_log, "        04. dependency order pass\n");
-        if (cmon_resolver_circ_pass(pmd->resolver))
-        {
-            _add_resolver_errors(_b, pmd->resolver, cmon_true);
-        }
-
         _log_status(_log, "        05. main pass\n");
         for (j = 0; j < cmon_modules_src_file_count(_b->mods, i); ++j)
         {
@@ -313,6 +318,12 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
             {
                 _add_resolver_errors(_b, pmd->resolver, cmon_true);
             }
+        }
+
+        _log_status(_log, "        04. dependency order pass\n");
+        if (cmon_resolver_circ_pass(pmd->resolver))
+        {
+            _add_resolver_errors(_b, pmd->resolver, cmon_true);
         }
 
         _log_status(_log, "        06. IR generation\n");
@@ -333,11 +344,11 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         cmon_panic(cmon_codegen_err_msg(_codegen));
     }
 
-    for (i = 0; i < cmon_modules_count(_b->mods); ++i)
+    for (i = 0; i < result.count; ++i)
     {
-        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, i));
-        _per_module_data * pmd = &_b->mod_data[i];
-        cmon_idx session = cmon_codegen_begin_session(_codegen, (cmon_idx)i, pmd->ir);
+        _log_status(_log, "        » %s\n", cmon_modules_path(_b->mods, result.array[i]));
+        _per_module_data * pmd = &_b->mod_data[result.array[i]];
+        cmon_idx session = cmon_codegen_begin_session(_codegen, result.array[i], pmd->ir);
         if (cmon_codegen_gen(_codegen, session))
         {
             cmon_panic(cmon_codegen_session_err_msg(_codegen, session));
