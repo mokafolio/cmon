@@ -193,7 +193,7 @@ cmon_dep_graph_result cmon_dep_graph_resolve(cmon_dep_graph * _g)
     while (cmon_dyn_arr_count(&_g->unresolved))
     {
         cmon_dep_graph_node * n = cmon_dyn_arr_last(&_g->unmarked);
-        CMON_ASSERT(n->mark == cmon_dep_graph_mark_none);
+        assert(n->mark == cmon_dep_graph_mark_none);
         if (_visit(_g, n))
         {
             err = cmon_true;

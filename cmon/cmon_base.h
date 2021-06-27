@@ -66,7 +66,7 @@
 #define CMON_EXT_MAX 32
 #define CMON_ERR_MSG_MAX 4096
 #define CMON_INVALID_IDX (cmon_idx)-1
-#define CMON_ASSERT(x) assert(x)
+// #define CMON_ASSERT(x) assert(x)
 
 #define cmon_is_valid_idx(_idx) ((_idx) != CMON_INVALID_IDX)
 

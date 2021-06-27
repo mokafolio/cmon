@@ -259,13 +259,13 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
                cmon_modules_path(_b->mods, b));
 
         cmon_idx dep_idx = cmon_modules_find_dep_idx(_b->mods, a, b);
-        CMON_ASSERT(cmon_is_valid_idx(dep_idx));
+        assert(cmon_is_valid_idx(dep_idx));
 
         cmon_idx src_idx = cmon_modules_dep_src_file_idx(_b->mods, a, dep_idx);
-        CMON_ASSERT(cmon_is_valid_idx(src_idx));
+        assert(cmon_is_valid_idx(src_idx));
 
         cmon_idx tok_idx = cmon_modules_dep_tok_idx(_b->mods, a, dep_idx);
-        CMON_ASSERT(cmon_is_valid_idx(tok_idx));
+        assert(cmon_is_valid_idx(tok_idx));
 
         cmon_err_handler_err(_b->err_handler,
                              cmon_true,

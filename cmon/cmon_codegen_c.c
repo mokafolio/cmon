@@ -36,14 +36,14 @@ typedef struct _codegen_c
 
 static inline cmon_bool _set_err(_codegen_c * _cg, const char * _msg)
 {
-    CMON_ASSERT(sizeof(_cg->err_msg) > strlen(_msg));
+    assert(sizeof(_cg->err_msg) > strlen(_msg));
     strcpy(_cg->err_msg, _msg);
     return cmon_true;
 }
 
 static inline cmon_bool _set_sess_err(_session * _s, const char * _msg)
 {
-    CMON_ASSERT(sizeof(_s->err_msg) > strlen(_msg));
+    assert(sizeof(_s->err_msg) > strlen(_msg));
     strcpy(_s->err_msg, _msg);
     return cmon_true;
 }
@@ -79,7 +79,7 @@ static inline void _write_indent(_session * _s, size_t _indent)
 
 static inline void _write_type(_session * _s, cmon_idx _idx)
 {
-    CMON_ASSERT(cmon_is_valid_idx(_idx));
+    assert(cmon_is_valid_idx(_idx));
     if (cmon_types_kind(_s->cgen->types, _idx) == cmon_typek_ptr)
     {
         _write_type(_s, cmon_types_ptr_type(_s->cgen->types, _idx));
@@ -259,7 +259,7 @@ static inline void _write_expr(_session * _s, cmon_idx _idx)
     }
     else
     {
-        CMON_ASSERT(0);
+        assert(0);
     }
 }
 
@@ -419,7 +419,7 @@ static inline cmon_bool _gen_fn(_session * _s)
             {
                 _write_indent(_s, 1);
                 cmon_idx field_tidx = cmon_types_struct_field_type(_s->cgen->types, tidx, j);
-                if (cmon_types_kind(_s->cgen->types, field_tidx))
+                if (cmon_types_kind(_s->cgen->types, field_tidx) == cmon_typek_fn)
                 {
                     _write_named_fn_ptr(_s, cmon_types_struct_field_name(_s->cgen->types, tidx, j), field_tidx);
                     cmon_str_builder_append(_s->str_builder, ";\n");
@@ -437,11 +437,11 @@ static inline cmon_bool _gen_fn(_session * _s)
         }
         else if (kind == cmon_typek_array)
         {
-            cmon_str_builder_append(_s->str_builder, "typedef struct{\n");
+            cmon_str_builder_append_fmt(_s->str_builder, "typedef struct %s{\n", uname);
             _write_indent(_s, 1);
             _write_type(_s, cmon_types_array_type(_s->cgen->types, tidx));
             cmon_str_builder_append_fmt(_s->str_builder,
-                                        "data[%lu];\n} %s;\n\n",
+                                        " data[%lu];\n} %s;\n\n",
                                         cmon_types_array_count(_s->cgen->types, tidx),
                                         uname);
         }
@@ -452,7 +452,7 @@ static inline cmon_bool _gen_fn(_session * _s)
         }
         else
         {
-            CMON_ASSERT(0);
+            assert(0);
         }
     }
 

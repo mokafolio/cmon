@@ -105,7 +105,7 @@ typedef struct cmon_types
 //                          (cmon_short_str_make(_t->alloc, _tmp_str(_t, _fmt, ##__VA_ARGS__)))),     \
 //      cmon_short_str_c_str(&cmon_dyn_arr_last(&_t->name_buf)))
 
-#define _get_type(_t, _idx) (CMON_ASSERT(_idx < cmon_dyn_arr_count(&_t->types)), _t->types[_idx])
+#define _get_type(_t, _idx) (assert(_idx < cmon_dyn_arr_count(&_t->types)), _t->types[_idx])
 
 #define _return_if_found(_t, _name, _mod_idx)                                                      \
     do                                                                                             \
@@ -154,7 +154,7 @@ static inline cmon_idx _add_type(cmon_types * _t,
     t.unique_name_str = _unique;
     t.full_name_str = _full;
     t.data_idx = _extra_data;
-    CMON_ASSERT(cmon_modules_count(_t->mods));
+    assert(cmon_modules_count(_t->mods));
     cmon_dyn_arr_init(&t.mod_map, _t->alloc, cmon_modules_count(_t->mods));
     cmon_dyn_arr_resize(&t.mod_map, cmon_modules_count(_t->mods));
     memset(&t.mod_map[0], cmon_false, cmon_dyn_arr_count(&t.mod_map) * sizeof(cmon_bool));
@@ -480,16 +480,16 @@ static inline _struct_field * _get_struct_field(cmon_types * _t,
                                                 cmon_idx _struct_idx,
                                                 cmon_idx _field_idx)
 {
-    CMON_ASSERT(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
-    CMON_ASSERT(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
-    CMON_ASSERT(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
+    assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
+    assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
+    assert(_field_idx < cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields));
     return &_t->structs[_t->types[_struct_idx].data_idx].fields[_field_idx];
 }
 
 size_t cmon_types_struct_field_count(cmon_types * _t, cmon_idx _struct_idx)
 {
-    CMON_ASSERT(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
-    CMON_ASSERT(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
+    assert(_get_type(_t, _struct_idx).kind == cmon_typek_struct);
+    assert(_t->types[_struct_idx].data_idx < cmon_dyn_arr_count(&_t->structs));
     return cmon_dyn_arr_count(&_t->structs[_t->types[_struct_idx].data_idx].fields);
 }
 
@@ -533,59 +533,59 @@ cmon_idx cmon_types_struct_findv_field(cmon_types * _t, cmon_idx _struct_idx, cm
 
 cmon_bool cmon_types_ptr_is_mut(cmon_types * _t, cmon_idx _ptr_idx)
 {
-    CMON_ASSERT(_get_type(_t, _ptr_idx).kind == cmon_typek_ptr);
+    assert(_get_type(_t, _ptr_idx).kind == cmon_typek_ptr);
     return _t->ptrs[_t->types[_ptr_idx].data_idx].is_mut;
 }
 
 cmon_idx cmon_types_ptr_type(cmon_types * _t, cmon_idx _ptr_idx)
 {
-    CMON_ASSERT(_get_type(_t, _ptr_idx).kind == cmon_typek_ptr);
+    assert(_get_type(_t, _ptr_idx).kind == cmon_typek_ptr);
     return _t->ptrs[_t->types[_ptr_idx].data_idx].type;
 }
 
 cmon_bool cmon_types_view_is_mut(cmon_types * _t, cmon_idx _v_idx)
 {
-    CMON_ASSERT(_get_type(_t, _v_idx).kind == cmon_typek_view);
+    assert(_get_type(_t, _v_idx).kind == cmon_typek_view);
     return _t->views[_t->types[_v_idx].data_idx].is_mut;
 }
 
 cmon_idx cmon_types_view_type(cmon_types * _t, cmon_idx _v_idx)
 {
-    CMON_ASSERT(_get_type(_t, _v_idx).kind == cmon_typek_view);
+    assert(_get_type(_t, _v_idx).kind == cmon_typek_view);
     return _t->views[_t->types[_v_idx].data_idx].type;
 }
 
 size_t cmon_types_array_count(cmon_types * _t, cmon_idx _arr_idx)
 {
-    CMON_ASSERT(_get_type(_t, _arr_idx).kind == cmon_typek_array);
+    assert(_get_type(_t, _arr_idx).kind == cmon_typek_array);
     return _t->arrays[_t->types[_arr_idx].data_idx].count;
 }
 
 cmon_idx cmon_types_array_type(cmon_types * _t, cmon_idx _arr_idx)
 {
-    CMON_ASSERT(_get_type(_t, _arr_idx).kind == cmon_typek_array);
+    assert(_get_type(_t, _arr_idx).kind == cmon_typek_array);
     return _t->arrays[_t->types[_arr_idx].data_idx].type;
 }
 
 cmon_idx cmon_types_fn_param_count(cmon_types * _t, cmon_idx _fn_idx)
 {
-    CMON_ASSERT(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
-    CMON_ASSERT(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
     return cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params);
 }
 
 cmon_idx cmon_types_fn_param(cmon_types * _t, cmon_idx _fn_idx, cmon_idx _param_idx)
 {
-    CMON_ASSERT(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
-    CMON_ASSERT(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
-    CMON_ASSERT(_param_idx < cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params));
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    assert(_param_idx < cmon_dyn_arr_count(&_t->fns[_t->types[_fn_idx].data_idx].params));
     return _t->fns[_t->types[_fn_idx].data_idx].params[_param_idx];
 }
 
 cmon_idx cmon_types_fn_return_type(cmon_types * _t, cmon_idx _fn_idx)
 {
-    CMON_ASSERT(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
-    CMON_ASSERT(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
+    assert(_get_type(_t, _fn_idx).kind == cmon_typek_fn);
+    assert(_t->types[_fn_idx].data_idx < cmon_dyn_arr_count(&_t->fns));
     return _t->fns[_t->types[_fn_idx].data_idx].return_type;
 }
 

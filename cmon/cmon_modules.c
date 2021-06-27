@@ -86,7 +86,7 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
 
 static inline _module * _get_module(cmon_modules * _m, cmon_idx _mod_idx)
 {
-    CMON_ASSERT(_mod_idx < cmon_dyn_arr_count(&_m->mods));
+    assert(_mod_idx < cmon_dyn_arr_count(&_m->mods));
     return &_m->mods[_mod_idx];
 }
 
@@ -104,7 +104,7 @@ void cmon_modules_add_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _s
 
 void cmon_modules_set_global_scope(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _scope)
 {
-    CMON_ASSERT(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
+    assert(!cmon_is_valid_idx(_get_module(_m, _mod_idx)->global_scope));
     _get_module(_m, _mod_idx)->global_scope = _scope;
 }
 
@@ -156,7 +156,7 @@ const char * cmon_modules_prefix(cmon_modules * _m, cmon_idx _mod_idx)
 
 cmon_idx cmon_modules_src_file(cmon_modules * _m, cmon_idx _mod_idx, cmon_idx _src_file_idx)
 {
-    CMON_ASSERT(_src_file_idx < cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files));
+    assert(_src_file_idx < cmon_dyn_arr_count(&_get_module(_m, _mod_idx)->src_files));
     return _get_module(_m, _mod_idx)->src_files[_src_file_idx];
 }
 

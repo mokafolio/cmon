@@ -22,7 +22,7 @@ size_t cmon_str_view_len(cmon_str_view _v)
 char * cmon_str_view_copy(cmon_allocator * _alloc, cmon_str_view _view)
 {
     int len = _view.end - _view.begin;
-    // CMON_ASSERT(len);
+    // assert(len);
     char * ret = cmon_allocator_alloc(_alloc, len + 1).ptr;
     memcpy(ret, _view.begin, len);
     ret[len] = '\0';
@@ -50,7 +50,7 @@ void cmon_c_str_free(cmon_allocator * _alloc, char * _str)
 const char * cmon_str_view_tmp_str(cmon_str_view _view, char * _tmp)
 {
     int len = _view.end - _view.begin;
-    // CMON_ASSERT(len < CMON_TMP_STR_BUFFER_SIZE - 1);
+    // assert(len < CMON_TMP_STR_BUFFER_SIZE - 1);
     memcpy(_tmp, _view.begin, len);
     _tmp[len] = '\0';
     return _tmp;
@@ -89,7 +89,7 @@ char * cmon_str_create_v(cmon_allocator * _alloc, const char * _fmt, va_list _ar
     ret = cmon_allocator_alloc(_alloc, len + 1).ptr;
     len = vsnprintf(ret, len + 1, _fmt, cpy);
     //@TODO: Proper error/panic
-    CMON_ASSERT(len != -1);
+    assert(len != -1);
     return ret;
 }
 

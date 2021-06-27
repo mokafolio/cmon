@@ -22,7 +22,7 @@ typedef struct cmon_src
 
 static inline cmon_src_file * _get_file(cmon_src * _src, cmon_idx _idx)
 {
-    CMON_ASSERT(_idx < cmon_dyn_arr_count(&_src->files));
+    assert(_idx < cmon_dyn_arr_count(&_src->files));
     return &_src->files[_idx];
 }
 
@@ -116,7 +116,7 @@ const char * cmon_src_code(cmon_src * _src, cmon_idx _file_idx)
 
 cmon_str_view cmon_src_line(cmon_src * _src, cmon_idx _file_idx, size_t _line)
 {
-    CMON_ASSERT(cmon_src_tokens(_src, _file_idx));
+    assert(cmon_src_tokens(_src, _file_idx));
     return cmon_tokens_line_str_view(cmon_src_tokens(_src, _file_idx), _line);
 }
 

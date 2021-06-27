@@ -744,7 +744,7 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
         while (_accept(_p, &tok, cmon_tokk_ident))
         {
             cmon_str_view sv = cmon_tokens_str_view(_p->tokens, tok);
-            CMON_ASSERT(cmon_tokens_kind(_p->tokens, tok) == cmon_tokk_ident);
+            assert(cmon_tokens_kind(_p->tokens, tok) == cmon_tokk_ident);
 
             cmon_idx_buf_append(_p->idx_buf_mng, path_tok_buf, tok);
 
@@ -756,7 +756,7 @@ static cmon_idx _parse_import(cmon_parser * _p, cmon_idx _tok)
         {
             alias = _tok_check(_p, cmon_true, cmon_tokk_ident);
         }
-        CMON_ASSERT(cmon_idx_buf_count(_p->idx_buf_mng, path_tok_buf));
+        assert(cmon_idx_buf_count(_p->idx_buf_mng, path_tok_buf));
 
         cmon_idx_buf_append(
             _p->idx_buf_mng,
@@ -868,7 +868,7 @@ cmon_ast * cmon_parser_parse(cmon_parser * _p,
 
     // for now a parser can't be reset, this is just a sanity check to make sure cmon_parser_parse
     // is only called once for every instance
-    CMON_ASSERT(_p->ast_builder == NULL);
+    assert(_p->ast_builder == NULL);
 
     _p->src = _src;
     _p->src_file_idx = _src_file_idx;

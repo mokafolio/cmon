@@ -189,7 +189,7 @@ static inline cmon_idx _add_node(cmon_irb * _b, cmon_irk _kind, cmon_idx _data_i
 {
     cmon_dyn_arr_append(&_b->kinds, _kind);
     cmon_dyn_arr_append(&_b->data, _data_idx);
-    CMON_ASSERT(cmon_dyn_arr_count(&_b->kinds) == cmon_dyn_arr_count(&_b->data));
+    assert(cmon_dyn_arr_count(&_b->kinds) == cmon_dyn_arr_count(&_b->data));
     return (cmon_idx)(cmon_dyn_arr_count(&_b->kinds) - 1);
 }
 
@@ -215,7 +215,7 @@ static inline cmon_idx _add_indices(cmon_irb * _b, cmon_idx * _indices, size_t _
 
 cmon_idx cmon_irb_add_ident(cmon_irb * _b, cmon_idx _ref_idx)
 {
-    CMON_ASSERT(_ref_idx < cmon_dyn_arr_count(&_b->kinds));
+    assert(_ref_idx < cmon_dyn_arr_count(&_b->kinds));
     return _add_node(_b, cmon_irk_ident, _ref_idx);
 }
 
@@ -361,7 +361,7 @@ cmon_idx cmon_irb_add_fn(cmon_irb * _b,
     cmon_idx ret = _add_node(_b, cmon_irk_fn, cmon_dyn_arr_count(&_b->fn_data) - 1);
     if (_is_main_fn)
     {
-        CMON_ASSERT(!cmon_is_valid_idx(_b->main_fn_idx));
+        assert(!cmon_is_valid_idx(_b->main_fn_idx));
         _b->main_fn_idx = ret;
     }
     cmon_dyn_arr_append(&_b->fns, ret);
@@ -370,8 +370,8 @@ cmon_idx cmon_irb_add_fn(cmon_irb * _b,
 
 void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body)
 {
-    CMON_ASSERT(_fn < cmon_dyn_arr_count(&_b->kinds));
-    CMON_ASSERT(_b->kinds[_fn] == cmon_irk_fn);
+    assert(_fn < cmon_dyn_arr_count(&_b->kinds));
+    assert(_b->kinds[_fn] == cmon_irk_fn);
     _b->fn_data[_b->data[_fn]].body_idx = _body;
 }
 
@@ -427,25 +427,25 @@ cmon_ir * cmon_irb_ir(cmon_irb * _b)
 
 static inline cmon_idx _idx_buf_get(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_idx < _ir->idx_buffer_count);
+    assert(_idx < _ir->idx_buffer_count);
     return _ir->idx_buffer[_idx];
 }
 
 static inline const char * _ir_str(cmon_ir * _ir, size_t _str_off)
 {
-    CMON_ASSERT(_str_off < _ir->str_buf_count);
+    assert(_str_off < _ir->str_buf_count);
     return &_ir->str_buf[_str_off];
 }
 
 static inline cmon_idx _ir_data(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_idx < _ir->data_count);
+    assert(_idx < _ir->data_count);
     return _ir->data[_idx];
 }
 
 static inline cmon_irk _ir_kind(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_idx < _ir->kinds_count);
+    assert(_idx < _ir->kinds_count);
     return _ir->kinds[_idx];
 }
 
@@ -471,7 +471,7 @@ size_t cmon_ir_type_count(cmon_ir * _ir)
 
 cmon_idx cmon_ir_type(cmon_ir * _ir, size_t _idx)
 {
-    CMON_ASSERT(_idx < cmon_ir_type_count(_ir));
+    assert(_idx < cmon_ir_type_count(_ir));
     return _ir->types[_idx];
 }
 
@@ -507,7 +507,7 @@ cmon_irk cmon_ir_kind(cmon_ir * _ir, cmon_idx _idx)
 
 const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_ident);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_ident);
     cmon_irk kind = _ir_kind(_ir, _ir_data(_ir, _idx));
     if (kind == cmon_irk_var_decl)
     {
@@ -517,163 +517,163 @@ const char * cmon_ir_ident_name(cmon_ir * _ir, cmon_idx _idx)
     {
         return cmon_ir_fn_name(_ir, _ir_data(_ir, _idx));
     }
-    CMON_ASSERT(0);
+    assert(0);
     return "";
 }
 
 cmon_bool cmon_ir_bool_lit_value(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_bool_lit);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_bool_lit);
     return (cmon_bool)_ir_data(_ir, _idx);
 }
 
 const char * cmon_ir_float_lit_value(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_float_lit);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_float_lit);
     return _ir_str(_ir, _ir_data(_ir, _idx));
 }
 
 const char * cmon_ir_int_lit_value(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_int_lit);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_int_lit);
     return _ir_str(_ir, _ir_data(_ir, _idx));
 }
 
 const char * cmon_ir_string_lit_value(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_string_lit);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_string_lit);
     return _ir_str(_ir, _ir_data(_ir, _idx));
 }
 
 cmon_idx cmon_ir_addr_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_addr);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_addr);
     return _ir_data(_ir, _idx);
 }
 
 cmon_idx cmon_ir_deref_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_deref);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_deref);
     return _ir_data(_ir, _idx);
 }
 
 char cmon_ir_binary_op(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
     return _ir->binops[_ir_data(_ir, _idx)].op;
 }
 
 cmon_idx cmon_ir_binary_left(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
     return _ir->binops[_ir_data(_ir, _idx)].left;
 }
 
 cmon_idx cmon_ir_binary_right(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_binary);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_binary);
     return _ir->binops[_ir_data(_ir, _idx)].right;
 }
 
 char cmon_ir_prefix_op(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_prefix);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_prefix);
     return _ir->prefixes[_ir_data(_ir, _idx)].op;
 }
 
 cmon_idx cmon_ir_prefix_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_prefix);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_prefix);
     return _ir->prefixes[_ir_data(_ir, _idx)].right;
 }
 
 cmon_idx cmon_ir_paran_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_paran_expr);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_paran_expr);
     return _ir_data(_ir, _idx);
 }
 
 cmon_idx cmon_ir_call_left(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_call);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
     return _ir->calls[_ir_data(_ir, _idx)].left;
 }
 
 size_t cmon_ir_call_arg_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_call);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
     return _ir->calls[_ir_data(_ir, _idx)].args_end - _ir->calls[_ir_data(_ir, _idx)].args_begin;
 }
 
 cmon_idx cmon_ir_call_arg(cmon_ir * _ir, cmon_idx _idx, size_t _arg_idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_call);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_call);
     return _idx_buf_get(_ir, _ir->calls[_ir_data(_ir, _idx)].args_begin + _arg_idx);
 }
 
 cmon_idx cmon_ir_struct_init_type(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
     return _ir->inits[_ir_data(_ir, _idx)].type_idx;
 }
 
 size_t cmon_ir_struct_init_expr_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
     return _ir->inits[_ir_data(_ir, _idx)].exprs_end - _ir->inits[_ir_data(_ir, _idx)].exprs_begin;
 }
 
 cmon_idx cmon_ir_struct_init_expr(cmon_ir * _ir, cmon_idx _idx, size_t _expr_idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_struct_init);
     return _idx_buf_get(_ir, _ir->inits[_ir_data(_ir, _idx)].exprs_begin + _expr_idx);
 }
 
 cmon_idx cmon_ir_array_init_type(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
     return _ir->inits[_ir_data(_ir, _idx)].type_idx;
 }
 
 size_t cmon_ir_array_init_expr_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
     return _ir->inits[_ir_data(_ir, _idx)].exprs_end - _ir->inits[_ir_data(_ir, _idx)].exprs_begin;
 }
 
 cmon_idx cmon_ir_array_init_expr(cmon_ir * _ir, cmon_idx _idx, size_t _expr_idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_array_init);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_array_init);
     return _idx_buf_get(_ir, _ir->inits[_ir_data(_ir, _idx)].exprs_begin + _expr_idx);
 }
 
 cmon_idx cmon_ir_selector_left(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_selector);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_selector);
     return _ir->idx_pairs[_ir_data(_ir, _idx)].left;
 }
 
 const char * cmon_ir_selector_name(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_selector);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_selector);
     return _ir_str(_ir, _ir->idx_pairs[_ir_data(_ir, _idx)].right);
 }
 
 cmon_idx cmon_ir_index_left(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_index);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_index);
     return _ir->idx_pairs[_ir_data(_ir, _idx)].left;
 }
 
 cmon_idx cmon_ir_index_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_index);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_index);
     return _ir->idx_pairs[_ir_data(_ir, _idx)].right;
 }
 
 size_t cmon_ir_block_child_count(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_block);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_block);
     return _ir->idx_pairs[_ir_data(_ir, _idx)].right - _ir->idx_pairs[_ir_data(_ir, _idx)].left;
 }
 
@@ -684,31 +684,31 @@ cmon_idx cmon_ir_block_child(cmon_ir * _ir, cmon_idx _idx, size_t _child_idx)
 
 const char * cmon_ir_var_decl_name(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
     return _ir_str(_ir, _ir->var_decls[_ir_data(_ir, _idx)].name_off);
 }
 
 cmon_bool cmon_ir_var_decl_is_mut(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
     return _ir->var_decls[_ir_data(_ir, _idx)].is_mut;
 }
 
 cmon_idx cmon_ir_var_decl_type(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
     return _ir->var_decls[_ir_data(_ir, _idx)].type_idx;
 }
 
 cmon_idx cmon_ir_var_decl_expr(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
+    assert(_ir_kind(_ir, _idx) == cmon_irk_var_decl);
     return _ir->var_decls[_ir_data(_ir, _idx)].expr_idx;
 }
 
 static inline _fn_decl * _ir_fn_data(cmon_ir * _ir, cmon_idx _idx)
 {
-    CMON_ASSERT(_idx < cmon_dyn_arr_count(&_ir->fn_data));
+    assert(_idx < cmon_dyn_arr_count(&_ir->fn_data));
     return &_ir->fn_data[_idx];
 }
 
@@ -884,7 +884,7 @@ static inline void _debug_write_expr(cmon_ir * _ir,
     }
     else
     {
-        CMON_ASSERT(0);
+        assert(0);
     }
 }
 

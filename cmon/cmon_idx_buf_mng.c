@@ -67,13 +67,13 @@ cmon_idx * cmon_idx_buf_ptr(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 
 size_t cmon_idx_buf_count(cmon_idx_buf_mng * _m, cmon_idx _buf_idx)
 {
-    CMON_ASSERT(_buf_idx < cmon_dyn_arr_count(&_m->bufs));
+    assert(_buf_idx < cmon_dyn_arr_count(&_m->bufs));
     return cmon_dyn_arr_count(&_m->bufs[_buf_idx]);
 }
 
 cmon_idx cmon_idx_buf_at(cmon_idx_buf_mng * _m, cmon_idx _buf_idx, cmon_idx _at)
 {
-    CMON_ASSERT(_at < cmon_idx_buf_count(_m, _buf_idx));
+    assert(_at < cmon_idx_buf_count(_m, _buf_idx));
     return _m->bufs[_buf_idx][_at];
 }
 

@@ -15,7 +15,7 @@ cmon_err_report cmon_err_report_make(cmon_idx _src_file_idx,
                                               cmon_idx _tok_last, const char * _msg)
 {
     cmon_err_report ret;
-    CMON_ASSERT(strlen(_msg) < CMON_ERR_MSG_MAX - 1);
+    assert(strlen(_msg) < CMON_ERR_MSG_MAX - 1);
     ret.src_file_idx = _src_file_idx;
     ret.tok_first = _tok_first;
     ret.tok_of_interest = _tok_of_interest;
@@ -31,7 +31,7 @@ cmon_bool cmon_err_report_is_empty(cmon_err_report * _er)
 
 static inline cmon_tokens * _err_toks(cmon_err_report * _er, cmon_src * _src)
 {
-    CMON_ASSERT(cmon_is_valid_idx(_er->src_file_idx));
+    assert(cmon_is_valid_idx(_er->src_file_idx));
     return cmon_src_tokens(_src, _er->src_file_idx);
 }
 

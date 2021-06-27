@@ -158,7 +158,7 @@ const char * cmon_argparse_value(cmon_argparse * _a, const char * _key)
             return _a->args[a].val;
         else if (_a->args[a].default_idx != -1)
         {
-            CMON_ASSERT(cmon_dyn_arr_count(&_a->args[a].possible_vals));
+            assert(cmon_dyn_arr_count(&_a->args[a].possible_vals));
             return _a->args[a].possible_vals[_a->args[a].default_idx];
         }
     }
