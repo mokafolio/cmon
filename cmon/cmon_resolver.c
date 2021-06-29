@@ -2426,11 +2426,9 @@ cmon_bool cmon_resolver_circ_pass(cmon_resolver * _r)
             cmon_types_is_used_in_module(_r->types, (cmon_idx)i, _r->mod_idx))
         {
             cmon_dyn_arr_clear(&_r->dep_buffer);
-            if(cmon_types_kind(_r->types, (cmon_idx)i) == cmon_typek_array)
+            if (cmon_types_kind(_r->types, (cmon_idx)i) == cmon_typek_array)
             {
-                _add_type_dep(_r,
-                                  &_r->dep_buffer,
-                                  cmon_types_array_type(_r->types, (cmon_idx)i));
+                _add_type_dep(_r, &_r->dep_buffer, cmon_types_array_type(_r->types, (cmon_idx)i));
                 cmon_dep_graph_add(_r->dep_graph,
                                    (cmon_idx)i,
                                    &_r->dep_buffer[0],
@@ -2852,6 +2850,14 @@ static inline cmon_idx _ir_add_local_var_decl(cmon_resolver * _r,
 {
     cmon_idx sym = cmon_ast_var_decl_sym(_fr_ast(_fr), _ast_idx);
     assert(cmon_is_valid_idx(sym));
+
+    cmon_idx expr_idx = cmon_ast_var_decl_expr(_fr_ast(_fr), _ast_idx);
+
+    if (cmon_is_valid_idx(expr_idx) && cmon_ast_kind(_fr_ast(_fr), expr_idx) == cmon_astk_fn_decl)
+    {
+        return CMON_INVALID_IDX;
+    }
+
     return _ir_add_var_decl_impl(_r,
                                  _fr,
                                  cmon_symbols_unique_name(_r->symbols, sym),
@@ -3045,6 +3051,9 @@ static inline cmon_idx _ir_add(cmon_resolver * _r, _file_resolver * _fr, cmon_id
         return cmon_irb_add_paran(_r->ir_builder,
                                   _ir_add(_r, _fr, cmon_ast_paran_expr(_fr_ast(_fr), _ast_idx)));
     }
+    else if (kind == cmon_astk_fn_decl)
+    {
+    }
     else if (kind == cmon_astk_alias)
     {
         // nothing to do for these
@@ -3061,9 +3070,11 @@ static inline cmon_idx _ir_add_block(cmon_resolver * _r, _file_resolver * _fr, c
     cmon_idx idx_buf = cmon_idx_buf_mng_get(_r->idx_buf_mng);
     for (size_t i = 0; i < cmon_ast_block_child_count(_fr_ast(_fr), _ast_idx); ++i)
     {
-        cmon_idx_buf_append(_r->idx_buf_mng,
-                            idx_buf,
-                            _ir_add(_r, _fr, cmon_ast_block_child(_fr_ast(_fr), _ast_idx, i)));
+        cmon_idx idx = _ir_add(_r, _fr, cmon_ast_block_child(_fr_ast(_fr), _ast_idx, i));
+        if (cmon_is_valid_idx(idx))
+        {
+            cmon_idx_buf_append(_r->idx_buf_mng, idx_buf, idx);
+        }
     }
     cmon_idx ret = cmon_irb_add_block(_r->ir_builder,
                                       cmon_idx_buf_ptr(_r->idx_buf_mng, idx_buf),
@@ -3339,15 +3350,11 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     {
         for (j = 0; j < cmon_dyn_arr_count(&_r->file_resolvers[i].local_fns); ++j)
         {
+            //@NOTE: tmp copy as we only have one str buidlder for the time being...not pretty but does the trick
+            char tmp_str[CMON_FILENAME_MAX];
+            strcpy(tmp_str, cmon_str_builder_tmp_str(_r->str_builder, "_%s_lfn%lu", mod_pref, j));
             cmon_idx sym = _r->file_resolvers[i].local_fns[j];
-            _ir_add_fn_from_sym(
-                _r,
-                sym,
-                cmon_str_builder_tmp_str(_r->str_builder,
-                                         "_%s_lfn%lu_%s",
-                                         mod_pref,
-                                         j,
-                                         cmon_symbols_unique_name(_r->symbols, sym)));
+            _ir_add_fn_from_sym(_r, sym, tmp_str);
         }
     }
 
@@ -3372,6 +3379,7 @@ cmon_ir * cmon_resolver_finalize(cmon_resolver * _r)
     {
         for (j = 0; j < cmon_dyn_arr_count(&_r->file_resolvers[i].local_fns); ++j)
         {
+            printf("ADDING BODY TO LOCAL FN %i\n", j);
             _ir_add_fn_body(_r, &_r->file_resolvers[i], _r->file_resolvers[i].local_fns[j]);
         }
     }

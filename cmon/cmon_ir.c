@@ -371,6 +371,7 @@ cmon_idx cmon_irb_add_fn(cmon_irb * _b,
 void cmon_irb_fn_set_body(cmon_irb * _b, cmon_idx _fn, cmon_idx _body)
 {
     assert(_fn < cmon_dyn_arr_count(&_b->kinds));
+    printf("ir kind %i\n", _b->kinds[_fn]);
     assert(_b->kinds[_fn] == cmon_irk_fn);
     _b->fn_data[_b->data[_fn]].body_idx = _body;
 }
