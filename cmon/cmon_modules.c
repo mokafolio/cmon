@@ -74,8 +74,24 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
     mod.global_scope = CMON_INVALID_IDX;
     mod.resolver = NULL;
 
+    size_t count = 0;
+    for(size_t i=0; i<cmon_dyn_arr_count(&_m->mods); ++i)
+    {
+        if(strcmp(_name, cmon_str_buf_get(_m->str_buf, _m->mods[i].name_str_off)) == 0)
+        {
+            ++count;
+        }
+    }
+
     cmon_str_builder_clear(_m->str_builder);
-    cmon_str_builder_append_fmt(_m->str_builder, "%s%lu", _name, ret);
+    if(count)
+    {
+        cmon_str_builder_append_fmt(_m->str_builder, "%s%lu", _name, count);
+    }
+    else
+    {
+        cmon_str_builder_append(_m->str_builder, _name);
+    }
     mod.prefix_str_off = cmon_str_buf_append(_m->str_buf, cmon_str_builder_c_str(_m->str_builder));
     cmon_dyn_arr_init(&mod.src_files, _m->alloc, 8);
     cmon_dyn_arr_init(&mod.deps, _m->alloc, 4);
