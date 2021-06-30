@@ -21,9 +21,11 @@ int main(int _argc, const char * _args[])
     cmon_log * log = NULL;
     cmon_builder_st * builder = NULL;
     cmon_src_dir * sd = NULL;
+    cmon_src_dir * dep_dir = NULL;
     char cwd[CMON_PATH_MAX];
     char project_path[CMON_PATH_MAX];
     char src_path[CMON_PATH_MAX];
+    char deps_path[CMON_PATH_MAX];
     char build_path[CMON_PATH_MAX];
 
     CMON_UNUSED(cmon_argparse_add_arg(ap, "-h", "--help", cmon_false, "show this help and exit"));
@@ -72,6 +74,7 @@ int main(int _argc, const char * _args[])
     }
 
     cmon_join_paths(project_path, "src", src_path, sizeof(src_path));
+    cmon_join_paths(project_path, "deps", deps_path, sizeof(deps_path));
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
     //clean and exit
@@ -114,9 +117,19 @@ int main(int _argc, const char * _args[])
         _panic(end, "missing src directory at %s", project_path);
 
     sd = cmon_src_dir_create(&alloc, src_path, mods, src);
-    if (cmon_src_dir_parse(sd))
+    if (cmon_src_dir_parse(sd, NULL))
     {
         _panic(end, "failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
+    }
+
+    //optionally add/parse the dependency directory
+    if(cmon_fs_exists(deps_path))
+    {
+        dep_dir = cmon_src_dir_create(&alloc, deps_path, mods, src);
+        if (cmon_src_dir_parse(dep_dir, "deps"))
+        {
+            _panic(end, "failed to parse deps directory: %s", cmon_src_dir_err_msg(dep_dir));
+        }
     }
 
     if (!cmon_fs_exists(build_path))
@@ -170,6 +183,7 @@ int main(int _argc, const char * _args[])
 end:
     cmon_codegen_dealloc(&cgen);
     cmon_builder_st_destroy(builder);
+    cmon_src_dir_destroy(dep_dir);
     cmon_src_dir_destroy(sd);
     cmon_log_destroy(log);
     cmon_modules_destroy(mods);

@@ -31,7 +31,7 @@ cmon_src_dir * cmon_src_dir_create(cmon_allocator * _alloc,
 
 void cmon_src_dir_destroy(cmon_src_dir * _dir)
 {
-    if(!_dir)
+    if (!_dir)
         return;
     cmon_str_builder_destroy(_dir->str_builder);
     CMON_DESTROY(_dir->alloc, _dir);
@@ -50,10 +50,12 @@ static inline cmon_bool _should_ignore_file(const char * _name)
     return strcmp(_name, ".") == 0 || strcmp(_name, "..") == 0;
 }
 
+//@TODO: this function is a lil messy, room for improvement
 static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
                                   const char * _path,
                                   const char * _dirname,
                                   const char * _parent_mod_path,
+                                  const char * _mod_path_prefix,
                                   cmon_bool _is_root_dir)
 {
     cmon_fs_dir d;
@@ -69,11 +71,17 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
         }
         else
         {
-            cmon_str_builder_append(_dir->str_builder, _dirname);
+            if(_mod_path_prefix)
+            {
+                cmon_str_builder_append_fmt(_dir->str_builder, "%s.%s", _mod_path_prefix, _dirname);
+            }
+            else
+            {
+                cmon_str_builder_append(_dir->str_builder, _dirname);
+            }
         }
 
-        mod_idx =
-            cmon_modules_add(_dir->mods, cmon_str_builder_c_str(_dir->str_builder), _dirname);
+        mod_idx = cmon_modules_add(_dir->mods, cmon_str_builder_c_str(_dir->str_builder), _dirname);
     }
 
     if (cmon_fs_open(_path, &d) == -1)
@@ -100,6 +108,7 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
                              ent.name,
                              cmon_is_valid_idx(mod_idx) ? cmon_modules_path(_dir->mods, mod_idx)
                                                         : NULL,
+                             _mod_path_prefix,
                              cmon_false);
         }
         else if (ent.type == cmon_fs_dirent_file)
@@ -110,7 +119,8 @@ static cmon_bool _recurse_src_dir(cmon_src_dir * _dir,
             if (strcmp(ext_buf, ".cmon") == 0 && !_is_root_dir)
             {
                 assert(cmon_is_valid_idx(mod_idx));
-                cmon_modules_add_src_file(_dir->mods, mod_idx, cmon_src_add(_dir->src, ent.path, ent.name));
+                cmon_modules_add_src_file(
+                    _dir->mods, mod_idx, cmon_src_add(_dir->src, ent.path, ent.name));
             }
             else
             {
@@ -128,9 +138,9 @@ err_end2:
     return cmon_true;
 }
 
-cmon_bool cmon_src_dir_parse(cmon_src_dir * _dir)
+cmon_bool cmon_src_dir_parse(cmon_src_dir * _dir, const char * _base_path_prefix)
 {
-    return _recurse_src_dir(_dir, _dir->path, "", NULL, cmon_true);
+    return _recurse_src_dir(_dir, _dir->path, "", NULL, _base_path_prefix, cmon_true);
 }
 
 const char * cmon_src_dir_err_msg(cmon_src_dir * _dir)

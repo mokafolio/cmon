@@ -1947,7 +1947,7 @@ void cmon_resolver_set_input(cmon_resolver * _r,
         cmon_idx src_file_idx;
 
         src_file_idx = cmon_modules_src_file(_r->mods, _r->mod_idx, i);
-        cmon_is_valid_idx(src_file_idx);
+        assert(cmon_is_valid_idx(src_file_idx));
         ast = cmon_src_ast(_r->src, src_file_idx);
 
         fr.idx_buf_mng = cmon_idx_buf_mng_create(_r->alloc);

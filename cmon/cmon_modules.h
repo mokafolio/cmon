@@ -25,6 +25,8 @@ CMON_API size_t cmon_modules_count(cmon_modules * _m);
 CMON_API const char * cmon_modules_path(cmon_modules * _m, cmon_idx _mod_idx);
 CMON_API const char * cmon_modules_name(cmon_modules * _m, cmon_idx _mod_idx);
 CMON_API const char * cmon_modules_prefix(cmon_modules * _m, cmon_idx _mod_idx);
+CMON_API size_t cmon_modules_path_token_count(cmon_modules * _m, cmon_idx _mod_idx);
+CMON_API cmon_str_view cmon_modules_path_token(cmon_modules * _m, cmon_idx _mod_idx, size_t _tok_idx);
 CMON_API cmon_idx cmon_modules_global_scope(cmon_modules * _m, cmon_idx _mod_idx);
 CMON_API cmon_idx cmon_modules_src_file(cmon_modules * _m,
                                         cmon_idx _mod_idx,

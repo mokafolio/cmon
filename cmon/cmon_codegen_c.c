@@ -388,51 +388,37 @@ static inline int _create_dir_if_no_exist(const char * _path)
 {
     if (!cmon_fs_exists(_path))
         return cmon_fs_mkdir(_path);
+    return 0;
 }
 
-static inline void _append_mod_sub_path(cmon_str_builder * _b,
-                                        const char * _base_path,
-                                        const char * _mod_path,
-                                        const char * _filename,
-                                        const char * _ext)
+static inline cmon_bool _create_mod_dirs(_session * _s, const char * _base_path, char * _buf, size_t _buf_size)
 {
-    const char * c = _mod_path;
-    const char * piece_start = c;
-    const char * start = c;
-    cmon_str_builder_append(_b, _base_path);
-    while (cmon_true)
+    cmon_str_builder_clear(_s->tmp_str_builder);
+    cmon_str_builder_append(_s->tmp_str_builder, _base_path);
+    for (size_t i = 0; i < cmon_modules_path_token_count(_s->cgen->mods, _s->mod_idx); ++i)
     {
-        if (*c == '.' || *c == '\0')
+        cmon_str_view dn = cmon_modules_path_token(_s->cgen->mods, _s->mod_idx, i);
+        cmon_str_builder_append_fmt(_s->tmp_str_builder, "/%.*s", dn.end - dn.begin, dn.begin);
+        // cmon_join_paths(cpath, cmon_modules_path_token(_s->cgen->mods, _s->mod_idx, i), cpath, sizeof(cpath));
+        if(_create_dir_if_no_exist(cmon_str_builder_c_str(_s->tmp_str_builder)) == -1)
         {
-            if (start != piece_start)
-            {
-                cmon_str_builder_append_fmt(_b, "/%.*s", c - start, start);
-            }
-            if (*c == '\0')
-                break;
-            ++c;
-            start = c;
+            return _set_sess_err(_s, "could not create directory");
         }
-        ++c;
     }
-    if (strlen(_filename))
-    {
-        cmon_str_builder_append_fmt(_b, "/%s%s", _filename, _ext);
-    }
+
+    memcpy(_buf, cmon_str_builder_c_str(_s->tmp_str_builder), cmon_str_builder_count(_s->tmp_str_builder) + 1);
+    return cmon_false;
 }
 
-static inline void _buffer_mod_sub_path(cmon_str_builder * _b,
-                                        const char * _base_path,
-                                        const char * _mod_path,
-                                        const char * _filename,
-                                        const char * _ext,
-                                        char * _buf,
-                                        size_t _buf_size)
+static inline void _append_mod_o_path(_session * _s, cmon_idx _mod_idx, cmon_str_builder * _b)
 {
-    cmon_str_builder_clear(_b);
-    _append_mod_sub_path(_b, _base_path, _mod_path, _filename, _ext);
-    assert(cmon_str_builder_count(_b) < _buf_size);
-    memcpy(_buf, cmon_str_builder_c_str(_b), cmon_str_builder_count(_b) + 1);
+    cmon_str_builder_append(_b, _s->cgen->o_dir);
+    for(size_t i=0; i<cmon_modules_path_token_count(_s->cgen->mods, _mod_idx); ++i)
+    {
+        cmon_str_view pt = cmon_modules_path_token(_s->cgen->mods, _mod_idx, i);
+        cmon_str_builder_append_fmt(_b, "/%.*s", pt.end-pt.begin, pt.begin);
+    }
+    cmon_str_builder_append_fmt(_b, "/%s.o", cmon_modules_prefix(_s->cgen->mods, _mod_idx));
 }
 
 static inline cmon_bool _create_dir(_session * _s, const char * _path)
@@ -604,29 +590,11 @@ static inline cmon_bool _gen_fn(_session * _s)
         cmon_str_builder_append(_s->str_builder, "}\n");
     }
 
-    // if (_create_mod_path_dirs(_s, _s->cgen->c_dir, _s->c_path, sizeof(_s->c_path)))
-    //     return cmon_true;
-
-    // cmon_join_paths(_s->c_path,
-    //                 cmon_str_builder_tmp_str(_s->tmp_str_builder,
-    //                                          "%s.c",
-    //                                          cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
-    //                 _s->c_path,
-    //                 sizeof(_s->c_path));
-
-    char cpath[CMON_PATH_MAX];
-    _buffer_mod_sub_path(_s->tmp_str_builder,
-                         _s->cgen->c_dir,
-                         cmon_modules_path(_s->cgen->mods, _s->mod_idx),
-                         "",
-                         "",
-                         cpath,
-                         sizeof(cpath));
-
-    if (_create_dir(_s, cpath))
+    char cdir_path[CMON_PATH_MAX];
+    if(_create_mod_dirs(_s, _s->cgen->c_dir, cdir_path, sizeof(cdir_path)))
         return cmon_true;
 
-    cmon_join_paths(cpath,
+    cmon_join_paths(cdir_path,
                     cmon_str_builder_tmp_str(_s->tmp_str_builder,
                                              "%s.c",
                                              cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
@@ -640,19 +608,10 @@ static inline cmon_bool _gen_fn(_session * _s)
 
     if (!cmon_is_valid_idx(main_fn))
     {
-        char opath[CMON_PATH_MAX];
-        _buffer_mod_sub_path(_s->tmp_str_builder,
-                             _s->cgen->o_dir,
-                             cmon_modules_path(_s->cgen->mods, _s->mod_idx),
-                             "",
-                             "",
-                             opath,
-                             sizeof(opath));
-
-        if (_create_dir(_s, opath))
+        char odir_path[CMON_PATH_MAX];
+        if(_create_mod_dirs(_s, _s->cgen->o_dir, odir_path, sizeof(odir_path)))
             return cmon_true;
-
-        cmon_join_paths(opath,
+        cmon_join_paths(odir_path,
                         cmon_str_builder_tmp_str(_s->tmp_str_builder,
                                                  "%s.o",
                                                  cmon_modules_prefix(_s->cgen->mods, _s->mod_idx)),
@@ -662,15 +621,7 @@ static inline cmon_bool _gen_fn(_session * _s)
     else
     {
         char exe_path[CMON_PATH_MAX];
-        _buffer_mod_sub_path(_s->tmp_str_builder,
-                             _s->cgen->build_dir,
-                             cmon_modules_path(_s->cgen->mods, _s->mod_idx),
-                             "",
-                             "",
-                             exe_path,
-                             sizeof(exe_path));
-
-        if (_create_dir(_s, exe_path))
+        if(_create_mod_dirs(_s, _s->cgen->build_dir, exe_path, sizeof(exe_path)))
             return cmon_true;
 
         cmon_join_paths(exe_path,
@@ -693,21 +644,17 @@ static inline cmon_bool _gen_fn(_session * _s)
     {
         // build the .c file and link all dependencies .o files to create the executable
         cmon_str_builder_append_fmt(_s->tmp_str_builder, "gcc %s ", _s->c_path);
-        char tmp_path[CMON_PATH_MAX];
         for (i = 0; i < cmon_ir_dep_count(_s->ir); ++i)
         {
-            //@NOTE: for now we regenerate the path whenever needed. Makes it simple and also more suitable for threading in the future possibly?
-            _append_mod_sub_path(
-                _s->tmp_str_builder,
-                _s->cgen->o_dir,
-                cmon_modules_path(_s->cgen->mods, cmon_ir_dep_module(_s->ir, (cmon_idx)i)),
-                cmon_modules_prefix(_s->cgen->mods, cmon_ir_dep_module(_s->ir, (cmon_idx)i)),
-                ".o");
+            //@NOTE: for now we regenerate the path whenever needed. Makes it simple and also more
+            //suitable for threading in the future possibly?
+            _append_mod_o_path(_s, cmon_ir_dep_module(_s->ir, (cmon_idx)i), _s->tmp_str_builder);
             cmon_str_builder_append(_s->tmp_str_builder, " ");
         }
         cmon_str_builder_append_fmt(_s->tmp_str_builder, "-o %s 2>&1", _s->o_path);
     }
 
+    printf("DA CMD %s\n\n", cmon_str_builder_c_str(_s->tmp_str_builder));
     int status =
         cmon_exec(cmon_str_builder_c_str(_s->tmp_str_builder), _s->c_compiler_output_builder);
 
