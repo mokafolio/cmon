@@ -122,6 +122,12 @@ int main(int _argc, const char * _args[])
         _panic(end, "failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
     }
 
+    //set the src directory as a module search path on all src based modules
+    for(size_t i=0; i<cmon_modules_count(mods); ++i)
+    {
+        cmon_modules_add_search_prefix(mods, (cmon_idx)i, "src");
+    }
+
     //optionally add/parse the dependency directory
     if(cmon_fs_exists(deps_path))
     {
@@ -129,6 +135,11 @@ int main(int _argc, const char * _args[])
         if (cmon_src_dir_parse(dep_dir, "deps"))
         {
             _panic(end, "failed to parse deps directory: %s", cmon_src_dir_err_msg(dep_dir));
+        }
+        //set the dependency directory as a module search path on all modules
+        for(size_t i=0; i<cmon_modules_count(mods); ++i)
+        {
+            cmon_modules_add_search_prefix(mods, (cmon_idx)i, "deps");
         }
     }
 

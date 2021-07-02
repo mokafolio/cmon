@@ -2074,7 +2074,13 @@ cmon_bool cmon_resolver_top_lvl_pass(cmon_resolver * _r, cmon_idx _file_idx)
                 {
                     cmon_idx ipp_idx = cmon_ast_import_pair(ast, idx, j);
                     cmon_str_view path = cmon_ast_import_pair_path(ast, ipp_idx);
-                    imod_idx = cmon_modules_find(fr->resolver->mods, path);
+                    // imod_idx = cmon_modules_find(fr->resolver->mods, path);
+
+                    //@TODO: ugh...maybe add a tmp str builder to file resolver instead? or make the find function take a str view?
+                    char tmp[CMON_PATH_MAX];
+                    strncpy(tmp, path.begin, path.end - path.begin);
+                    tmp[path.end - path.begin] = '\0';
+                    imod_idx = cmon_modules_find_import(fr->resolver->mods, fr->resolver->mod_idx, tmp);
 
                     if (!cmon_is_valid_idx(imod_idx))
                     {

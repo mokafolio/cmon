@@ -18,6 +18,7 @@ CMON_API void cmon_c_str_free(cmon_allocator * _alloc, char * _str);
 CMON_API char * cmon_str_create_v(cmon_allocator * _alloc, const char * _fmt, va_list _argp);
 CMON_API char * cmon_str_create(cmon_allocator * _alloc, const char * _fmt, ...);
 CMON_API const char * cmon_file_ext(const char * _filename, char * _buf, size_t _buf_size);
+CMON_API const char * cmon_filename(const char * _path, char * _buf, size_t _buf_size);
 CMON_API const char * cmon_join_paths(const char * _a, const char * _b, char * _buf, size_t _buf_size);
 CMON_API void cmon_panic(const char * _fmt, ...);
 

@@ -54,6 +54,8 @@ void cmon_modules_destroy(cmon_modules * _m)
     cmon_dyn_arr_dealloc(&_m->path_toks);
     for (i = 0; i < cmon_dyn_arr_count(&_m->mods); ++i)
     {
+        cmon_dyn_arr_dealloc(&_m->mods[i].path_overwrite_offs);
+        cmon_dyn_arr_dealloc(&_m->mods[i].search_prefixes_offs);
         cmon_dyn_arr_dealloc(&_m->mods[i].deps);
         cmon_dyn_arr_dealloc(&_m->mods[i].src_files);
     }
@@ -101,6 +103,8 @@ cmon_idx cmon_modules_add(cmon_modules * _m, const char * _path, const char * _n
     mod.prefix_str_off = cmon_str_buf_append(_m->str_buf, cmon_str_builder_c_str(_m->str_builder));
     cmon_dyn_arr_init(&mod.src_files, _m->alloc, 8);
     cmon_dyn_arr_init(&mod.deps, _m->alloc, 4);
+    cmon_dyn_arr_init(&mod.search_prefixes_offs, _m->alloc, 2);
+    cmon_dyn_arr_init(&mod.path_overwrite_offs, _m->alloc, 2);
 
     const char * c = _path;
     const char * start = c;
@@ -168,8 +172,10 @@ cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
 {
     //@NOTE: for now we just linear search. maybe hashmap in the future
     cmon_idx i;
+    printf("TRYING TO FIND %.*s\n", _path.end - _path.begin, _path.begin);
     for (i = 0; i < cmon_dyn_arr_count(&_m->mods); ++i)
     {
+        printf("path %s\n", cmon_modules_path(_m, i));
         if (cmon_str_view_c_str_cmp(_path, cmon_modules_path(_m, i)) == 0)
         {
             return i;
@@ -218,6 +224,7 @@ cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, 
     // 03. prepend the search path prefixes and try to get a match
     // char full_path[CMON_PATH_MAX];
     _module * mod = _get_module(_m, _looking_mod_idx);
+    printf("TRYING TO FIND THE IMPORT IN SEARCH PATHS\n");
     for (size_t i = 0; i < cmon_dyn_arr_count(&mod->search_prefixes_offs); ++i)
     {
         cmon_idx idx =
@@ -234,6 +241,16 @@ cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, 
     }
 
     return CMON_INVALID_IDX;
+}
+
+void cmon_modules_add_search_prefix(cmon_modules * _m, cmon_idx _mod_idx, const char * _path)
+{
+    cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->search_prefixes_offs, cmon_str_buf_append(_m->str_buf, _path));
+}
+
+void cmon_modules_add_path_overwrite(cmon_modules * _m, cmon_idx _mod_idx, const char * _path, const char * _overwrite)
+{
+    // cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->path_overwrite_offs, cmon_str_buf_append(_m->str_buf, _path));
 }
 
 size_t cmon_modules_count(cmon_modules * _m)

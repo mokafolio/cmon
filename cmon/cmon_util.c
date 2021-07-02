@@ -119,6 +119,20 @@ const char * cmon_file_ext(const char * _filename, char * _buf, size_t _buf_size
     return NULL;
 }
 
+const char * cmon_filename(const char * _path, char * _buf, size_t _buf_size)
+{
+    size_t len = strlen(_path);
+    char * c = &_path[len - 1];
+    char * last = c;
+    while(*c != '/')
+    {
+        --c;
+    }
+    assert(last - c < _buf_size);
+    memcpy(_buf, c + 1, last - c + 1);
+    return _buf;
+}
+
 const char * cmon_join_paths(const char * _a, const char * _b, char * _buf, size_t _buf_size)
 {
     size_t alen = strlen(_a);
