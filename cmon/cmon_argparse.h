@@ -7,29 +7,6 @@
 #define CMON_ARG_VAL_MAX CMON_PATH_MAX
 #define CMON_ARG_HLP_MAX CMON_ARG_VAL_MAX
 
-// typedef char cmon_arg_val[CMON_ARG_VAL_MAX];
-
-// typedef struct
-// {
-//     cmon_allocator * alloc;
-//     char key_short[CMON_ARG_KEY_MAX];
-//     char key_long[CMON_ARG_KEY_MAX];
-//     char help[CMON_ARG_VAL_MAX];
-//     cmon_bool expects_value;
-//     cmon_bool accepts_any;
-//     cmon_dyn_arr(char*) possible_vals;
-//     cmon_arg_val val;
-//     int default_idx;
-//     cmon_bool was_set;
-// } cmon_arg;
-
-// typedef struct
-// {
-//     cmon_allocator * alloc;
-//     cmon_dyn_arr(cmon_arg *) args;
-//     char name[CMON_ARG_KEY_MAX];
-// } cmon_argparse;
-
 typedef struct cmon_argparse cmon_argparse;
 
 // for simplicity, all argparse functions will simply panic on error.
