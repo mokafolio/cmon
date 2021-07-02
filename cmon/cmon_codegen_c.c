@@ -391,32 +391,47 @@ static inline int _create_dir_if_no_exist(const char * _path)
     return 0;
 }
 
-static inline cmon_bool _create_mod_dirs(_session * _s, const char * _base_path, char * _buf, size_t _buf_size)
+static inline cmon_bool _create_mod_dirs(_session * _s,
+                                         const char * _base_path,
+                                         char * _buf,
+                                         size_t _buf_size)
 {
     cmon_str_builder_clear(_s->tmp_str_builder);
     cmon_str_builder_append(_s->tmp_str_builder, _base_path);
     for (size_t i = 0; i < cmon_modules_path_token_count(_s->cgen->mods, _s->mod_idx); ++i)
     {
         cmon_str_view dn = cmon_modules_path_token(_s->cgen->mods, _s->mod_idx, i);
+        //@NOTE: Hacky way to ignore the src path prefix for now
+        if (i == 0 && cmon_str_view_c_str_cmp(dn, "src") == 0)
+        {
+            // cmon_str_builder_append(_s->tmp_str_builder, "/");
+            continue;
+        }
         cmon_str_builder_append_fmt(_s->tmp_str_builder, "/%.*s", dn.end - dn.begin, dn.begin);
-        // cmon_join_paths(cpath, cmon_modules_path_token(_s->cgen->mods, _s->mod_idx, i), cpath, sizeof(cpath));
-        if(_create_dir_if_no_exist(cmon_str_builder_c_str(_s->tmp_str_builder)) == -1)
+        if (_create_dir_if_no_exist(cmon_str_builder_c_str(_s->tmp_str_builder)) == -1)
         {
             return _set_sess_err(_s, "could not create directory");
         }
     }
 
-    memcpy(_buf, cmon_str_builder_c_str(_s->tmp_str_builder), cmon_str_builder_count(_s->tmp_str_builder) + 1);
+    memcpy(_buf,
+           cmon_str_builder_c_str(_s->tmp_str_builder),
+           cmon_str_builder_count(_s->tmp_str_builder) + 1);
     return cmon_false;
 }
 
 static inline void _append_mod_o_path(_session * _s, cmon_idx _mod_idx, cmon_str_builder * _b)
 {
     cmon_str_builder_append(_b, _s->cgen->o_dir);
-    for(size_t i=0; i<cmon_modules_path_token_count(_s->cgen->mods, _mod_idx); ++i)
+    for (size_t i = 0; i < cmon_modules_path_token_count(_s->cgen->mods, _mod_idx); ++i)
     {
         cmon_str_view pt = cmon_modules_path_token(_s->cgen->mods, _mod_idx, i);
-        cmon_str_builder_append_fmt(_b, "/%.*s", pt.end-pt.begin, pt.begin);
+        //@NOTE: Hacky way to ignore the src path prefix for now
+        if (i == 0 && cmon_str_view_c_str_cmp(pt, "src") == 0)
+        {
+            continue;
+        }
+        cmon_str_builder_append_fmt(_b, "/%.*s", pt.end - pt.begin, pt.begin);
     }
     cmon_str_builder_append_fmt(_b, "/%s.o", cmon_modules_prefix(_s->cgen->mods, _mod_idx));
 }
@@ -591,7 +606,7 @@ static inline cmon_bool _gen_fn(_session * _s)
     }
 
     char cdir_path[CMON_PATH_MAX];
-    if(_create_mod_dirs(_s, _s->cgen->c_dir, cdir_path, sizeof(cdir_path)))
+    if (_create_mod_dirs(_s, _s->cgen->c_dir, cdir_path, sizeof(cdir_path)))
         return cmon_true;
 
     cmon_join_paths(cdir_path,
@@ -609,7 +624,7 @@ static inline cmon_bool _gen_fn(_session * _s)
     if (!cmon_is_valid_idx(main_fn))
     {
         char odir_path[CMON_PATH_MAX];
-        if(_create_mod_dirs(_s, _s->cgen->o_dir, odir_path, sizeof(odir_path)))
+        if (_create_mod_dirs(_s, _s->cgen->o_dir, odir_path, sizeof(odir_path)))
             return cmon_true;
         cmon_join_paths(odir_path,
                         cmon_str_builder_tmp_str(_s->tmp_str_builder,
@@ -621,7 +636,7 @@ static inline cmon_bool _gen_fn(_session * _s)
     else
     {
         char exe_path[CMON_PATH_MAX];
-        if(_create_mod_dirs(_s, _s->cgen->build_dir, exe_path, sizeof(exe_path)))
+        if (_create_mod_dirs(_s, _s->cgen->build_dir, exe_path, sizeof(exe_path)))
             return cmon_true;
 
         cmon_join_paths(exe_path,
@@ -647,7 +662,7 @@ static inline cmon_bool _gen_fn(_session * _s)
         for (i = 0; i < cmon_ir_dep_count(_s->ir); ++i)
         {
             //@NOTE: for now we regenerate the path whenever needed. Makes it simple and also more
-            //suitable for threading in the future possibly?
+            // suitable for threading in the future possibly?
             _append_mod_o_path(_s, cmon_ir_dep_module(_s->ir, (cmon_idx)i), _s->tmp_str_builder);
             cmon_str_builder_append(_s->tmp_str_builder, " ");
         }
