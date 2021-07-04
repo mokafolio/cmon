@@ -253,11 +253,6 @@ cmon_bool cmon_builder_st_build(cmon_builder_st * _b,
         a = cmon_dep_graph_conflict_a(_b->dep_graph);
         b = cmon_dep_graph_conflict_b(_b->dep_graph);
 
-        printf("booo\n");
-        printf("circular dependency between modules '%s' and '%s'\n",
-               cmon_modules_path(_b->mods, a),
-               cmon_modules_path(_b->mods, b));
-
         cmon_idx dep_idx = cmon_modules_find_dep_idx(_b->mods, a, b);
         assert(cmon_is_valid_idx(dep_idx));
 

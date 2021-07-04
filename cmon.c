@@ -1,15 +1,17 @@
 #include <cmon/cmon_argparse.h>
 #include <cmon/cmon_builder_st.h>
 #include <cmon/cmon_codegen_c.h>
+#include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_fs.h>
 #include <cmon/cmon_src_dir.h>
+#include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_util.h>
 
-#define _panic(_goto, _fmt, ...)                                                                          \
+#define _panic(_goto, _fmt, ...)                                                                   \
     do                                                                                             \
     {                                                                                              \
         fprintf(stderr, "Panic: " _fmt "\n", ##__VA_ARGS__);                                       \
-        goto _goto;                                                                                  \
+        goto _goto;                                                                                \
     } while (0)
 
 int main(int _argc, const char * _args[])
@@ -21,12 +23,16 @@ int main(int _argc, const char * _args[])
     cmon_log * log = NULL;
     cmon_builder_st * builder = NULL;
     cmon_src_dir * sd = NULL;
-    cmon_src_dir * dep_dir = NULL;
+    // cmon_src_dir * dep_dir = NULL;
+    cmon_dyn_arr(cmon_src_dir *) dep_dirs;
+        cmon_str_builder * tmp_strb = cmon_str_builder_create(&alloc, CMON_PATH_MAX);
     char cwd[CMON_PATH_MAX];
     char project_path[CMON_PATH_MAX];
     char src_path[CMON_PATH_MAX];
     char deps_path[CMON_PATH_MAX];
     char build_path[CMON_PATH_MAX];
+
+    cmon_dyn_arr_init(&dep_dirs, &alloc, 4);
 
     CMON_UNUSED(cmon_argparse_add_arg(ap, "-h", "--help", cmon_false, "show this help and exit"));
     cmon_idx arg =
@@ -77,33 +83,35 @@ int main(int _argc, const char * _args[])
     cmon_join_paths(project_path, "deps", deps_path, sizeof(deps_path));
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
-    //clean and exit
+    // clean and exit
     if (cmon_argparse_is_set(ap, "-c"))
-    {   
-        if(cmon_fs_exists(build_path))
+    {
+        if (cmon_fs_exists(build_path))
         {
             cmon_fs_dir dir;
-            if(cmon_fs_open(build_path, &dir) != -1)
+            if (cmon_fs_open(build_path, &dir) != -1)
             {
                 cmon_fs_dirent ent;
-                while(cmon_fs_has_next(&dir))
+                while (cmon_fs_has_next(&dir))
                 {
-                    if(cmon_fs_next(&dir, &ent) == -1)
+                    if (cmon_fs_next(&dir, &ent) == -1)
                     {
-                        _panic(close_build_dir, "failed to advance directory iterator while cleaning");
+                        _panic(close_build_dir,
+                               "failed to advance directory iterator while cleaning");
                     }
-                    if(strcmp(ent.name, ".") == 0 || strcmp(ent.name, "..") == 0)
+                    if (strcmp(ent.name, ".") == 0 || strcmp(ent.name, "..") == 0)
                     {
                         continue;
                     }
-                    if(cmon_fs_remove_all(ent.path) == -1)
+                    if (cmon_fs_remove_all(ent.path) == -1)
                     {
-                        _panic(close_build_dir, "failed to remove %s while cleaning build directory", ent.name);
+                        _panic(close_build_dir,
+                               "failed to remove %s while cleaning build directory",
+                               ent.name);
                     }
                 }
-                close_build_dir:
+            close_build_dir:
                 cmon_fs_close(&dir);
-                goto end;
             }
             else
             {
@@ -117,29 +125,88 @@ int main(int _argc, const char * _args[])
         _panic(end, "missing src directory at %s", project_path);
 
     sd = cmon_src_dir_create(&alloc, src_path, mods, src);
-    if (cmon_src_dir_parse(sd, NULL))
+    if (cmon_src_dir_parse(sd, "src"))
     {
         _panic(end, "failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
     }
 
-    //set the src directory as a module search path on all src based modules
-    for(size_t i=0; i<cmon_modules_count(mods); ++i)
+    // set the src directory as a module search path on all src based modules
+    for (size_t i = 0; i < cmon_modules_count(mods); ++i)
     {
         cmon_modules_add_search_prefix(mods, (cmon_idx)i, "src");
     }
 
-    //optionally add/parse the dependency directory
-    if(cmon_fs_exists(deps_path))
+    size_t src_mods_end = cmon_modules_count(mods);
+
+    // optionally add/parse the dependency directory
+    if (cmon_fs_exists(deps_path))
     {
-        dep_dir = cmon_src_dir_create(&alloc, deps_path, mods, src);
-        if (cmon_src_dir_parse(dep_dir, "deps"))
+        //@TODO: Every root directory inside deps should be treated as the project directory and
+        // thus not be part of the path
+        // dep_dir = cmon_src_dir_create(&alloc, deps_path, mods, src);
+        // if (cmon_src_dir_parse(dep_dir, "deps"))
+        // {
+        //     _panic(end, "failed to parse deps directory: %s", cmon_src_dir_err_msg(dep_dir));
+        // }
+        // //set the dependency directory as a module search path on all modules
+        // for(size_t i=0; i<cmon_modules_count(mods); ++i)
+        // {
+        //     cmon_modules_add_search_prefix(mods, (cmon_idx)i, "deps");
+        // }
+
+        cmon_fs_dir deps_dir;
+        cmon_fs_dirent ent;
+        cmon_bool err = cmon_false;
+        char dep_src_path[CMON_PATH_MAX];
+        if (cmon_fs_open(deps_path, &deps_dir) == -1)
         {
-            _panic(end, "failed to parse deps directory: %s", cmon_src_dir_err_msg(dep_dir));
+            err = cmon_true;
+            _panic(deps_end, "failed to open deps directory");
         }
-        //set the dependency directory as a module search path on all modules
-        for(size_t i=0; i<cmon_modules_count(mods); ++i)
+
+        while (cmon_fs_has_next(&deps_dir))
         {
-            cmon_modules_add_search_prefix(mods, (cmon_idx)i, "deps");
+            if (cmon_fs_next(&deps_dir, &ent) == -1)
+            {
+                err = cmon_true;
+                _panic(deps_end, "failed to advance deps directory iterator");
+            }
+
+            if(strcmp(ent.name, ".") == 0 || strcmp(ent.name, "..") == 0)
+            {
+                continue;
+            }
+
+            if (ent.type == cmon_fs_dirent_dir)
+            {
+                cmon_join_paths(ent.path, "src", dep_src_path, sizeof(dep_src_path));
+                if (cmon_fs_exists(dep_src_path))
+                {
+                    cmon_src_dir * sd = cmon_src_dir_create(&alloc, dep_src_path, mods, src);
+                    if (cmon_src_dir_parse(sd, ent.name))
+                    {
+                        _panic(deps_end,
+                               "failed to parse src directory: %s",
+                               cmon_src_dir_err_msg(sd));
+                    }
+                    cmon_dyn_arr_append(&dep_dirs, sd);
+
+                    // set the dependency directory as a module search path on all src modules
+                    for (size_t i = 0; i < src_mods_end; ++i)
+                    {
+                        cmon_modules_add_search_prefix(mods, (cmon_idx)i, ent.name);
+                    }
+                }
+                //@TODO: else log dependency folder without src?
+            }
+            //@TODO: else log skipped/unexpeced file?
+        }
+
+    deps_end:
+        cmon_fs_close(&deps_dir);
+        if (err)
+        {
+            goto end;
         }
     }
 
@@ -194,7 +261,15 @@ int main(int _argc, const char * _args[])
 end:
     cmon_codegen_dealloc(&cgen);
     cmon_builder_st_destroy(builder);
-    cmon_src_dir_destroy(dep_dir);
+
+    cmon_str_builder_destroy(tmp_strb);
+    for (size_t i = 0; i < cmon_dyn_arr_count(&dep_dirs); ++i)
+    {
+        cmon_src_dir_destroy(dep_dirs[i]);
+    }
+
+    cmon_dyn_arr_dealloc(&dep_dirs);
+    // cmon_src_dir_destroy(dep_dir);
     cmon_src_dir_destroy(sd);
     cmon_log_destroy(log);
     cmon_modules_destroy(mods);
