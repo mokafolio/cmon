@@ -20,9 +20,10 @@ CMON_API void cmon_modules_set_resolver(cmon_modules * _m, cmon_idx _mod_idx, cm
 CMON_API cmon_resolver * cmon_modules_resolver(cmon_modules * _m, cmon_idx _mod_idx);
 
 CMON_API cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path);
-CMON_API cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, const char * _path);
-CMON_API void cmon_modules_add_search_prefix(cmon_modules * _m, cmon_idx _mod_idx, const char * _path);
-CMON_API void cmon_modules_add_path_overwrite(cmon_modules * _m, cmon_idx _mod_idx, const char * _path, const char * _overwrite);
+CMON_API cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, cmon_str_view _path);
+CMON_API void cmon_modules_add_search_prefix(cmon_modules * _m, cmon_idx _mod_idx, cmon_str_view _path);
+CMON_API void cmon_modules_add_search_prefix_c_str(cmon_modules * _m, cmon_idx _mod_idx, const char * _path);
+CMON_API void cmon_modules_add_path_overwrite(cmon_modules * _m, cmon_idx _mod_idx, cmon_str_view _path, cmon_str_view _overwrite);
 CMON_API size_t cmon_modules_count(cmon_modules * _m);
 CMON_API const char * cmon_modules_path(cmon_modules * _m, cmon_idx _mod_idx);
 CMON_API const char * cmon_modules_name(cmon_modules * _m, cmon_idx _mod_idx);

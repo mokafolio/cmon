@@ -21,7 +21,7 @@ typedef struct
 
 typedef struct cmon_tini cmon_tini;
 
-CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _name, const char * _txt, cmon_tini_err * _out_err);
+CMON_API cmon_tini * cmon_tini_parse(cmon_allocator * _alloc, const char * _name, const char * _input, cmon_bool _owns_input, cmon_tini_err * _out_err);
 CMON_API cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc, const char * _path, cmon_tini_err * _out_err);
 CMON_API void cmon_tini_destroy(cmon_tini * _t);
 

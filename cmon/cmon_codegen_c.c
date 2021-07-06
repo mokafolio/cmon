@@ -401,12 +401,13 @@ static inline cmon_bool _create_mod_dirs(_session * _s,
     for (size_t i = 0; i < cmon_modules_path_token_count(_s->cgen->mods, _s->mod_idx); ++i)
     {
         cmon_str_view dn = cmon_modules_path_token(_s->cgen->mods, _s->mod_idx, i);
+        printf("PATH TOKEN %.*s\n", dn.end - dn.begin, dn.begin);
         //@NOTE: Hacky way to ignore the src path prefix for now
-        if (i == 0 && cmon_str_view_c_str_cmp(dn, "src") == 0)
-        {
-            // cmon_str_builder_append(_s->tmp_str_builder, "/");
-            continue;
-        }
+        // if (i == 0 && cmon_str_view_c_str_cmp(dn, "src") == 0)
+        // {
+        //     // cmon_str_builder_append(_s->tmp_str_builder, "/");
+        //     continue;
+        // }
         cmon_str_builder_append_fmt(_s->tmp_str_builder, "/%.*s", dn.end - dn.begin, dn.begin);
         if (_create_dir_if_no_exist(cmon_str_builder_c_str(_s->tmp_str_builder)) == -1)
         {
@@ -427,10 +428,10 @@ static inline void _append_mod_o_path(_session * _s, cmon_idx _mod_idx, cmon_str
     {
         cmon_str_view pt = cmon_modules_path_token(_s->cgen->mods, _mod_idx, i);
         //@NOTE: Hacky way to ignore the src path prefix for now
-        if (i == 0 && cmon_str_view_c_str_cmp(pt, "src") == 0)
-        {
-            continue;
-        }
+        // if (i == 0 && cmon_str_view_c_str_cmp(pt, "src") == 0)
+        // {
+        //     continue;
+        // }
         cmon_str_builder_append_fmt(_b, "/%.*s", pt.end - pt.begin, pt.begin);
     }
     cmon_str_builder_append_fmt(_b, "/%s.o", cmon_modules_prefix(_s->cgen->mods, _mod_idx));

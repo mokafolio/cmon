@@ -10,6 +10,7 @@ lib_src = [
     'cmon/cmon_codegen.c',
     'cmon/cmon_codegen_c.c',
     'cmon/cmon_dep_graph.c',
+    'cmon/cmon_dir_parse.c',
     'cmon/cmon_err_handler.c',
     'cmon/cmon_err_report.c',
     'cmon/cmon_exec.c',

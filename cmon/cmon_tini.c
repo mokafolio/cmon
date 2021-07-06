@@ -4,6 +4,7 @@
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_tini.h>
 #include <cmon/cmon_util.h>
+#include <cmon/cmon_fs.h>
 #include <setjmp.h>
 #include <stdarg.h>
 
@@ -44,6 +45,9 @@ typedef struct
 
 typedef struct
 {
+    cmon_allocator * alloc;
+    const char * input;
+    cmon_bool owns_input;
     cmon_dyn_arr(cmon_tinik) kinds;
     cmon_dyn_arr(cmon_idx) data;
     cmon_dyn_arr(cmon_idx) idx_buffer;
@@ -55,10 +59,8 @@ typedef struct
 // we use one helper object for tokenizing and parsing to keep it simple
 typedef struct
 {
-    cmon_allocator * alloc;
     char name[CMON_FILENAME_MAX];
     // tokenizing related
-    const char * input;
     const char * pos;
     const char * end;
     cmon_idx current_line;
@@ -473,11 +475,11 @@ static inline cmon_idx _parse_array(_tokparse * _t)
 static inline cmon_idx _parse_assign(_tokparse * _t)
 {
     cmon_idx name_tok = _tok_check(_t, _tokk_string);
-    if (!_is_valid_identifier(_t, name_tok))
-    {
-        cmon_str_view sv = _tok_str_view(_t, name_tok);
-        _err(_t, "invalid identifier '%.*s'", sv.end - sv.begin, sv.begin);
-    }
+    // if (!_is_valid_identifier(_t, name_tok))
+    // {
+    //     cmon_str_view sv = _tok_str_view(_t, name_tok);
+    //     _err(_t, "invalid identifier '%.*s'", sv.end - sv.begin, sv.begin);
+    // }
     _tok_check(_t, _tokk_assign);
     cmon_idx rhs = _parse_value(_t);
     cmon_dyn_arr_append(&_t->ts.key_value_pairs, ((_key_val){ _tok_str_view(_t, name_tok), rhs }));
@@ -535,6 +537,10 @@ static inline cmon_idx _parse_value(_tokparse * _t)
 
 static inline void _destroy_shared_data(_tini_shared * _ts)
 {
+    if(_ts->owns_input)
+    {
+        cmon_c_str_free(_ts->alloc, _ts->input);
+    }
     cmon_dyn_arr_dealloc(&_ts->arr_objs);
     cmon_dyn_arr_dealloc(&_ts->key_value_pairs);
     cmon_dyn_arr_dealloc(&_ts->str_values);
@@ -545,19 +551,21 @@ static inline void _destroy_shared_data(_tini_shared * _ts)
 
 cmon_tini * cmon_tini_parse(cmon_allocator * _alloc,
                             const char * _name,
-                            const char * _txt,
+                            const char * _input,
+                            cmon_bool _owns_input,
                             cmon_tini_err * _out_err)
 {
     cmon_tini * ret = NULL;
-    size_t len = strlen(_txt);
+    size_t len = strlen(_input);
 
     // tokenize first
     _tokparse tn;
     strcpy(tn.name, _name);
-    tn.alloc = _alloc;
-    tn.input = _txt;
-    tn.pos = _txt;
-    tn.end = _txt + len;
+    tn.ts.alloc = _alloc;
+    tn.ts.input = _input;
+    tn.ts.owns_input = _owns_input;
+    tn.pos = _input;
+    tn.end = _input + len;
     tn.current_line = 1;
     tn.current_line_off = 1;
     tn.idx_buf_mng = cmon_idx_buf_mng_create(_alloc);
@@ -619,6 +627,18 @@ cmon_tini * cmon_tini_parse_file(cmon_allocator * _alloc,
                                  const char * _path,
                                  cmon_tini_err * _out_err)
 {
+    char fname[CMON_FILENAME_MAX];
+    cmon_filename(_path, fname, sizeof(fname));
+    char * txt = cmon_fs_load_txt_file(_alloc, _path);
+    if(!txt)
+    {
+        cmon_tini_err err;
+        strcpy(err.filename, fname);
+        strcpy(err.msg, "could not load tini file");
+        *_out_err = err;
+        return NULL;
+    }
+    return cmon_tini_parse(_alloc, fname, txt, cmon_true, _out_err);
 }
 
 void cmon_tini_destroy(cmon_tini * _t)

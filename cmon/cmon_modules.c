@@ -12,10 +12,16 @@ typedef struct
 
 typedef struct
 {
+    size_t first;
+    size_t second;
+} _str_off_pair;
+
+typedef struct
+{
     size_t name_str_off, path_str_off, prefix_str_off;
     cmon_idx path_toks_begin, path_toks_end;
     cmon_dyn_arr(size_t) search_prefixes_offs;
-    cmon_dyn_arr(size_t) path_overwrite_offs;
+    cmon_dyn_arr(_str_off_pair) path_overwrite_offs;
     cmon_dyn_arr(cmon_idx) src_files;
     cmon_dyn_arr(_dep) deps; // module indices that this module depends on
     cmon_idx global_scope;
@@ -186,21 +192,21 @@ cmon_idx cmon_modules_find(cmon_modules * _m, cmon_str_view _path)
 
 static inline const char * _find_overwrite(cmon_modules * _m,
                                            cmon_idx _looking_mod_idx,
-                                           const char * _path)
+                                           cmon_str_view _path)
 {
     _module * mod = _get_module(_m, _looking_mod_idx);
     for (size_t i = 0; cmon_dyn_arr_count(&mod->path_overwrite_offs); ++i)
     {
-        const char * str = cmon_str_buf_get(_m->str_buf, mod->path_overwrite_offs[i]);
-        if (strcmp(_path, str) == 0)
+        const char * str = cmon_str_buf_get(_m->str_buf, mod->path_overwrite_offs[i].first);
+        if (cmon_str_view_c_str_cmp(_path, str) == 0)
         {
-            return str;
+            return cmon_str_buf_get(_m->str_buf, mod->path_overwrite_offs[i].second);
         }
     }
     return NULL;
 }
 
-cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, const char * _path)
+cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, cmon_str_view _path)
 {
     // 01. Check if there is a path overwrite, if there is, look for the overwrite path instead
     // (this is mainly to allow dependencies of the same name referring to different modules. This
@@ -215,7 +221,7 @@ cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, 
 
     // 02. Look for direct path matches
     //@NOTE: for now we just linear search. maybe hashmap in the future
-    cmon_idx idx = cmon_modules_find(_m, cmon_str_view_make(_path));
+    cmon_idx idx = cmon_modules_find(_m, _path);
     if (cmon_is_valid_idx(idx))
     {
         return idx;
@@ -227,13 +233,14 @@ cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, 
     printf("TRYING TO FIND THE IMPORT IN SEARCH PATHS\n");
     for (size_t i = 0; i < cmon_dyn_arr_count(&mod->search_prefixes_offs); ++i)
     {
+        printf("SEARCH PATH %s\n", cmon_str_buf_get(_m->str_buf, mod->search_prefixes_offs[i]));
         cmon_idx idx =
             cmon_modules_find(_m,
                               cmon_str_view_make(cmon_str_builder_tmp_str(
                                   _m->str_builder,
-                                  "%s.%s",
+                                  "%s.%.*s",
                                   cmon_str_buf_get(_m->str_buf, mod->search_prefixes_offs[i]),
-                                  _path)));
+                                  _path.end - _path.begin, _path.begin)));
         if (cmon_is_valid_idx(idx))
         {
             return idx;
@@ -243,14 +250,36 @@ cmon_idx cmon_modules_find_import(cmon_modules * _m, cmon_idx _looking_mod_idx, 
     return CMON_INVALID_IDX;
 }
 
-void cmon_modules_add_search_prefix(cmon_modules * _m, cmon_idx _mod_idx, const char * _path)
+void cmon_modules_add_search_prefix(cmon_modules * _m, cmon_idx _mod_idx, cmon_str_view _path)
 {
-    cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->search_prefixes_offs, cmon_str_buf_append(_m->str_buf, _path));
+    cmon_dyn_arr_append(
+        &_get_module(_m, _mod_idx)->search_prefixes_offs,
+        cmon_str_buf_append(_m->str_buf,
+                            cmon_str_builder_tmp_str(
+                                _m->str_builder, "%.*s", _path.end - _path.begin, _path.begin)));
 }
 
-void cmon_modules_add_path_overwrite(cmon_modules * _m, cmon_idx _mod_idx, const char * _path, const char * _overwrite)
+void cmon_modules_add_search_prefix_c_str(cmon_modules * _m, cmon_idx _mod_idx, const char * _path)
 {
-    // cmon_dyn_arr_append(&_get_module(_m, _mod_idx)->path_overwrite_offs, cmon_str_buf_append(_m->str_buf, _path));
+    return cmon_modules_add_search_prefix(_m, _mod_idx, cmon_str_view_make(_path));
+}
+
+void cmon_modules_add_path_overwrite(cmon_modules * _m,
+                                     cmon_idx _mod_idx,
+                                     cmon_str_view _path,
+                                     cmon_str_view _overwrite)
+{
+    cmon_dyn_arr_append(
+        &_get_module(_m, _mod_idx)->path_overwrite_offs,
+        ((_str_off_pair){
+            cmon_str_buf_append(_m->str_buf,
+                                cmon_str_builder_tmp_str(
+                                    _m->str_builder, "%.*s", _path.end - _path.begin, _path.begin)),
+            cmon_str_buf_append(_m->str_buf,
+                                cmon_str_builder_tmp_str(_m->str_builder,
+                                                         "%.*s",
+                                                         _overwrite.end - _overwrite.begin,
+                                                         _overwrite.begin)) }));
 }
 
 size_t cmon_modules_count(cmon_modules * _m)

@@ -939,4 +939,36 @@ UTEST(cmon, resolve_module_circ_dep)
 //     cmon_allocator_dealloc(&a);
 // }
 
+UTEST(cmon, tini02)
+{
+    //@TODO: This needs a lot more testing :)
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_tini_err err;
+    cmon_tini * t = cmon_tini_parse(
+        &a,
+        "foo.tini",
+        "foo.bar/bat = boink",
+        cmon_false,
+        &err);
+
+    // EXPECT_EQ(cmon_true, cmon_err_report_is_empty(&err));
+    if (!t)
+    {
+        printf("%s:%lu:%lu: %s\n", err.filename, err.line, err.line_offset, err.msg);
+        goto end;
+    }
+
+    cmon_idx root_obj = cmon_tini_root_obj(t);
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(root_obj));
+    EXPECT_EQ(cmon_tinik_obj, cmon_tini_kind(t, root_obj));
+    EXPECT_EQ(1, cmon_tini_child_count(t, root_obj));
+
+    cmon_idx weird_idx = cmon_tini_obj_find(t, root_obj, "foo.bar/bat");
+    EXPECT_EQ(cmon_true, cmon_is_valid_idx(weird_idx));
+
+end:
+    cmon_tini_destroy(t);
+    cmon_allocator_dealloc(&a);
+}
+
 UTEST_MAIN();
