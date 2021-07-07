@@ -40,6 +40,7 @@ CMON_API int cmon_fs_open(const char * _path, cmon_fs_dir * _dir);
 CMON_API int cmon_fs_close(cmon_fs_dir * _dir);
 CMON_API cmon_bool cmon_fs_has_next(cmon_fs_dir * _dir);
 CMON_API int cmon_fs_next(cmon_fs_dir * _dir, cmon_fs_dirent * _dirent);
+CMON_API int cmon_fs_chdir(const char * _dir);
 CMON_API const char * cmon_fs_getcwd(char * _buf, size_t _len);
 CMON_API char * cmon_fs_load_txt_file(cmon_allocator * _alloc, const char * _path);
 //@TODO better error handling/messaging for this one specifically but most likely all of these functions

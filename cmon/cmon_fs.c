@@ -100,6 +100,11 @@ int cmon_fs_next(cmon_fs_dir * _dir, cmon_fs_dirent * _dirent)
     return 0;
 }
 
+int cmon_fs_chdir(const char * _dir)
+{
+    return chdir(_dir);
+}
+
 const char * cmon_fs_getcwd(char * _buf, size_t _len)
 {
     return getcwd(_buf, _len);
