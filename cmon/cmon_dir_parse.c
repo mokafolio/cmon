@@ -264,7 +264,7 @@ cmon_bool cmon_dir_parse_deps(cmon_allocator * _alloc,
 
             if (cmon_tini_kind(tini, val) == cmon_tinik_obj)
             {
-                //@NOTE: for now we just iterate over all modules as its simple but not very
+                // @NOTE: for now we just iterate over all modules as its simple but not very
                 // efficient.
                 // Possibly add a way to get all modules prefixed with X to cmon modules?
                 for (size_t j = 0; j < cmon_modules_count(_mods); ++j)

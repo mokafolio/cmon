@@ -1,8 +1,10 @@
+#include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_exec.h>
 #include <cmon/cmon_fs.h>
 #include <cmon/cmon_pm.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_tini.h>
 
 typedef struct
 {
@@ -63,6 +65,22 @@ static inline const char * _advance_to_next_digit(const char * _pos)
     return _pos;
 }
 
+static inline cmon_bool _parse_symver(const char * _input,
+                                      uint32_t * _out_major,
+                                      uint32_t * _out_minor,
+                                      uint32_t * _out_patch)
+{
+    const char * pos = _input;
+    *_out_major = atoi(pos);
+    if ((pos = _advance_to_next_digit(pos)) == '\0')
+        return cmon_true;
+    *_out_minor = atoi(pos);
+    if ((pos = _advance_to_next_digit(pos)) == '\0')
+        return cmon_true;
+    *_out_patch = atoi(pos);
+    return cmon_false;
+}
+
 static inline cmon_bool _parse_git_version(const char * _input,
                                            uint32_t * _out_major,
                                            uint32_t * _out_minor,
@@ -77,20 +95,13 @@ static inline cmon_bool _parse_git_version(const char * _input,
     if (!isdigit(*pos))
         return cmon_true;
 
-    *_out_major = atoi(pos);
-    if ((pos = _advance_to_next_digit(pos)) == '\0')
-        return cmon_true;
-    *_out_minor = atoi(pos);
-    if ((pos = _advance_to_next_digit(pos)) == '\0')
-        return cmon_true;
-    *_out_patch = atoi(pos);
-
-    return cmon_false;
+    return _parse_symver(pos, _out_major, _out_minor, _out_patch);
 }
 
 // 01. Read all direct deps.
 // 02. Clone them
-// 03. For each cloned dependency, read deps, add them to the pm if they are not there yet. Clone
+// 03. For each cloned dependency, read deps, add them to the pm if they are not there yet.
+// 04. Create a deps_mapping.tini mapping every dependency
 
 //@NOTE: A lot of useful info over here:
 // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset
@@ -113,9 +124,7 @@ cmon_bool cmon_pm_pull(cmon_pm * _pm)
     if (status != 0)
     {
         ret = cmon_true;
-        _err(_pm,
-             end,
-             "Failed to get git version. Do you have git installed?");
+        _err(_pm, end, "Failed to get git version. Do you have git installed?");
     }
 
     uint32_t major, minor, patch;
@@ -161,20 +170,77 @@ void cmon_pm_clean_dep_dir(cmon_pm * _pm)
 {
 }
 
-void cmon_pm_add_git(cmon_pm * _pm, const char * _url, const char * _version)
+cmon_idx cmon_pm_add_module(cmon_pm * _pm, const char * _path)
+{
+    
+}
+
+void cmon_pm_add_dep_git(cmon_pm * _pm, cmon_idx _mod, const char * _url, const char * _version)
 {
 }
 
-cmon_bool cmon_pm_remove(cmon_pm * _pm, const char * _url, const char * _version)
+// cmon_bool cmon_pm_remove(cmon_pm * _pm, const char * _url, const char * _version)
+// {
+// }
+
+cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod_idx, const char * _path)
 {
 }
 
-cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, const char * _path)
+cmon_idx cmon_pm_load_deps_file(cmon_pm * _pm, const char * _mod_path, const char * _path)
 {
-}
+    cmon_tini_err terr;
+    cmon_tini * tini;
+    if (tini = cmon_tini_parse_file(_pm->alloc, _path, &terr))
+    {
+        _err(_pm,
+             end,
+             "failed to load/parse dependency file:%s:%lu:%lu: %s",
+             terr.filename,
+             terr.line,
+             terr.line_offset,
+             terr.msg);
+    }
 
-cmon_bool cmon_pm_load_deps_file(cmon_pm * _pm, const char * _path)
-{
+    cmon_idx root_obj = cmon_tini_root_obj(tini);
+    cmon_idx deps_arr = cmon_tini_obj_find(tini, root_obj, "deps");
+
+    for (size_t i = 0; i < cmon_tini_child_count(tini, deps_arr); ++i)
+    {
+        cmon_idx child = cmon_tini_child(tini, deps_arr, i);
+        if (cmon_tini_kind(tini, child) == cmon_tinik_obj)
+        {
+            cmon_idx url = cmon_tini_obj_find(tini, root_obj, "url");
+            if (!cmon_is_valid_idx(url))
+            {
+                _err(_pm, end, "missing url in dependency obj");
+            }
+            cmon_idx version = cmon_tini_obj_find(tini, root_obj, "version");
+            if (!cmon_is_valid_idx(version))
+            {
+                _err(_pm, end, "missing version in dependency obj");
+            }
+
+            cmon_idx url_val = cmon_tini_pair_value(tini, url);
+            if (cmon_tini_kind(tini, url_val) != cmon_tinik_string)
+            {
+                _err(_pm, end, "url field has to be a string");
+            }
+
+            cmon_idx version_val = cmon_tini_pair_value(tini, version);
+            if (cmon_tini_kind(tini, version_val) != cmon_tinik_string)
+            {
+                _err(_pm, end, "version field has to be a string");
+            }
+        }
+        else
+        {
+            //@TODO: silent ignore for now.
+        }
+    }
+
+end:
+    cmon_tini_destroy(tini);
 }
 
 const char * cmon_pm_err_msg(cmon_pm * _pm)
