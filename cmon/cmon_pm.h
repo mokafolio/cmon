@@ -13,5 +13,6 @@ CMON_API void cmon_pm_add_git(cmon_pm * _pm, const char * _url, const char * _ve
 CMON_API cmon_bool cmon_pm_remove(cmon_pm * _pm, const char * _url, const char * _version);
 CMON_API cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, const char * _path);
 CMON_API cmon_bool cmon_pm_load_deps_file(cmon_pm * _pm, const char * _path);
+CMON_API const char * cmon_pm_err_msg(cmon_pm * _pm);
 
 #endif //CMON_CMON_PM_H

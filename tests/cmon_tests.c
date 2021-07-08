@@ -11,6 +11,7 @@
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_tini.h>
 #include <cmon/cmon_tokens.h>
+#include <cmon/cmon_pm.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -968,6 +969,18 @@ UTEST(cmon, tini02)
 
 end:
     cmon_tini_destroy(t);
+    cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, pm_tests)
+{
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_pm * pm = cmon_pm_create(&a, ".");
+    if(cmon_pm_pull(pm))
+    {
+        printf("pm error: %s\n", cmon_pm_err_msg(pm));
+    }
+    cmon_pm_destroy(pm);
     cmon_allocator_dealloc(&a);
 }
 
