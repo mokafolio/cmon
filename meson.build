@@ -23,7 +23,6 @@ lib_src = [
     'cmon/cmon_parser.c',
     'cmon/cmon_resolver.c',
     'cmon/cmon_src.c',
-    'cmon/cmon_src_dir.c',
     'cmon/cmon_str_builder.c',
     'cmon/cmon_symbols.c',
     'cmon/cmon_tini.c',
