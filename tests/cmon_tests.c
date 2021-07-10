@@ -976,10 +976,10 @@ UTEST(cmon, pm_tests)
 {
     cmon_allocator a = cmon_mallocator_make();
     cmon_pm * pm = cmon_pm_create(&a, ".");
-    if(cmon_pm_pull(pm))
-    {
-        printf("pm error: %s\n", cmon_pm_err_msg(pm));
-    }
+    // if(cmon_pm_pull(pm))
+    // {
+    //     printf("pm error: %s\n", cmon_pm_err_msg(pm));
+    // }
     cmon_pm_destroy(pm);
     cmon_allocator_dealloc(&a);
 }
