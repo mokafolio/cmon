@@ -9,6 +9,13 @@
 
 typedef struct
 {
+    // extra long to accomodate long urls and
+    // avoid snprintf possible overflow warning
+    char msg[CMON_ERR_MSG_MAX + CMON_PATH_MAX * 2];
+} _err_holder;
+
+typedef struct
+{
     cmon_idx idx;
     char url[CMON_PATH_MAX];
     char version[CMON_FILENAME_MAX];
@@ -27,7 +34,7 @@ typedef struct cmon_pm_lock_file
 {
     cmon_allocator * alloc;
     cmon_dyn_arr(_locked_dep) deps;
-    char err_msg[CMON_ERR_MSG_MAX + CMON_PATH_MAX * 2];
+    _err_holder err;
 } cmon_pm_lock_file;
 
 typedef struct cmon_pm
@@ -37,32 +44,23 @@ typedef struct cmon_pm
     cmon_str_builder * exec_output_builder;
     char deps_dir[CMON_PATH_MAX];
     cmon_dyn_arr(_mod) mods;
-    char err_msg[CMON_ERR_MSG_MAX + CMON_PATH_MAX * 2]; // extra long to accomodate long urls and
-                                                        // avoid snprintf possible overflow warning
+    _err_holder err;
 } cmon_pm;
 
-#define _buffer_err(_buf, _buf_size, _goto, _fmt, ...)                                             \
+#define _err(_eh, _goto, _fmt, ...)                                                                \
     do                                                                                             \
     {                                                                                              \
-        snprintf((_buf), (_buf_size), _fmt, ##__VA_ARGS__);                                        \
+        snprintf((_eh)->msg, sizeof((_eh)->msg), _fmt, ##__VA_ARGS__);                             \
         goto _goto;                                                                                \
     } while (0)
-#define _err(_pm, _goto, _fmt, ...)                                                                \
-    _buffer_err((_pm)->err_msg, sizeof((_pm)->err_msg), _goto, _fmt, ##__VA_ARGS__)
 
-// this macro expects an err flag to be in scope (which will usually get returned at the end of the
-// function)
-#define _err2(_pm, _goto, _msg, ...)                                                               \
+// this macro expects an err flag to be in scope (which will usually get returned at the end of
+// the function)
+#define _err2(_eh, _goto, _msg, ...)                                                               \
     do                                                                                             \
     {                                                                                              \
         err = cmon_true;                                                                           \
-        _err(_pm, _goto, _msg, ##__VA_ARGS__);                                                     \
-    } while (0)
-#define _err3(_buf, _buf_size, _goto, _msg, ...)                                                   \
-    do                                                                                             \
-    {                                                                                              \
-        err = cmon_true;                                                                           \
-        _buffer_err(_buf, _buf_size, _goto, _msg, ##__VA_ARGS__);                                  \
+        _err(_eh, _goto, _msg, ##__VA_ARGS__);                                                     \
     } while (0)
 
 cmon_pm * cmon_pm_create(cmon_allocator * _a, const char * _dep_dir)
@@ -152,10 +150,9 @@ cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod, cmon_idx _dep)
 typedef void (*_tini_dep_handler)(cmon_str_view _url, cmon_str_view _version, void * _user_data);
 static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
                                          const char * _path,
-                                         char * _err_buf,
-                                         size_t _buf_size,
                                          _tini_dep_handler _handler,
-                                         void * _user_data)
+                                         void * _user_data,
+                                         _err_holder * _err)
 {
     cmon_tini_err terr;
     cmon_tini * tini;
@@ -163,8 +160,7 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
 
     if ((tini = cmon_tini_parse_file(_alloc, _path, &terr)))
     {
-        _err3(_err_buf,
-              _buf_size,
+        _err2(_err,
               end,
               "failed to load/parse dependency file:%s:%lu:%lu: %s",
               terr.filename,
@@ -184,24 +180,24 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
             cmon_idx url = cmon_tini_obj_find(tini, root_obj, "url");
             if (!cmon_is_valid_idx(url))
             {
-                _err3(_err_buf, _buf_size, end, "missing url in dependency obj");
+                _err2(_err, end, "missing url in dependency obj");
             }
             cmon_idx version = cmon_tini_obj_find(tini, root_obj, "version");
             if (!cmon_is_valid_idx(version))
             {
-                _err3(_err_buf, _buf_size, end, "missing version in dependency obj");
+                _err2(_err, end, "missing version in dependency obj");
             }
 
             cmon_idx url_val = cmon_tini_pair_value(tini, url);
             if (cmon_tini_kind(tini, url_val) != cmon_tinik_string)
             {
-                _err3(_err_buf, _buf_size, end, "url field has to be a string");
+                _err2(_err, end, "url field has to be a string");
             }
 
             cmon_idx version_val = cmon_tini_pair_value(tini, version);
             if (cmon_tini_kind(tini, version_val) != cmon_tinik_string)
             {
-                _err3(_err_buf, _buf_size, end, "version field has to be a string");
+                _err2(_err, end, "version field has to be a string");
             }
 
             // call the handler
@@ -235,8 +231,7 @@ static inline void _add_dep_to_pm(cmon_str_view _url, cmon_str_view _version, vo
 cmon_bool cmon_pm_load_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _path)
 {
     _pm_and_idx pm_idx = (_pm_and_idx){ _pm, _mod };
-    return _parse_deps_tini(
-        _pm->alloc, _path, _pm->err_msg, sizeof(_pm->err_msg), _add_dep_to_pm, &pm_idx);
+    return _parse_deps_tini(_pm->alloc, _path, _add_dep_to_pm, &pm_idx, &_pm->err);
 }
 
 cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _path)
@@ -247,44 +242,64 @@ cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _pat
 // @NOTE: A lot of useful info over here regarding this topic here
 // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset
 // @TODO: Make this work with older git versions?
-static inline cmon_bool _git_clone(cmon_pm * _pm, cmon_idx _idx)
+static inline cmon_bool _git_clone(const char * _url,
+                                   const char * _version,
+                                   const char * _dirname,
+                                   const char * _cwd,
+                                   cmon_str_builder * _cmd_builder,
+                                   cmon_str_builder * _output_builder,
+                                   _err_holder * _err)
 {
     cmon_bool err = cmon_false;
-    _mod * m = _get_mod(_pm, _idx);
 
     // if the folder already exists, don't do anything
     char clone_dir_path[CMON_PATH_MAX];
-    cmon_join_paths(_pm->deps_dir, m->dirname, clone_dir_path, sizeof(clone_dir_path));
+    cmon_join_paths(_cwd, _dirname, clone_dir_path, sizeof(clone_dir_path));
     if (cmon_fs_exists(clone_dir_path))
     {
         goto end;
     }
 
-    cmon_str_builder_clear(_pm->str_builder);
+    //@TODO: take special version keywords into account (i guess only "latest" for now). In which
+    // case we should skip --branch allrogether to clone the most recent commit?
+    cmon_str_builder_clear(_cmd_builder);
     cmon_str_builder_append_fmt(
-        _pm->str_builder, "git clone --depth=1 --branch %s %s %s", m->version, m->url, m->dirname);
+        _cmd_builder, "git clone --depth=1 --branch %s %s %s", _version, _url, _dirname);
 
-    int status = cmon_exec(cmon_str_builder_c_str(_pm->str_builder), _pm->exec_output_builder);
+    cmon_str_builder_clear(_output_builder);
+    int status = cmon_exec(cmon_str_builder_c_str(_cmd_builder), _output_builder);
     if (status != 0)
     {
-        _err2(_pm,
+        _err2(_err,
               end,
               "Failed to clone git package from %s with version %s\ngit output:%s",
-              m->url,
-              m->version,
-              cmon_str_builder_c_str(_pm->exec_output_builder));
+              _url,
+              _version,
+              cmon_str_builder_c_str(_output_builder));
     }
 
 end:
     return err;
 }
 
-static inline cmon_bool _clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
+static inline cmon_bool _pm_git_clone(cmon_pm * _pm, cmon_idx _idx)
+{
+    _mod * m = _get_mod(_pm, _idx);
+    return _git_clone(m->url,
+                      m->version,
+                      m->dirname,
+                      _pm->deps_dir,
+                      _pm->str_builder,
+                      _pm->exec_output_builder,
+                      &_pm->err);
+}
+
+static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
 {
     cmon_bool err = cmon_false;
     _mod * m = _get_mod(_pm, _idx);
 
-    if (_git_clone(_pm, _idx))
+    if (_pm_git_clone(_pm, _idx))
     {
         err = cmon_true;
         goto end;
@@ -301,7 +316,7 @@ static inline cmon_bool _clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
 
     for (size_t i = 0; i < cmon_dyn_arr_count(&m->deps); ++i)
     {
-        _clone_and_add_deps(_pm, m->deps[i]);
+        _pm_clone_and_add_deps(_pm, m->deps[i]);
     }
 
 end:
@@ -311,17 +326,17 @@ end:
 
 static inline cmon_bool _change_cwd(const char * _path,
                                     char * _prev_dir,
-                                    size_t _buf_size char * _err_buf,
-                                    size_t _err_buf_size)
+                                    size_t _buf_size,
+                                    _err_holder * _eh)
 {
     cmon_bool err = cmon_false;
     if (!cmon_fs_getcwd(_prev_dir, _buf_size))
     {
-        _err3(_err_buf, _err_buf_size, end, "failed to get current working directory");
+        _err2(_eh, end, "failed to get current working directory");
     }
     if (cmon_fs_chdir(_path) == -1)
     {
-        _err3(_err_buf, _err_buf_size, end, "failed to change working directory");
+        _err2(_eh, end, "failed to change working directory");
     }
 
 end:
@@ -346,20 +361,19 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     // clone all top level dependencies and recursively add all the other dependencies coming in
     // along the way
     char current_dir[CMON_PATH_MAX];
-    if (_change_cwd(
-            _pm->deps_dir, current_dir, sizeof(current_dir), _pm->err_msg, sizeof(_pm->err_msg)))
+    if (_change_cwd(_pm->deps_dir, current_dir, sizeof(current_dir), &_pm->err))
     {
         goto end;
     }
     size_t root_count = cmon_dyn_arr_count(&_pm->mods);
     for (cmon_idx i = 0; i < root_count; ++i)
     {
-        _clone_and_add_deps(_pm, i);
+        _pm_clone_and_add_deps(_pm, i);
     }
 
     if (cmon_fs_chdir(current_dir))
     {
-        _err(_pm, end, "failed to change working directory back to %s", current_dir);
+        _err(&_pm->err, end, "failed to change working directory back to %s", current_dir);
     }
 
     // At this point all deps should be cloned and added to the pm. Detect circular dependencies!
@@ -378,7 +392,7 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     {
         _mod * a = _get_mod(_pm, cmon_dep_graph_conflict_a(graph));
         _mod * b = _get_mod(_pm, cmon_dep_graph_conflict_b(graph));
-        _err(_pm,
+        _err(&_pm->err,
              end,
              "circular dependency between %s %s and %s %s",
              a->url,
@@ -428,7 +442,7 @@ cmon_pm_lock_file * cmon_pm_lock_file_load(cmon_allocator * _alloc,
                                            size_t _buf_size)
 {
     cmon_pm_lock_file * ret = _lock_file_create(_alloc, 16);
-    if (_parse_deps_tini(_alloc, _path, _err_msg_buf, _buf_size, _add_dep_to_lock_file, ret))
+    if (_parse_deps_tini(_alloc, _path, _add_dep_to_lock_file, ret, &ret->err))
     {
         cmon_pm_lock_file_destroy(ret);
     }
@@ -450,19 +464,18 @@ cmon_bool cmon_pm_lock_file_pull(cmon_pm_lock_file * _lf, const char * _dep_dir)
 {
     cmon_bool err = cmon_false;
     char current_dir[CMON_PATH_MAX];
-    if (_change_cwd(_dep_dir, current_dir, sizeof(current_dir), _lf->err_msg, sizeof(_lf->err_msg)))
+    if (_change_cwd(_dep_dir, current_dir, sizeof(current_dir), &_lf->err))
     {
         goto end;
     }
-    
+
     for (size_t i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
     {
-        
     }
 
     if (cmon_fs_chdir(current_dir))
     {
-        _err2(_lf, end, "failed to change working directory back to %s", current_dir);
+        _err2(&_lf->err, end, "failed to change working directory back to %s", current_dir);
     }
 end:
     return err;
