@@ -33,6 +33,8 @@ typedef struct
 typedef struct cmon_pm_lock_file
 {
     cmon_allocator * alloc;
+    cmon_str_builder * str_builder;
+    cmon_str_builder * exec_output_builder;
     cmon_dyn_arr(_locked_dep) deps;
     _err_holder err;
 } cmon_pm_lock_file;
@@ -347,6 +349,8 @@ static inline cmon_pm_lock_file * _lock_file_create(cmon_allocator * _alloc, siz
 {
     cmon_pm_lock_file * ret = CMON_CREATE(_alloc, cmon_pm_lock_file);
     ret->alloc = _alloc;
+    ret->str_builder = cmon_str_builder_create(_alloc, CMON_PATH_MAX);
+    ret->exec_output_builder = cmon_str_builder_create(_alloc, CMON_ERR_MSG_MAX);
     cmon_dyn_arr_init(&ret->deps, _alloc, _dep_count);
     return ret;
 }
@@ -422,6 +426,7 @@ end:
 
 const char * cmon_pm_err_msg(cmon_pm * _pm)
 {
+    return _pm->err.msg;
 }
 
 static inline void _add_dep_to_lock_file(cmon_str_view _url,
@@ -456,6 +461,8 @@ void cmon_pm_lock_file_destroy(cmon_pm_lock_file * _lf)
         return;
     }
 
+    cmon_str_builder_destroy(_lf->exec_output_builder);
+    cmon_str_builder_destroy(_lf->str_builder);
     cmon_dyn_arr_dealloc(&_lf->deps);
     CMON_DESTROY(_lf->alloc, _lf);
 }
@@ -471,6 +478,13 @@ cmon_bool cmon_pm_lock_file_pull(cmon_pm_lock_file * _lf, const char * _dep_dir)
 
     for (size_t i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
     {
+        _git_clone(_lf->deps[i].url,
+                   _lf->deps[i].version,
+                   _lf->deps[i].dirname,
+                   _dep_dir,
+                   _lf->str_builder,
+                   _lf->exec_output_builder,
+                   &_lf->err);
     }
 
     if (cmon_fs_chdir(current_dir))
@@ -483,10 +497,29 @@ end:
 
 cmon_bool cmon_pm_lock_file_clean_dep_dir(cmon_pm_lock_file * _lf, const char * _dep_dir)
 {
+    cmon_bool err = cmon_false;
+    char abs_path[CMON_PATH_MAX];
+    for(cmon_idx i=0; i<cmon_dyn_arr_count(&_lf->deps); ++i)
+    {
+        cmon_join_paths(_dep_dir, _lf->deps[i].dirname, abs_path, sizeof(abs_path));
+        if(cmon_fs_remove_all(abs_path) == -1)
+        {
+            _err2(&_lf->err, end, "failed to remove dependency folder %s", _lf->deps[i].dirname);
+        }
+    }
+
+end:
+    return err;
 }
 
 cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * lf, const char * _path)
 {
+    
+}
+
+const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)
+{
+    return _lf->err.msg;
 }
 
 static inline const char * _advance_to_next_digit(const char * _pos)

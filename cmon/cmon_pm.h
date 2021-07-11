@@ -41,6 +41,7 @@ CMON_API cmon_bool cmon_pm_lock_file_pull(cmon_pm_lock_file * _lf, const char * 
 CMON_API cmon_bool cmon_pm_lock_file_clean_dep_dir(cmon_pm_lock_file * _lf, const char * _dep_dir);
 // saves a lock file to disk
 CMON_API cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * _lf, const char * _path);
+CMON_API const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf);
 
 // Add a dependency to a module. If _mod is CMON_INVALID_IDX, it will be added to the hidden root
 // module (which represents the main project whose dependencies are being resolved)
