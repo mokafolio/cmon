@@ -511,6 +511,7 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
         _err(&_pm->err, end, "Failed to get git version. Do you have git installed?");
     }
 
+    //@TODO: Actually check for a certain min version that supports whats needed? Log the version?
     uint32_t major, minor, patch;
     if (_parse_git_version(
             cmon_str_builder_c_str(_pm->exec_output_builder), &major, &minor, &patch))
@@ -559,13 +560,20 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     {
         _mod * a = _get_mod(_pm, cmon_dep_graph_conflict_a(graph));
         _mod * b = _get_mod(_pm, cmon_dep_graph_conflict_b(graph));
-        _err(&_pm->err,
-             end,
-             "circular dependency between %s %s and %s %s",
-             a->url,
-             a->version,
-             b->url,
-             b->version);
+        if (a != b)
+        {
+            _err(&_pm->err,
+                 end,
+                 "circular dependency between %s %s and %s %s",
+                 a->url,
+                 a->version,
+                 b->url,
+                 b->version);
+        }
+        else
+        {
+            _err(&_pm->err, end, "recursive module %s %s", a->url, a->version);
+        }
     }
 
     ret = _lock_file_create(_pm->alloc, res.count);

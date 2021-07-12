@@ -1,6 +1,6 @@
 deps = [
     {
-        url = https://github.com/mokafolio/cmon_pm_test_foo.git,
-        version = 0.0.4
-    }
+        url = https://github.com/mokafolio/cmon_pm_test_recursive.git,
+        version = 0.0.1
+    },
 ]

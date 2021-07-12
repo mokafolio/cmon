@@ -1,7 +1,7 @@
 #ifndef CMON_CMON_PM_H
 #define CMON_CMON_PM_H
 
-#include <cmon/cmon_log.h>
+#include <cmon/cmon_allocator.h>
 
 typedef struct cmon_pm cmon_pm;
 typedef struct cmon_pm_lock_file cmon_pm_lock_file;
