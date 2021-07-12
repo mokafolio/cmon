@@ -147,7 +147,7 @@ cmon_idx cmon_pm_find_or_add_module(cmon_pm * _pm, cmon_str_view _url, cmon_str_
     _cpy_str_view(_url, m.url, sizeof(m.url));
     _cpy_str_view(_version, m.version, sizeof(m.version));
     // strcpy(m.dirname, cmon_str_builder_tmp_str(_pm->str_builder, "dep%02lu", m.idx + 1));
-    _dep_dirname(m.dirname, sizeof(m.dirname), m.idx + 1);
+    _dep_dirname(m.dirname, sizeof(m.dirname), m.idx);
     cmon_dyn_arr_init(&m.deps, _pm->alloc, 4);
     cmon_dyn_arr_append(&_pm->mods, m);
     return m.idx;
@@ -390,8 +390,8 @@ static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
     }
 
     char deps_tini_path[CMON_PATH_MAX];
-    cmon_join_paths(_pm->deps_dir, m->dirname, deps_tini_path, sizeof(deps_tini_path));
-    cmon_join_paths(deps_tini_path, "cmon_pm_deps.tini", deps_tini_path, sizeof(deps_tini_path));
+    // cmon_join_paths(_pm->deps_dir, m->dirname, deps_tini_path, sizeof(deps_tini_path));
+    cmon_join_paths(m->dirname, "cmon_pm_deps.tini", deps_tini_path, sizeof(deps_tini_path));
 
     // char deps_tini_lock_path[CMON_PATH_MAX];
     // cmon_join_paths(deps_tini_path, "cmon_pm_deps_lock.tini", deps_tini_lock_path,
@@ -403,6 +403,7 @@ static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
     // }
     // else
 
+    printf("DA DEPS TINI PATH %s\n", deps_tini_path);
     if (cmon_fs_exists(deps_tini_path))
     {
         if (cmon_pm_load_deps_file(_pm, _idx, deps_tini_path))
@@ -546,7 +547,7 @@ static inline void _add_dep_to_lock_file(cmon_str_view _url,
     _locked_dep d;
     _cpy_str_view(_url, d.url, sizeof(d.url));
     _cpy_str_view(_version, d.version, sizeof(d.version));
-    _dep_dirname(d.dirname, sizeof(d.dirname), cmon_dyn_arr_count(&lf->deps) + 1);
+    _dep_dirname(d.dirname, sizeof(d.dirname), cmon_dyn_arr_count(&lf->deps));
     cmon_dyn_arr_append(&lf->deps, d);
 }
 
