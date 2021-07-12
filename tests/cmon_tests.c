@@ -1014,6 +1014,7 @@ UTEST(cmon, pm_tests)
 
     cmon_pm_lock_file_save(lf, "pm_deps_lock.tini");
 
+    cmon_pm_lock_file_destroy(lf);
     cmon_pm_destroy(pm);
     cmon_allocator_dealloc(&a);
 }

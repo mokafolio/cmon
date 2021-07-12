@@ -98,7 +98,13 @@ void cmon_pm_destroy(cmon_pm * _pm)
     }
     cmon_str_builder_destroy(_pm->exec_output_builder);
     cmon_str_builder_destroy(_pm->str_builder);
+
+    for (size_t i = 0; i < cmon_dyn_arr_count(&_pm->mods); ++i)
+    {
+        cmon_dyn_arr_dealloc(&_pm->mods[i].deps);
+    }
     cmon_dyn_arr_dealloc(&_pm->mods);
+    CMON_DESTROY(_pm->alloc, _pm);
 }
 
 static inline cmon_idx _find_module(cmon_pm * _pm, cmon_str_view _url, cmon_str_view _version)
@@ -320,6 +326,52 @@ cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _pat
     return cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_pm->str_builder));
 }
 
+static inline const char * _advance_to_next_digit(const char * _pos)
+{
+    while (*_pos != '.' && *_pos != '\0')
+    {
+        ++_pos;
+    }
+    if (*_pos == '.')
+    {
+        ++_pos;
+    }
+    return _pos;
+}
+
+static inline cmon_bool _parse_symver(const char * _input,
+                                      uint32_t * _out_major,
+                                      uint32_t * _out_minor,
+                                      uint32_t * _out_patch)
+{
+    const char * pos = _input;
+    *_out_major = atoi(pos);
+    if (*(pos = _advance_to_next_digit(pos)) == '\0')
+        return cmon_true;
+    *_out_minor = atoi(pos);
+    if (*(pos = _advance_to_next_digit(pos)) == '\0')
+        return cmon_true;
+    *_out_patch = atoi(pos);
+    return cmon_false;
+}
+
+static inline cmon_bool _parse_git_version(const char * _input,
+                                           uint32_t * _out_major,
+                                           uint32_t * _out_minor,
+                                           uint32_t * _out_patch)
+{
+    const char * pos = _input;
+    while ((isspace(*pos) || isalpha(*pos)) && *pos != '\0')
+    {
+        ++pos;
+    }
+
+    if (!isdigit(*pos))
+        return cmon_true;
+
+    return _parse_symver(pos, _out_major, _out_minor, _out_patch);
+}
+
 // clones one module into the current working directory
 // @NOTE: A lot of useful info over here regarding this topic here
 // https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset
@@ -389,21 +441,10 @@ static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
         goto end;
     }
 
+    //@NOTE: The working directory is in the deps directory so we just create a relative path
     char deps_tini_path[CMON_PATH_MAX];
-    // cmon_join_paths(_pm->deps_dir, m->dirname, deps_tini_path, sizeof(deps_tini_path));
     cmon_join_paths(m->dirname, "cmon_pm_deps.tini", deps_tini_path, sizeof(deps_tini_path));
 
-    // char deps_tini_lock_path[CMON_PATH_MAX];
-    // cmon_join_paths(deps_tini_path, "cmon_pm_deps_lock.tini", deps_tini_lock_path,
-    // sizeof(deps_tini_lock_path));
-
-    // if(cmon_fs_exists(deps_tini_lock_path))
-    // {
-
-    // }
-    // else
-
-    printf("DA DEPS TINI PATH %s\n", deps_tini_path);
     if (cmon_fs_exists(deps_tini_path))
     {
         if (cmon_pm_load_deps_file(_pm, _idx, deps_tini_path))
@@ -463,6 +504,24 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     cmon_dyn_arr(cmon_idx) deps_arr;
     cmon_dyn_arr_init(&deps_arr, _pm->alloc, 16);
 
+    int status = cmon_exec(cmon_str_builder_tmp_str(_pm->str_builder, "git --version"),
+                           _pm->exec_output_builder);
+    if (status != 0)
+    {
+        _err(&_pm->err, end, "Failed to get git version. Do you have git installed?");
+    }
+
+    uint32_t major, minor, patch;
+    if (_parse_git_version(
+            cmon_str_builder_c_str(_pm->exec_output_builder), &major, &minor, &patch))
+    {
+        ret = cmon_true;
+        _err(&_pm->err,
+             end,
+             "Failed to parse git version from string: %s",
+             cmon_str_builder_c_str(_pm->exec_output_builder));
+    }
+
     // clone all top level dependencies and recursively add all the other dependencies coming in
     // along the way
     char current_dir[CMON_PATH_MAX];
@@ -514,8 +573,8 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     // the dirname (i.e.: dep01, dep02 etc.) reliably.
     for (cmon_idx i = 0; i < cmon_dyn_arr_count(&_pm->mods); ++i)
     {
-        //skip the root/src dep
-        if(i == _pm->root_idx)
+        // skip the root/src dep
+        if (i == _pm->root_idx)
         {
             continue;
         }
@@ -628,8 +687,7 @@ cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * _lf, const char * _path)
     _tini_write_begin(_lf->str_builder);
     for (size_t i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
     {
-        _tini_write_dep(
-            _lf->str_builder, _lf->deps[i].url, _lf->deps[i].version);
+        _tini_write_dep(_lf->str_builder, _lf->deps[i].url, _lf->deps[i].version);
     }
     _tini_write_end(_lf->str_builder);
 
@@ -640,245 +698,3 @@ const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)
 {
     return _lf->err.msg;
 }
-
-static inline const char * _advance_to_next_digit(const char * _pos)
-{
-    while (*_pos != '.' && *_pos != '\0')
-    {
-        ++_pos;
-    }
-    if (*_pos == '.')
-    {
-        ++_pos;
-    }
-    return _pos;
-}
-
-static inline cmon_bool _parse_symver(const char * _input,
-                                      uint32_t * _out_major,
-                                      uint32_t * _out_minor,
-                                      uint32_t * _out_patch)
-{
-    const char * pos = _input;
-    *_out_major = atoi(pos);
-    if (*(pos = _advance_to_next_digit(pos)) == '\0')
-        return cmon_true;
-    *_out_minor = atoi(pos);
-    if (*(pos = _advance_to_next_digit(pos)) == '\0')
-        return cmon_true;
-    *_out_patch = atoi(pos);
-    return cmon_false;
-}
-
-static inline cmon_bool _parse_git_version(const char * _input,
-                                           uint32_t * _out_major,
-                                           uint32_t * _out_minor,
-                                           uint32_t * _out_patch)
-{
-    const char * pos = _input;
-    while ((isspace(*pos) || isalpha(*pos)) && *pos != '\0')
-    {
-        ++pos;
-    }
-
-    if (!isdigit(*pos))
-        return cmon_true;
-
-    return _parse_symver(pos, _out_major, _out_minor, _out_patch);
-}
-
-// 01. Read all direct deps.
-// 02. Clone them
-// 03. For each cloned dependency, read deps, add them to the pm if they are not there yet.
-// 04. Create a deps_mapping.tini mapping every dependency
-
-//@NOTE: A lot of useful info over here:
-// https://stackoverflow.com/questions/3489173/how-to-clone-git-repository-with-specific-revision-changeset
-// cmon_bool cmon_pm_pull(cmon_pm * _pm)
-// {
-//     cmon_bool ret = cmon_false;
-//     char cwd[CMON_PATH_MAX];
-//     if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
-//     {
-//         _err(_pm, end, "failed to get current working directory");
-//     }
-//     if (cmon_fs_chdir(_pm->deps_dir) == -1)
-//     {
-//         ret = cmon_true;
-//         _err(_pm, end, "failed to change working directory");
-//     }
-
-//     int status = cmon_exec(cmon_str_builder_tmp_str(_pm->str_builder, "git --version"),
-//                            _pm->exec_output_builder);
-//     if (status != 0)
-//     {
-//         ret = cmon_true;
-//         _err(_pm, end, "Failed to get git version. Do you have git installed?");
-//     }
-
-//     uint32_t major, minor, patch;
-//     if (_parse_git_version(
-//             cmon_str_builder_c_str(_pm->exec_output_builder), &major, &minor, &patch))
-//     {
-//         ret = cmon_true;
-//         _err(_pm,
-//              end,
-//              "Failed to parse git version from string: %s",
-//              cmon_str_builder_c_str(_pm->exec_output_builder));
-//     }
-
-//     for (size_t i = 0; i < cmon_dyn_arr_count(&_pm->deps); ++i)
-//     {
-//         cmon_str_builder_clear(_pm->str_builder);
-//         cmon_str_builder_append_fmt(
-//             _pm->str_builder,
-//             "git clone --depth=1 --branch %s %s %s",
-//             _pm->deps[i].version,
-//             _pm->deps[i].url,
-//             cmon_str_builder_tmp_str(_pm->exec_output_builder, "dep%02i", i));
-
-//         int status = cmon_exec(cmon_str_builder_c_str(_pm->str_builder),
-//         _pm->exec_output_builder); if (status != 0)
-//         {
-//             ret = cmon_true;
-//             _err(_pm,
-//                  end,
-//                  "Failed to clone git package from %s with version %s\ngit output:%s",
-//                  _pm->deps[i].url,
-//                  _pm->deps[i].version,
-//                  cmon_str_builder_c_str(_pm->exec_output_builder));
-//         }
-//     }
-
-// end:
-//     cmon_fs_chdir(cwd);
-//     return ret;
-// }
-
-// static inline void _cpy_str_view(cmon_str_view _sv, char * _buf, size_t _buf_size)
-// {
-//     assert(_sv.end - _sv.begin < _buf_size);
-//     strncpy(_buf, _sv.begin, _sv.end - _sv.begin);
-// }
-
-// cmon_idx cmon_pm_add_dep_git(cmon_pm * _pm,
-//                              cmon_idx _mod,
-//                              cmon_str_view _url,
-//                              cmon_str_view _version)
-// {
-//     assert(_mod < cmon_dyn_arr_count(&_pm->deps));
-
-//     for (size_t i = 0; i < cmon_dyn_arr_count(&_pm->deps); ++i)
-//     {
-//         //@TODO: For now we only check for version equality. In the future, we might want to add
-//         a
-//         // more sophisticated check. I.e. in the simple case where one version is latest and the
-//         // other one is explicit, we might just want to pull the latest one. For now we will just
-//         // have multiple.
-//         if (cmon_str_view_c_str_cmp(_url, _pm->deps[i].url) == 0 &&
-//             cmon_str_view_c_str_cmp(_url, _pm->deps[i].version) == 0)
-//         {
-//             return CMON_INVALID_IDX;
-//         }
-//     }
-
-//     _dep d;
-//     d.idx = cmon_dyn_arr_count(&_pm->deps);
-//     _cpy_str_view(_url, d.url, sizeof(d.url));
-//     _cpy_str_view(_version, d.version, sizeof(d.version));
-//     cmon_dyn_arr_init(&d.deps, _pm->alloc, 4);
-//     cmon_dyn_arr_append(&_pm->deps, d);
-
-//     cmon_dyn_arr_append(&_pm->deps[_mod].deps, d.idx);
-
-//     return d.idx;
-// }
-
-// cmon_idx cmon_pm_add_dep_git_c_str(cmon_pm * _pm,
-//                                    cmon_idx _mod,
-//                                    const char * _url,
-//                                    const char * _version)
-// {
-//     return cmon_pm_add_dep_git(_pm, _mod, cmon_str_view_make(_url),
-//     cmon_str_view_make(_version));
-// }
-
-// // cmon_bool cmon_pm_remove(cmon_pm * _pm, const char * _url, const char * _version)
-// // {
-// // }
-
-// cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod_idx, const char * _path)
-// {
-// }
-
-// cmon_idx cmon_pm_load_deps_file(cmon_pm * _pm, const char * _path)
-// {
-//     cmon_tini_err terr;
-//     cmon_tini * tini;
-//     cmon_idx ret;
-
-//     ret = cmon_pm_add_module(_pm, _mod_path);
-//     if (!cmon_is_valid_idx(ret))
-//     {
-//         _err(_pm, end, "module '%s' already exists in the package manager", _mod_path);
-//     }
-
-//     if (tini = cmon_tini_parse_file(_pm->alloc, _path, &terr))
-//     {
-//         _err(_pm,
-//              end,
-//              "failed to load/parse dependency file:%s:%lu:%lu: %s",
-//              terr.filename,
-//              terr.line,
-//              terr.line_offset,
-//              terr.msg);
-//     }
-
-//     cmon_idx root_obj = cmon_tini_root_obj(tini);
-//     cmon_idx deps_arr = cmon_tini_obj_find(tini, root_obj, "deps");
-
-//     for (size_t i = 0; i < cmon_tini_child_count(tini, deps_arr); ++i)
-//     {
-//         cmon_idx child = cmon_tini_child(tini, deps_arr, i);
-//         if (cmon_tini_kind(tini, child) == cmon_tinik_obj)
-//         {
-//             cmon_idx url = cmon_tini_obj_find(tini, root_obj, "url");
-//             if (!cmon_is_valid_idx(url))
-//             {
-//                 _err(_pm, end, "missing url in dependency obj");
-//             }
-//             cmon_idx version = cmon_tini_obj_find(tini, root_obj, "version");
-//             if (!cmon_is_valid_idx(version))
-//             {
-//                 _err(_pm, end, "missing version in dependency obj");
-//             }
-
-//             cmon_idx url_val = cmon_tini_pair_value(tini, url);
-//             if (cmon_tini_kind(tini, url_val) != cmon_tinik_string)
-//             {
-//                 _err(_pm, end, "url field has to be a string");
-//             }
-
-//             cmon_idx version_val = cmon_tini_pair_value(tini, version);
-//             if (cmon_tini_kind(tini, version_val) != cmon_tinik_string)
-//             {
-//                 _err(_pm, end, "version field has to be a string");
-//             }
-
-//             //@TODO: Check if a valid index is returned? If not it means we had a duplicate entry
-//             in
-//             //the tini file...not really breaking though so ignoring it for the time being seems
-//             //good
-//             cmon_pm_add_dep_git(
-//                 _pm, ret, cmon_tini_string(tini, url_val), cmon_tini_string(tini, version_val));
-//         }
-//         else
-//         {
-//             //@TODO: silent ignore for now.
-//         }
-//     }
-
-// end:
-//     cmon_tini_destroy(tini);
-//     return ret;
-// }
