@@ -122,6 +122,7 @@ static inline void _cpy_str_view(cmon_str_view _sv, char * _buf, size_t _buf_siz
 {
     assert(_sv.end - _sv.begin < _buf_size);
     strncpy(_buf, _sv.begin, _sv.end - _sv.begin);
+    _buf[_sv.end - _sv.begin] = '\0';
 }
 
 static inline _mod * _get_mod(cmon_pm * _pm, cmon_idx _idx)
@@ -174,7 +175,7 @@ const char * cmon_pm_module_url(cmon_pm * _pm, cmon_idx _idx)
 
 const char * cmon_pm_module_version(cmon_pm * _pm, cmon_idx _idx)
 {
-return _get_mod(_pm, _idx)->version;
+    return _get_mod(_pm, _idx)->version;
 }
 
 size_t cmon_pm_module_dep_count(cmon_pm * _pm, cmon_idx _idx)
@@ -207,13 +208,7 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
 
     if (!(tini = cmon_tini_parse_file(_alloc, _path, &terr)))
     {
-        _err2(_err,
-              end,
-              "%s:%lu:%lu: %s",
-              terr.filename,
-              terr.line,
-              terr.line_offset,
-              terr.msg);
+        _err2(_err, end, "%s:%lu:%lu: %s", terr.filename, terr.line, terr.line_offset, terr.msg);
     }
 
     cmon_idx root_obj = cmon_tini_root_obj(tini);
@@ -246,8 +241,7 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
             }
 
             // call the handler
-            _handler(
-                cmon_tini_string(tini, url), cmon_tini_string(tini, version), _user_data);
+            _handler(cmon_tini_string(tini, url), cmon_tini_string(tini, version), _user_data);
         }
         else
         {
@@ -279,8 +273,51 @@ cmon_bool cmon_pm_load_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _pat
     return _parse_deps_tini(_pm->alloc, _path, _add_dep_to_pm, &pm_idx, &_pm->err);
 }
 
+static inline void _tini_write_indent(cmon_str_builder * _b, size_t _indent)
+{
+    for (size_t i = 0; i < _indent; ++i)
+    {
+        cmon_str_builder_append(_b, "    ");
+    }
+}
+
+static inline void _tini_write_begin(cmon_str_builder * _b)
+{
+    cmon_str_builder_append(_b, "deps = [");
+}
+
+static inline void _tini_write_end(cmon_str_builder * _b)
+{
+    cmon_str_builder_append(_b, "\n]");
+}
+
+static inline void _tini_write_dep(cmon_str_builder * _b, const char * _url, const char * _version)
+{
+    cmon_str_builder_append(_b, "\n");
+    _tini_write_indent(_b, 1);
+    cmon_str_builder_append(_b, "{\n");
+    _tini_write_indent(_b, 2);
+    cmon_str_builder_append_fmt(_b, "url = %s,\n", _url);
+    _tini_write_indent(_b, 2);
+    cmon_str_builder_append_fmt(_b, "version = %s\n", _version);
+    _tini_write_indent(_b, 1);
+    cmon_str_builder_append(_b, "},");
+}
+
 cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _path)
 {
+    cmon_str_builder_clear(_pm->str_builder);
+    _tini_write_begin(_pm->str_builder);
+    _mod = cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx;
+    for (size_t i = 0; i < cmon_pm_module_dep_count(_pm, _mod); ++i)
+    {
+        cmon_idx dep = cmon_pm_module_dep(_pm, _mod, i);
+        _tini_write_dep(
+            _pm->str_builder, cmon_pm_module_url(_pm, dep), cmon_pm_module_version(_pm, dep));
+    }
+    _tini_write_end(_pm->str_builder);
+
+    return cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_pm->str_builder));
 }
 
 // clones one module into the current working directory
@@ -309,10 +346,12 @@ static inline cmon_bool _git_clone(const char * _url,
     // case we should skip --branch allrogether to clone the most recent commit?
     cmon_str_builder_clear(_cmd_builder);
     cmon_str_builder_append_fmt(
-        _cmd_builder, "git clone --depth=1 --branch %s %s %s", _version, _url, _dirname);
+        _cmd_builder, "git clone --depth=1 --branch v%s %s %s 2>&1", _version, _url, _dirname);
 
     cmon_str_builder_clear(_output_builder);
+    printf("cmd %s\n", cmon_str_builder_c_str(_cmd_builder));
     int status = cmon_exec(cmon_str_builder_c_str(_cmd_builder), _output_builder);
+    printf("STATUS %i\n\n", status);
     if (status != 0)
     {
         _err2(_err,
@@ -430,10 +469,13 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     {
         goto end;
     }
-    size_t root_count = cmon_dyn_arr_count(&_pm->mods);
-    for (cmon_idx i = 0; i < root_count; ++i)
+
+    for (size_t i = 0; i < cmon_pm_module_dep_count(_pm, _pm->root_idx); ++i)
     {
-        _pm_clone_and_add_deps(_pm, i);
+        if (_pm_clone_and_add_deps(_pm, cmon_pm_module_dep(_pm, _pm->root_idx, i)))
+        {
+            goto end;
+        }
     }
 
     if (cmon_fs_chdir(current_dir))
@@ -471,6 +513,12 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     // the dirname (i.e.: dep01, dep02 etc.) reliably.
     for (cmon_idx i = 0; i < cmon_dyn_arr_count(&_pm->mods); ++i)
     {
+        //skip the root/src dep
+        if(i == _pm->root_idx)
+        {
+            continue;
+        }
+
         _mod * mod = _get_mod(_pm, i);
         _locked_dep d;
         strcpy(d.url, mod->url);
@@ -573,8 +621,18 @@ end:
     return err;
 }
 
-cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * lf, const char * _path)
+cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * _lf, const char * _path)
 {
+    cmon_str_builder_clear(_lf->str_builder);
+    _tini_write_begin(_lf->str_builder);
+    for (size_t i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
+    {
+        _tini_write_dep(
+            _lf->str_builder, _lf->deps[i].url, _lf->deps[i].version);
+    }
+    _tini_write_end(_lf->str_builder);
+
+    return cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_lf->str_builder));
 }
 
 const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)

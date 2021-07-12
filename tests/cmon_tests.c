@@ -977,7 +977,7 @@ end:
 UTEST(cmon, pm_tests)
 {
     cmon_allocator a = cmon_mallocator_make();
-    cmon_pm * pm = cmon_pm_create(&a, ".");
+    cmon_pm * pm = cmon_pm_create(&a, "test_deps_pm01");
 
     char cwd[CMON_PATH_MAX];
     cmon_fs_getcwd(cwd, sizeof(cwd));
@@ -992,12 +992,27 @@ UTEST(cmon, pm_tests)
 
     cmon_fs_mkdir(test_deps_path);
 
-    if(cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, "../test_assets/pm_test01/cmon_pm_deps.tini"))
+    if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, "../test_assets/pm_test01/cmon_pm_deps.tini"))
     {
         printf("focking err %s\n", cmon_pm_err_msg(pm));
     }
 
     printf("mod count %lu\n", cmon_pm_module_count(pm));
+
+    cmon_pm_save_deps_file(pm, CMON_INVALID_IDX, "pm_deps_saved.tini");
+
+    for (cmon_idx i = 0; i < cmon_pm_module_count(pm); ++i)
+    {
+        printf("url %s\n", cmon_pm_module_url(pm, i));
+    }
+
+    cmon_pm_lock_file * lf = cmon_pm_resolve(pm);
+    if(!lf)
+    {
+        printf("focking err %s\n", cmon_pm_err_msg(pm));
+    }
+
+    cmon_pm_lock_file_save(lf, "pm_deps_lock.tini");
 
     cmon_pm_destroy(pm);
     cmon_allocator_dealloc(&a);
