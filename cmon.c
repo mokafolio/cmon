@@ -7,6 +7,7 @@
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_util.h>
 
+//panic macro that takes a goto label to jump to
 #define _panic(_goto, _fmt, ...)                                                                   \
     do                                                                                             \
     {                                                                                              \
@@ -30,6 +31,7 @@ int main(int _argc, const char * _args[])
     char project_path[CMON_PATH_MAX];
     char src_path[CMON_PATH_MAX];
     char deps_path[CMON_PATH_MAX];
+    char deps_pm_path[CMON_PATH_MAX];
     char build_path[CMON_PATH_MAX];
 
     // cmon_dyn_arr_init(&dep_dirs, &alloc, 4);
@@ -81,6 +83,7 @@ int main(int _argc, const char * _args[])
 
     cmon_join_paths(project_path, "src", src_path, sizeof(src_path));
     cmon_join_paths(project_path, "deps", deps_path, sizeof(deps_path));
+    cmon_join_paths(project_path, "deps_pm", deps_pm_path, sizeof(deps_pm_path));
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
     // clean and exit
@@ -124,12 +127,6 @@ int main(int _argc, const char * _args[])
     if (!cmon_fs_exists(src_path))
         _panic(end, "missing src directory at %s", project_path);
 
-    // sd = cmon_src_dir_create(&alloc, src_path, mods, src);
-    // if (cmon_src_dir_parse(sd, "src"))
-    // {
-    //     _panic(end, "failed to parse src directory: %s", cmon_src_dir_err_msg(sd));
-    // }
-
     char parse_dir_err[CMON_ERR_MSG_MAX];
     if(cmon_dir_parse_src(&alloc, src_path, mods, src, "src", parse_dir_err, sizeof(parse_dir_err)))
     {
@@ -142,82 +139,21 @@ int main(int _argc, const char * _args[])
         cmon_modules_add_search_prefix_c_str(mods, (cmon_idx)i, "src");
     }
 
-    // size_t src_mods_end = cmon_modules_count(mods);
-
-    // optionally add/parse the dependency directory
+    // optionally add/parse the dependency and pm_deps directory
     if (cmon_fs_exists(deps_path))
     {
         if(cmon_dir_parse_deps(&alloc, deps_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
         {
             _panic(end, "failed to parse deps directory: %s", parse_dir_err);
         }
-    //     //@TODO: Every root directory inside deps should be treated as the project directory and
-    //     // thus not be part of the path
-    //     // dep_dir = cmon_src_dir_create(&alloc, deps_path, mods, src);
-    //     // if (cmon_src_dir_parse(dep_dir, "deps"))
-    //     // {
-    //     //     _panic(end, "failed to parse deps directory: %s", cmon_src_dir_err_msg(dep_dir));
-    //     // }
-    //     // //set the dependency directory as a module search path on all modules
-    //     // for(size_t i=0; i<cmon_modules_count(mods); ++i)
-    //     // {
-    //     //     cmon_modules_add_search_prefix(mods, (cmon_idx)i, "deps");
-    //     // }
+    }
 
-    //     cmon_fs_dir deps_dir;
-    //     cmon_fs_dirent ent;
-    //     cmon_bool err = cmon_false;
-    //     char dep_src_path[CMON_PATH_MAX];
-    //     if (cmon_fs_open(deps_path, &deps_dir) == -1)
-    //     {
-    //         err = cmon_true;
-    //         _panic(deps_end, "failed to open deps directory");
-    //     }
-
-    //     while (cmon_fs_has_next(&deps_dir))
-    //     {
-    //         if (cmon_fs_next(&deps_dir, &ent) == -1)
-    //         {
-    //             err = cmon_true;
-    //             _panic(deps_end, "failed to advance deps directory iterator");
-    //         }
-
-    //         if(strcmp(ent.name, ".") == 0 || strcmp(ent.name, "..") == 0)
-    //         {
-    //             continue;
-    //         }
-
-    //         if (ent.type == cmon_fs_dirent_dir)
-    //         {
-    //             cmon_join_paths(ent.path, "src", dep_src_path, sizeof(dep_src_path));
-    //             if (cmon_fs_exists(dep_src_path))
-    //             {
-    //                 cmon_src_dir * sd = cmon_src_dir_create(&alloc, dep_src_path, mods, src);
-    //                 if (cmon_src_dir_parse(sd, ent.name))
-    //                 {
-    //                     _panic(deps_end,
-    //                            "failed to parse src directory: %s",
-    //                            cmon_src_dir_err_msg(sd));
-    //                 }
-    //                 cmon_dyn_arr_append(&dep_dirs, sd);
-
-    //                 // set the dependency directory as a module search path on all src modules
-    //                 for (size_t i = 0; i < src_mods_end; ++i)
-    //                 {
-    //                     cmon_modules_add_search_prefix(mods, (cmon_idx)i, ent.name);
-    //                 }
-    //             }
-    //             //@TODO: else log dependency folder without src?
-    //         }
-    //         //@TODO: else log skipped/unexpeced file?
-    //     }
-
-    // deps_end:
-    //     cmon_fs_close(&deps_dir);
-    //     if (err)
-    //     {
-    //         goto end;
-    //     }
+    if (cmon_fs_exists(deps_pm_path))
+    {
+        if(cmon_dir_parse_deps(&alloc, deps_pm_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
+        {
+            _panic(end, "failed to parse deps_pm directory: %s", parse_dir_err);
+        }
     }
 
     if (!cmon_fs_exists(build_path))
@@ -273,14 +209,6 @@ end:
     cmon_builder_st_destroy(builder);
 
     cmon_str_builder_destroy(tmp_strb);
-    // for (size_t i = 0; i < cmon_dyn_arr_count(&dep_dirs); ++i)
-    // {
-    //     cmon_src_dir_destroy(dep_dirs[i]);
-    // }
-
-    // cmon_dyn_arr_dealloc(&dep_dirs);
-    // // cmon_src_dir_destroy(dep_dir);
-    // cmon_src_dir_destroy(sd);
     cmon_log_destroy(log);
     cmon_modules_destroy(mods);
     cmon_src_destroy(src);

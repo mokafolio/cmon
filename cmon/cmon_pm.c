@@ -46,6 +46,7 @@ typedef struct cmon_pm
     cmon_str_builder * exec_output_builder;
     char deps_dir[CMON_PATH_MAX];
     cmon_dyn_arr(_mod) mods;
+    cmon_idx root_idx;
     _err_holder err;
 } cmon_pm;
 
@@ -65,6 +66,18 @@ typedef struct cmon_pm
         _err(_eh, _goto, _msg, ##__VA_ARGS__);                                                     \
     } while (0)
 
+static inline cmon_idx _add_root_module(cmon_pm * _pm)
+{
+    _mod m;
+    m.idx = cmon_dyn_arr_count(&_pm->mods);
+    memset(m.url, 0, sizeof(m.url));
+    memset(m.version, 0, sizeof(m.version));
+    memset(m.dirname, 0, sizeof(m.dirname));
+    cmon_dyn_arr_init(&m.deps, _pm->alloc, 4);
+    cmon_dyn_arr_append(&_pm->mods, m);
+    return m.idx;
+}
+
 cmon_pm * cmon_pm_create(cmon_allocator * _a, const char * _dep_dir)
 {
     cmon_pm * ret = CMON_CREATE(_a, cmon_pm);
@@ -73,6 +86,7 @@ cmon_pm * cmon_pm_create(cmon_allocator * _a, const char * _dep_dir)
     ret->exec_output_builder = cmon_str_builder_create(_a, 1024);
     strcpy(ret->deps_dir, _dep_dir);
     cmon_dyn_arr_init(&ret->mods, _a, 4);
+    ret->root_idx = _add_root_module(ret);
     return ret;
 }
 
@@ -145,7 +159,7 @@ cmon_idx cmon_pm_find_or_add_module_c_str(cmon_pm * _pm, const char * _url, cons
 
 cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod, cmon_idx _dep)
 {
-    cmon_dyn_arr_append(&_get_mod(_pm, _mod)->deps, _dep);
+    cmon_dyn_arr_append(&_get_mod(_pm, cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx)->deps, _dep);
     return cmon_false;
 }
 
@@ -232,7 +246,7 @@ static inline void _add_dep_to_pm(cmon_str_view _url, cmon_str_view _version, vo
 
 cmon_bool cmon_pm_load_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _path)
 {
-    _pm_and_idx pm_idx = (_pm_and_idx){ _pm, _mod };
+    _pm_and_idx pm_idx = (_pm_and_idx){ _pm, cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx };
     return _parse_deps_tini(_pm->alloc, _path, _add_dep_to_pm, &pm_idx, &_pm->err);
 }
 
@@ -310,9 +324,26 @@ static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
     char deps_tini_path[CMON_PATH_MAX];
     cmon_join_paths(_pm->deps_dir, m->dirname, deps_tini_path, sizeof(deps_tini_path));
     cmon_join_paths(deps_tini_path, "cmon_pm_deps.tini", deps_tini_path, sizeof(deps_tini_path));
-    if (cmon_pm_load_deps_file(_pm, _idx, deps_tini_path))
+
+    // char deps_tini_lock_path[CMON_PATH_MAX];
+    // cmon_join_paths(deps_tini_path, "cmon_pm_deps_lock.tini", deps_tini_lock_path, sizeof(deps_tini_lock_path));
+        
+    // if(cmon_fs_exists(deps_tini_lock_path))
+    // {
+
+    // }
+    // else 
+
+    if(cmon_fs_exists(deps_tini_path))
     {
-        err = cmon_true;
+        if (cmon_pm_load_deps_file(_pm, _idx, deps_tini_path))
+        {
+            err = cmon_true;
+            goto end;
+        }
+    }
+    else
+    {
         goto end;
     }
 
@@ -514,7 +545,7 @@ end:
 
 cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * lf, const char * _path)
 {
-    
+
 }
 
 const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)

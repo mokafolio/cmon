@@ -974,14 +974,26 @@ end:
 
 UTEST(cmon, pm_tests)
 {
-    cmon_allocator a = cmon_mallocator_make();
-    cmon_pm * pm = cmon_pm_create(&a, ".");
-    // if(cmon_pm_pull(pm))
+    // cmon_allocator a = cmon_mallocator_make();
+    // cmon_pm * pm = cmon_pm_create(&a, ".");
+
+    // char cwd[CMON_PATH_MAX];
+    // cmon_fs_getcwd(cwd, sizeof(cwd));
+
+    // char test_deps_path[CMON_PATH_MAX];
+    // cmon_join_paths(cwd, "test_deps_pm");
+
+    // if(cmon_fs_exists(test_deps_path))
     // {
-    //     printf("pm error: %s\n", cmon_pm_err_msg(pm));
+    //     cmon_fs_remove_all(test_deps_path);
     // }
-    cmon_pm_destroy(pm);
-    cmon_allocator_dealloc(&a);
+
+    // cmon_fs_mkdir(test_deps_path);
+
+    
+
+    // cmon_pm_destroy(pm);
+    // cmon_allocator_dealloc(&a);
 }
 
 UTEST_MAIN();
