@@ -4,14 +4,15 @@
 #include <cmon/cmon_codegen_c.h>
 #include <cmon/cmon_dep_graph.h>
 #include <cmon/cmon_dyn_arr.h>
+#include <cmon/cmon_fs.h>
 #include <cmon/cmon_hashmap.h>
 #include <cmon/cmon_log.h>
 #include <cmon/cmon_parser.h>
+#include <cmon/cmon_pm.h>
 #include <cmon/cmon_resolver.h>
 #include <cmon/cmon_symbols.h>
 #include <cmon/cmon_tini.h>
 #include <cmon/cmon_tokens.h>
-#include <cmon/cmon_pm.h>
 
 UTEST(cmon, dyn_arr_tests)
 {
@@ -633,8 +634,8 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_var_decl09,
 //              "boink : fn(f64, f64) -> f64 = fn(a : f64, b : f64) -> f64 {}",
 //              cmon_true);
-// RESOLVE_TEST(resolve_var_decl10, "boink : fn(f64, f64) -> f64 = fn(a : f64) -> f64{}", cmon_false);
-// RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
+// RESOLVE_TEST(resolve_var_decl10, "boink : fn(f64, f64) -> f64 = fn(a : f64) -> f64{}",
+// cmon_false); RESOLVE_TEST(resolve_fn_decl01, "main := fn(){}", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl02, "pub fn main(){}", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl03, "mut woop : fn()->s32 = fn()->s32 {}", cmon_true);
 // RESOLVE_TEST(resolve_fn_decl04,
@@ -701,8 +702,8 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 //              "struct Boink{ x : f32; y : f32 }; b : Boink = Boink{x: 1.0, z: 2.0}",
 //              cmon_false);
 // RESOLVE_TEST(resolve_alias01,
-//              "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{} }",
-//              cmon_true);
+//              "struct Bar{}; fn main(){ alias Foo = Bar; boop : Foo = Foo{}; boop2 : Bar = Foo{}
+//              }", cmon_true);
 // RESOLVE_TEST(resolve_alias02,
 //              "alias Boop = Bar; struct Bar{}; mut man := Boop{}; mut bar_man : Bar = man",
 //              cmon_true);
@@ -727,28 +728,31 @@ static cmon_bool _resolve_test_fn(module_adder_fn _fn)
 // RESOLVE_TEST(resolve_init_loop06, "a : s32 = b; b := a + 3", cmon_false);
 // RESOLVE_TEST(resolve_init_loop07, "fn foo(arg : s32) -> s32 {}; a : s32 = foo(a)", cmon_false);
 // RESOLVE_TEST(resolve_init_loop08, "a : s32 = c; b := [1, 2]; c := b[a]", cmon_false);
-// RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink", cmon_false);
-// RESOLVE_TEST(resolve_init_loop10, "fn foo()->s32{ a := bar }; bar := foo()", cmon_false);
+// RESOLVE_TEST(resolve_init_loop09, "struct Foo { boink : f32 }; a : f32 = Foo{a}.boink",
+// cmon_false); RESOLVE_TEST(resolve_init_loop10, "fn foo()->s32{ a := bar }; bar := foo()",
+// cmon_false);
 
-RESOLVE_TEST(resolve_many_lines, "a : s32 = (/* foo\n    boop\n        bar */1.3) //foo bar ", cmon_false);
+RESOLVE_TEST(resolve_many_lines,
+             "a : s32 = (/* foo\n    boop\n        bar */1.3) //foo bar ",
+             cmon_false);
 RESOLVE_TEST(resolve_many_lines02, "a : s32 = 1 +\n       true", cmon_false);
 RESOLVE_TEST(resolve_many_lines03, "a : s32 = 1 +   true //foo ", cmon_false);
-
 
 // void _module_selector_test_adder_fn(cmon_src * _src, cmon_modules * _mods)
 // {
 //     cmon_idx src01_idx = cmon_src_add(_src, "foo/foo.cmon", "foo.cmon");
 //     cmon_src_set_code(_src,
 //                       src01_idx,
-//                       "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a : s32 "
+//                       "module foo; pub fn foo_fn(_arg : s32) -> s32{}; pub struct FooType{ a :
+//                       s32 "
 //                       "}; pub foo_glob := 99;");
 //     cmon_idx foo_mod = cmon_modules_add(_mods, "foo", "foo");
 //     cmon_modules_add_src_file(_mods, foo_mod, src01_idx);
 //     cmon_idx src02_idx = cmon_src_add(_src, "bar/bar.cmon", "bar.cmon");
 //     cmon_src_set_code(_src,
 //                       src02_idx,
-//                       "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a: "
-//                       "2}; val : s32 = foo.foo_fn(-33);");
+//                       "module bar; import foo; boink := foo.foo_glob; foo_type := foo.FooType{a:
+//                       " "2}; val : s32 = foo.foo_fn(-33);");
 //     cmon_idx bar_mod = cmon_modules_add(_mods, "bar", "bar");
 //     cmon_modules_add_src_file(_mods, bar_mod, src02_idx);
 // }
@@ -871,9 +875,9 @@ UTEST(cmon, resolve_module_circ_dep)
 //     // cmon_err_report err = cmon_err_report_make("foo.cmon", 1, 2, "This is an error msg");
 //     cmon_log_write_err_report(log, &err, src);
 
-//     cmon_log_write_styled(log, cmon_log_color_yellow, cmon_log_color_green, cmon_log_style_bold | cmon_log_style_underline, "whaduuup");
-//     cmon_log_write_styled(log, cmon_log_color_default, cmon_log_color_red, cmon_log_style_none, "peeps");
-//     cmon_log_write(log, "\n");
+//     cmon_log_write_styled(log, cmon_log_color_yellow, cmon_log_color_green, cmon_log_style_bold |
+//     cmon_log_style_underline, "whaduuup"); cmon_log_write_styled(log, cmon_log_color_default,
+//     cmon_log_color_red, cmon_log_style_none, "peeps"); cmon_log_write(log, "\n");
 //     cmon_tokens_destroy(tokens);
 //     cmon_src_destroy(src);
 //     cmon_log_destroy(log);
@@ -929,11 +933,14 @@ UTEST(cmon, resolve_module_circ_dep)
 //     EXPECT_EQ(3, cmon_tini_child_count(t, arr_idx));
 
 //     EXPECT_EQ(0,
-//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 0)), "uno"));
+//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 0)),
+//               "uno"));
 //     EXPECT_EQ(0,
-//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 1)), "-312"));
+//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 1)),
+//               "-312"));
 //     EXPECT_EQ(0,
-//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 2)), "2.13"));
+//               cmon_str_view_c_str_cmp(cmon_tini_string(t, cmon_tini_child(t, arr_idx, 2)),
+//               "2.13"));
 
 // end:
 //     cmon_tini_destroy(t);
@@ -945,12 +952,7 @@ UTEST(cmon, tini02)
     //@TODO: This needs a lot more testing :)
     cmon_allocator a = cmon_mallocator_make();
     cmon_tini_err err;
-    cmon_tini * t = cmon_tini_parse(
-        &a,
-        "foo.tini",
-        "foo.bar/bat = boink",
-        cmon_false,
-        &err);
+    cmon_tini * t = cmon_tini_parse(&a, "foo.tini", "foo.bar/bat = boink", cmon_false, &err);
 
     // EXPECT_EQ(cmon_true, cmon_err_report_is_empty(&err));
     if (!t)
@@ -974,26 +976,31 @@ end:
 
 UTEST(cmon, pm_tests)
 {
-    // cmon_allocator a = cmon_mallocator_make();
-    // cmon_pm * pm = cmon_pm_create(&a, ".");
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_pm * pm = cmon_pm_create(&a, ".");
 
-    // char cwd[CMON_PATH_MAX];
-    // cmon_fs_getcwd(cwd, sizeof(cwd));
+    char cwd[CMON_PATH_MAX];
+    cmon_fs_getcwd(cwd, sizeof(cwd));
 
-    // char test_deps_path[CMON_PATH_MAX];
-    // cmon_join_paths(cwd, "test_deps_pm");
+    char test_deps_path[CMON_PATH_MAX];
+    cmon_join_paths(cwd, "test_deps_pm01", test_deps_path, sizeof(test_deps_path));
 
-    // if(cmon_fs_exists(test_deps_path))
-    // {
-    //     cmon_fs_remove_all(test_deps_path);
-    // }
+    if (cmon_fs_exists(test_deps_path))
+    {
+        cmon_fs_remove_all(test_deps_path);
+    }
 
-    // cmon_fs_mkdir(test_deps_path);
+    cmon_fs_mkdir(test_deps_path);
 
-    
+    if(cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, "../test_assets/pm_test01/cmon_pm_deps.tini"))
+    {
+        printf("focking err %s\n", cmon_pm_err_msg(pm));
+    }
 
-    // cmon_pm_destroy(pm);
-    // cmon_allocator_dealloc(&a);
+    printf("mod count %lu\n", cmon_pm_module_count(pm));
+
+    cmon_pm_destroy(pm);
+    cmon_allocator_dealloc(&a);
 }
 
 UTEST_MAIN();

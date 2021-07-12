@@ -157,6 +157,37 @@ cmon_idx cmon_pm_find_or_add_module_c_str(cmon_pm * _pm, const char * _url, cons
     return cmon_pm_find_or_add_module(_pm, cmon_str_view_make(_url), cmon_str_view_make(_version));
 }
 
+cmon_idx cmon_pm_find_c_str(cmon_pm * _pm, const char * _url, const char * _version)
+{
+    return _find_module(_pm, cmon_str_view_make(_url), cmon_str_view_make(_version));
+}
+
+size_t cmon_pm_module_count(cmon_pm * _pm)
+{
+    return cmon_dyn_arr_count(&_pm->mods);
+}
+
+const char * cmon_pm_module_url(cmon_pm * _pm, cmon_idx _idx)
+{
+    return _get_mod(_pm, _idx)->url;
+}
+
+const char * cmon_pm_module_version(cmon_pm * _pm, cmon_idx _idx)
+{
+return _get_mod(_pm, _idx)->version;
+}
+
+size_t cmon_pm_module_dep_count(cmon_pm * _pm, cmon_idx _idx)
+{
+    return cmon_dyn_arr_count(&_get_mod(_pm, _idx)->deps);
+}
+
+cmon_idx cmon_pm_module_dep(cmon_pm * _pm, cmon_idx _mod_idx, size_t _dep_idx)
+{
+    assert(_dep_idx < cmon_pm_module_dep_count(_pm, _mod_idx));
+    return _get_mod(_pm, _mod_idx)->deps[_dep_idx];
+}
+
 cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod, cmon_idx _dep)
 {
     cmon_dyn_arr_append(&_get_mod(_pm, cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx)->deps, _dep);
@@ -174,11 +205,11 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
     cmon_tini * tini;
     cmon_bool err = cmon_false;
 
-    if ((tini = cmon_tini_parse_file(_alloc, _path, &terr)))
+    if (!(tini = cmon_tini_parse_file(_alloc, _path, &terr)))
     {
         _err2(_err,
               end,
-              "failed to load/parse dependency file:%s:%lu:%lu: %s",
+              "%s:%lu:%lu: %s",
               terr.filename,
               terr.line,
               terr.line_offset,
@@ -193,32 +224,30 @@ static inline cmon_bool _parse_deps_tini(cmon_allocator * _alloc,
         cmon_idx child = cmon_tini_child(tini, deps_arr, i);
         if (cmon_tini_kind(tini, child) == cmon_tinik_obj)
         {
-            cmon_idx url = cmon_tini_obj_find(tini, root_obj, "url");
+            cmon_idx url = cmon_tini_obj_find(tini, child, "url");
             if (!cmon_is_valid_idx(url))
             {
                 _err2(_err, end, "missing url in dependency obj");
             }
-            cmon_idx version = cmon_tini_obj_find(tini, root_obj, "version");
+            cmon_idx version = cmon_tini_obj_find(tini, child, "version");
             if (!cmon_is_valid_idx(version))
             {
                 _err2(_err, end, "missing version in dependency obj");
             }
 
-            cmon_idx url_val = cmon_tini_pair_value(tini, url);
-            if (cmon_tini_kind(tini, url_val) != cmon_tinik_string)
+            if (cmon_tini_kind(tini, url) != cmon_tinik_string)
             {
                 _err2(_err, end, "url field has to be a string");
             }
 
-            cmon_idx version_val = cmon_tini_pair_value(tini, version);
-            if (cmon_tini_kind(tini, version_val) != cmon_tinik_string)
+            if (cmon_tini_kind(tini, version) != cmon_tinik_string)
             {
                 _err2(_err, end, "version field has to be a string");
             }
 
             // call the handler
             _handler(
-                cmon_tini_string(tini, url_val), cmon_tini_string(tini, version_val), _user_data);
+                cmon_tini_string(tini, url), cmon_tini_string(tini, version), _user_data);
         }
         else
         {
@@ -326,15 +355,16 @@ static inline cmon_bool _pm_clone_and_add_deps(cmon_pm * _pm, cmon_idx _idx)
     cmon_join_paths(deps_tini_path, "cmon_pm_deps.tini", deps_tini_path, sizeof(deps_tini_path));
 
     // char deps_tini_lock_path[CMON_PATH_MAX];
-    // cmon_join_paths(deps_tini_path, "cmon_pm_deps_lock.tini", deps_tini_lock_path, sizeof(deps_tini_lock_path));
-        
+    // cmon_join_paths(deps_tini_path, "cmon_pm_deps_lock.tini", deps_tini_lock_path,
+    // sizeof(deps_tini_lock_path));
+
     // if(cmon_fs_exists(deps_tini_lock_path))
     // {
 
     // }
-    // else 
+    // else
 
-    if(cmon_fs_exists(deps_tini_path))
+    if (cmon_fs_exists(deps_tini_path))
     {
         if (cmon_pm_load_deps_file(_pm, _idx, deps_tini_path))
         {
@@ -530,10 +560,10 @@ cmon_bool cmon_pm_lock_file_clean_dep_dir(cmon_pm_lock_file * _lf, const char * 
 {
     cmon_bool err = cmon_false;
     char abs_path[CMON_PATH_MAX];
-    for(cmon_idx i=0; i<cmon_dyn_arr_count(&_lf->deps); ++i)
+    for (cmon_idx i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
     {
         cmon_join_paths(_dep_dir, _lf->deps[i].dirname, abs_path, sizeof(abs_path));
-        if(cmon_fs_remove_all(abs_path) == -1)
+        if (cmon_fs_remove_all(abs_path) == -1)
         {
             _err2(&_lf->err, end, "failed to remove dependency folder %s", _lf->deps[i].dirname);
         }
@@ -545,7 +575,6 @@ end:
 
 cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * lf, const char * _path)
 {
-
 }
 
 const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)

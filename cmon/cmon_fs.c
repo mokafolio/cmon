@@ -127,8 +127,8 @@ cmon_bool cmon_fs_is_dir(const char * _path)
 char * cmon_fs_load_txt_file(cmon_allocator * _alloc, const char * _path)
 {
     int64_t len, read_len;
-    cmon_mem_blk blk;
-    FILE * fp;
+    cmon_mem_blk blk = {NULL};
+    FILE * fp = NULL;
 
     fp = fopen(_path, "r");
     if (!fp)
@@ -166,7 +166,10 @@ char * cmon_fs_load_txt_file(cmon_allocator * _alloc, const char * _path)
 
 err:
     cmon_allocator_free(_alloc, blk);
-    fclose(fp);
+    if(fp)
+    {
+        fclose(fp);
+    }
     return NULL;
 }
 

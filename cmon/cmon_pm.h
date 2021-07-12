@@ -18,6 +18,15 @@ CMON_API cmon_idx cmon_pm_find_or_add_module(cmon_pm * _pm,
 CMON_API cmon_idx cmon_pm_find_or_add_module_c_str(cmon_pm * _pm,
                                                    const char * _url,
                                                    const char * _version);
+CMON_API cmon_idx cmon_pm_find_c_str(cmon_pm * _pm,
+                                                   const char * _url,
+                                                   const char * _version);
+CMON_API size_t cmon_pm_module_count(cmon_pm * _pm);
+CMON_API const char * cmon_pm_module_url(cmon_pm * _pm, cmon_idx _idx);
+CMON_API const char * cmon_pm_module_version(cmon_pm * _pm, cmon_idx _idx);
+CMON_API size_t cmon_pm_module_dep_count(cmon_pm * _pm, cmon_idx _idx);
+CMON_API cmon_idx cmon_pm_module_dep(cmon_pm * _pm, cmon_idx _mod_idx, size_t _dep_idx);
+
 // add _dep module index to module _mod as a dependency
 CMON_API cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod, cmon_idx _dep);
 // loads a tini file and adds all the dependencies to _mod
