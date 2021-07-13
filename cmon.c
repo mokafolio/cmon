@@ -1,13 +1,13 @@
 #include <cmon/cmon_argparse.h>
 #include <cmon/cmon_builder_st.h>
 #include <cmon/cmon_codegen_c.h>
+#include <cmon/cmon_dir_parse.h>
 #include <cmon/cmon_dyn_arr.h>
 #include <cmon/cmon_fs.h>
-#include <cmon/cmon_dir_parse.h>
 #include <cmon/cmon_str_builder.h>
 #include <cmon/cmon_util.h>
 
-//panic macro that takes a goto label to jump to
+// panic macro that takes a goto label to jump to
 #define _panic(_goto, _fmt, ...)                                                                   \
     do                                                                                             \
     {                                                                                              \
@@ -26,7 +26,7 @@ int main(int _argc, const char * _args[])
     // cmon_src_dir * sd = NULL;
     // // cmon_src_dir * dep_dir = NULL;
     // cmon_dyn_arr(cmon_src_dir *) dep_dirs;
-        cmon_str_builder * tmp_strb = cmon_str_builder_create(&alloc, CMON_PATH_MAX);
+    cmon_str_builder * tmp_strb = cmon_str_builder_create(&alloc, CMON_PATH_MAX);
     char cwd[CMON_PATH_MAX];
     char project_path[CMON_PATH_MAX];
     char src_path[CMON_PATH_MAX];
@@ -54,7 +54,8 @@ int main(int _argc, const char * _args[])
 
     cmon_argparse_parse(ap, _args, _argc);
 
-    if (cmon_argparse_is_set(ap, "-h"))
+    if (cmon_argparse_is_set(ap, "-h") ||
+        (!cmon_argparse_is_set(ap, "clean") && !cmon_argparse_is_set(ap, "build")))
     {
         cmon_argparse_print_help(ap);
         goto end;
@@ -124,89 +125,95 @@ int main(int _argc, const char * _args[])
         }
         goto end;
     }
-
-    if (!cmon_fs_exists(src_path))
-        _panic(end, "missing src directory at %s", project_path);
-
-    char parse_dir_err[CMON_ERR_MSG_MAX];
-    if(cmon_dir_parse_src(&alloc, src_path, mods, src, "src", parse_dir_err, sizeof(parse_dir_err)))
+    else if (cmon_argparse_is_set(ap, "build"))
     {
-        _panic(end, "failed to parse src directory: %s", parse_dir_err);
-    }
+        if (!cmon_fs_exists(src_path))
+            _panic(end, "missing src directory at %s", project_path);
 
-    // set the src directory as a module search path on all src based modules
-    for (size_t i = 0; i < cmon_modules_count(mods); ++i)
-    {
-        cmon_modules_add_search_prefix_c_str(mods, (cmon_idx)i, "src");
-    }
-
-    // optionally add/parse the dependency and pm_deps directory
-    if (cmon_fs_exists(deps_path))
-    {
-        if(cmon_dir_parse_deps(&alloc, deps_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
+        char parse_dir_err[CMON_ERR_MSG_MAX];
+        if (cmon_dir_parse_src(
+                &alloc, src_path, mods, src, "src", parse_dir_err, sizeof(parse_dir_err)))
         {
-            _panic(end, "failed to parse deps directory: %s", parse_dir_err);
+            _panic(end, "failed to parse src directory: %s", parse_dir_err);
         }
-    }
 
-    if (cmon_fs_exists(deps_pm_path))
-    {
-        if(cmon_dir_parse_deps(&alloc, deps_pm_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
+        // set the src directory as a module search path on all src based modules
+        for (size_t i = 0; i < cmon_modules_count(mods); ++i)
         {
-            _panic(end, "failed to parse deps_pm directory: %s", parse_dir_err);
+            cmon_modules_add_search_prefix_c_str(mods, (cmon_idx)i, "src");
         }
-    }
 
-    if (!cmon_fs_exists(build_path))
-    {
-        if (cmon_fs_mkdir(build_path) == -1)
+        // optionally add/parse the dependency and pm_deps directory
+        if (cmon_fs_exists(deps_path))
         {
-            _panic(end, "failed to create build directory at %s", build_path);
+            if (cmon_dir_parse_deps(
+                    &alloc, deps_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
+            {
+                _panic(end, "failed to parse deps directory: %s", parse_dir_err);
+            }
         }
-    }
 
-    builder = cmon_builder_st_create(&alloc, atoi(cmon_argparse_value(ap, "-e")), src, mods);
-    log = cmon_log_create(&alloc,
-                          "cmon_build.log",
-                          build_path,
-                          cmon_argparse_is_set(ap, "-v") ? cmon_log_level_info
-                                                         : cmon_log_level_error);
-    if (cmon_argparse_is_set(ap, "-v"))
-    {
-        cmon_log_write_styled(log,
-                              cmon_log_level_info,
-                              cmon_log_color_default,
-                              cmon_log_color_red,
-                              cmon_log_style_underline | cmon_log_style_bold,
-                              "cmon");
-        cmon_log_write(log, cmon_log_level_info, " compiler ");
-        cmon_log_write_styled(log,
-                              cmon_log_level_info,
-                              cmon_log_color_default,
-                              cmon_log_color_default,
-                              cmon_log_style_light,
-                              "(v%i.%i.%i)",
-                              CMON_VERSION_MAJOR,
-                              CMON_VERSION_MINOR,
-                              CMON_VERSION_PATCH);
-        cmon_log_write(log, cmon_log_level_info, "\n");
-    }
-
-    cmon_codegen cgen = cmon_codegen_c_make(&alloc);
-
-    if (cmon_builder_st_build(builder, &cgen, build_path, log))
-    {
-        cmon_err_report * errs;
-        size_t count;
-        cmon_builder_st_errors(builder, &errs, &count);
-        for (size_t i = 0; i < count; ++i)
+        if (cmon_fs_exists(deps_pm_path))
         {
-            cmon_log_write_err_report(log, &errs[i], src);
+            if (cmon_dir_parse_deps(
+                    &alloc, deps_pm_path, mods, src, parse_dir_err, sizeof(parse_dir_err)))
+            {
+                _panic(end, "failed to parse deps_pm directory: %s", parse_dir_err);
+            }
         }
+
+        if (!cmon_fs_exists(build_path))
+        {
+            if (cmon_fs_mkdir(build_path) == -1)
+            {
+                _panic(end, "failed to create build directory at %s", build_path);
+            }
+        }
+
+        builder = cmon_builder_st_create(&alloc, atoi(cmon_argparse_value(ap, "-e")), src, mods);
+        log = cmon_log_create(&alloc,
+                              "cmon_build.log",
+                              build_path,
+                              cmon_argparse_is_set(ap, "-v") ? cmon_log_level_info
+                                                             : cmon_log_level_error);
+        if (cmon_argparse_is_set(ap, "-v"))
+        {
+            cmon_log_write_styled(log,
+                                  cmon_log_level_info,
+                                  cmon_log_color_default,
+                                  cmon_log_color_red,
+                                  cmon_log_style_underline | cmon_log_style_bold,
+                                  "cmon");
+            cmon_log_write(log, cmon_log_level_info, " compiler ");
+            cmon_log_write_styled(log,
+                                  cmon_log_level_info,
+                                  cmon_log_color_default,
+                                  cmon_log_color_default,
+                                  cmon_log_style_light,
+                                  "(v%i.%i.%i)",
+                                  CMON_VERSION_MAJOR,
+                                  CMON_VERSION_MINOR,
+                                  CMON_VERSION_PATCH);
+            cmon_log_write(log, cmon_log_level_info, "\n");
+        }
+
+        cmon_codegen cgen = cmon_codegen_c_make(&alloc);
+
+        if (cmon_builder_st_build(builder, &cgen, build_path, log))
+        {
+            cmon_err_report * errs;
+            size_t count;
+            cmon_builder_st_errors(builder, &errs, &count);
+            for (size_t i = 0; i < count; ++i)
+            {
+                cmon_log_write_err_report(log, &errs[i], src);
+            }
+        }
+
+        cmon_codegen_dealloc(&cgen);
     }
 
 end:
-    cmon_codegen_dealloc(&cgen);
     cmon_builder_st_destroy(builder);
 
     cmon_str_builder_destroy(tmp_strb);
