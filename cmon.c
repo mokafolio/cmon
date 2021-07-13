@@ -49,7 +49,8 @@ int main(int _argc, const char * _args[])
     cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
     CMON_UNUSED(cmon_argparse_add_arg(
         ap, "-v", "--verbose", cmon_false, "print detailed compilation output"));
-    CMON_UNUSED(cmon_argparse_add_arg(ap, "-c", "--clean", cmon_false, "clean build directory"));
+    CMON_UNUSED(cmon_argparse_add_arg(ap, "build", "", cmon_false, "build all modules"));
+    CMON_UNUSED(cmon_argparse_add_arg(ap, "clean", "", cmon_false, "clean build directory"));
 
     cmon_argparse_parse(ap, _args, _argc);
 
@@ -87,7 +88,7 @@ int main(int _argc, const char * _args[])
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
     // clean and exit
-    if (cmon_argparse_is_set(ap, "-c"))
+    if (cmon_argparse_is_set(ap, "clean"))
     {
         if (cmon_fs_exists(build_path))
         {

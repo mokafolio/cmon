@@ -190,11 +190,18 @@ cmon_idx cmon_argparse_find(cmon_argparse * _a, const char * _key)
     return CMON_INVALID_IDX;
 }
 
+static inline int _arg_cmp(const void * _a, const void * _b)
+{
+    return strcmp(((const _arg*)_a)->key_short, ((const _arg*)_b)->key_short);
+}
+
 void cmon_argparse_print_help(cmon_argparse * _a)
 {
     size_t i, j, count;
     static char s_whitespace[] = "                     ";
     printf("usage: %s [options]\n", _a->name);
+    //@TODO: Is this a safe/good place to sort the args? maybe make a tmp copy of the args first?
+    qsort(_a->args, cmon_dyn_arr_count(&_a->args), sizeof(_arg), _arg_cmp);
     for (i = 0; i < cmon_dyn_arr_count(&_a->args); ++i)
     {
         _arg * a = &_a->args[i];
