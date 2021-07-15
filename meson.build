@@ -42,4 +42,11 @@ cmon_bin = executable('cmon',
     link_args : '-fsanitize=address',
     install : true)
 
+cmonpm_bin = executable('cmonpm',
+    ['cmonpm.c'], 
+    link_with: [cmon_lib], 
+    c_args : ['-fsanitize=address', '-Wall', '-std=gnu11'], 
+    link_args : '-fsanitize=address',
+    install : true)
+
 subdir('tests')

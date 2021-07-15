@@ -310,11 +310,11 @@ void cmon_argparse_print_help(cmon_argparse * _a)
             {
                 if (strlen(a->key_long))
                 {
-                    printf("%6s, %-12s %s\n", a->key_short, a->key_long, a->help);
+                    printf("%4s, %-14s %s\n", a->key_short, a->key_long, a->help);
                 }
                 else
                 {
-                    printf("    %-16s %s\n", a->key_short, a->help);
+                    printf("    %-18s %s\n", a->key_short, a->help);
                 }
             }
 

@@ -39,16 +39,16 @@ int main(int _argc, const char * _args[])
     CMON_UNUSED(cmon_argparse_add_arg(
         ap, CMON_INVALID_IDX, "-h", "--help", cmon_false, "show this help and exit"));
     CMON_UNUSED(cmon_argparse_add_arg(
-        ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_false, "print detailed compilation output"));
+        ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_false, "print detailed output"));
     cmon_idx build_cmd_idx = cmon_argparse_add_cmd(ap, "build", "build all modules");
     
     cmon_idx arg = cmon_argparse_add_arg(ap, build_cmd_idx, "-e", "--errcount", cmon_true, "max error count");
-    // cmon_argparse_add_possible_val(ap, arg, "8", cmon_true);
-    // cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
+    cmon_argparse_add_possible_val(ap, arg, "8", cmon_true);
+    cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
 
-    arg = cmon_argparse_add_arg(ap, build_cmd_idx, "-d", "--dirasdaskhkjhasdhkjhaskdj", cmon_true, "path to the project directory");
-    // cmon_argparse_add_possible_val(ap, arg, "cwd", cmon_true);
-    // cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
+    arg = cmon_argparse_add_arg(ap, build_cmd_idx, "-d", "--dir", cmon_true, "path to the project directory");
+    cmon_argparse_add_possible_val(ap, arg, "cwd", cmon_true);
+    cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
 
     cmon_idx clean_cmd_idx = cmon_argparse_add_cmd(ap, "clean", "clean build directory");
     cmon_argparse_cmd_add_arg(ap, clean_cmd_idx, arg);

@@ -880,7 +880,6 @@ UTEST(cmon, argparse_cmd)
     const char * args[] = { "foo", "install"};
     cmon_argparse_parse(ap, args, sizeof(args) / sizeof(const char*));
 
-
     cmon_argparse_destroy(ap);
     cmon_allocator_dealloc(&a);
 }
