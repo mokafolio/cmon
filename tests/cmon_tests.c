@@ -823,37 +823,67 @@ UTEST(cmon, resolve_module_circ_dep)
 //     EXPECT_EQ(cmon_true, _resolve_test_fn_impl(_c_codegen_test_mod_add_fn, cmon_codegen_c_make));
 // }
 
-// UTEST(cmon, argparse)
-// {
-//     cmon_allocator a = cmon_mallocator_make();
-//     cmon_argparse * ap = cmon_argparse_create(&a, "foo");
+UTEST(cmon, argparse)
+{
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_argparse * ap = cmon_argparse_create(&a, "foo");
 
-//     cmon_idx uno = cmon_argparse_add_arg(ap, "-u", "--uno", cmon_true, "this is uno");
-//     cmon_idx dos = cmon_argparse_add_arg(ap, "-d", "--dos", cmon_true, "this is dos");
-//     cmon_idx tres = cmon_argparse_add_arg(ap, "-t", "", cmon_true, "this is tres");
-//     cmon_idx quat = cmon_argparse_add_arg(ap, "-q", "", cmon_false, "");
+    cmon_idx uno =
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-u", "--uno", cmon_true, "this is uno");
+    cmon_idx dos =
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-d", "--dos", cmon_true, "this is dos");
+    cmon_idx tres =
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-t", "", cmon_true, "this is tres");
+    cmon_idx quat = cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-q", "", cmon_false, "");
 
-//     cmon_argparse_print_help(ap);
+    cmon_argparse_print_help(ap);
 
-//     const char * args[] = { "foo", "-u", "1", "--dos", "-99", "-t", "boink", "-q" };
-//     cmon_argparse_parse(ap, args, 8);
+    const char * args[] = { "foo", "-u", "1", "--dos", "-99", "-t", "boink", "-q" };
+    cmon_argparse_parse(ap, args, 8);
 
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-u")));
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "--uno")));
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-d")));
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "--dos")));
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-t")));
-//     EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find(ap, "-q")));
-//     EXPECT_FALSE(cmon_is_valid_idx(cmon_argparse_find(ap, "--boop")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "-u")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "--uno")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "-d")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "--dos")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "-t")));
+    EXPECT_TRUE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "-q")));
+    EXPECT_FALSE(cmon_is_valid_idx(cmon_argparse_find_arg(ap, "--boop")));
 
-//     EXPECT_TRUE(cmon_argparse_is_set(ap, "-q"));
-//     EXPECT_STREQ("1", cmon_argparse_value(ap, "-u"));
-//     EXPECT_STREQ("-99", cmon_argparse_value(ap, "-d"));
-//     EXPECT_STREQ("boink", cmon_argparse_value(ap, "-t"));
+    EXPECT_TRUE(cmon_argparse_is_arg_set(ap, "-q"));
+    EXPECT_STREQ("1", cmon_argparse_value(ap, "-u"));
+    EXPECT_STREQ("-99", cmon_argparse_value(ap, "-d"));
+    EXPECT_STREQ("boink", cmon_argparse_value(ap, "-t"));
 
-//     cmon_argparse_destroy(ap);
-//     cmon_allocator_dealloc(&a);
-// }
+    cmon_argparse_destroy(ap);
+    cmon_allocator_dealloc(&a);
+}
+
+UTEST(cmon, argparse_cmd)
+{
+    cmon_allocator a = cmon_mallocator_make();
+    cmon_argparse * ap = cmon_argparse_create(&a, "foo");
+
+    cmon_idx cmd_idx = cmon_argparse_add_cmd(ap, "install", "this is some useful help");
+
+    cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_true, "this is uno");
+
+    cmon_idx dir_arg =
+        cmon_argparse_add_arg(ap, cmd_idx, "-d", "--dir", cmon_true, "install directory");
+
+    cmon_argparse_add_possible_val(ap, dir_arg, "cwd", cmon_true);
+    cmon_argparse_add_possible_val(ap, dir_arg, "?", cmon_false);
+
+    cmon_argparse_add_arg(ap, cmd_idx, "-f", "", cmon_false, "boink");
+
+    cmon_argparse_print_help(ap);
+
+    const char * args[] = { "foo", "install"};
+    cmon_argparse_parse(ap, args, sizeof(args) / sizeof(const char*));
+
+
+    cmon_argparse_destroy(ap);
+    cmon_allocator_dealloc(&a);
+}
 
 // UTEST(cmon, log)
 // {
@@ -974,49 +1004,49 @@ end:
     cmon_allocator_dealloc(&a);
 }
 
-UTEST(cmon, pm_tests)
-{
-    cmon_allocator a = cmon_mallocator_make();
-    cmon_pm * pm = cmon_pm_create(&a, "test_deps_pm01");
+// UTEST(cmon, pm_tests)
+// {
+//     cmon_allocator a = cmon_mallocator_make();
+//     cmon_pm * pm = cmon_pm_create(&a, "test_deps_pm01");
 
-    char cwd[CMON_PATH_MAX];
-    cmon_fs_getcwd(cwd, sizeof(cwd));
+//     char cwd[CMON_PATH_MAX];
+//     cmon_fs_getcwd(cwd, sizeof(cwd));
 
-    char test_deps_path[CMON_PATH_MAX];
-    cmon_join_paths(cwd, "test_deps_pm01", test_deps_path, sizeof(test_deps_path));
+//     char test_deps_path[CMON_PATH_MAX];
+//     cmon_join_paths(cwd, "test_deps_pm01", test_deps_path, sizeof(test_deps_path));
 
-    if (cmon_fs_exists(test_deps_path))
-    {
-        cmon_fs_remove_all(test_deps_path);
-    }
+//     if (cmon_fs_exists(test_deps_path))
+//     {
+//         cmon_fs_remove_all(test_deps_path);
+//     }
 
-    cmon_fs_mkdir(test_deps_path);
+//     cmon_fs_mkdir(test_deps_path);
 
-    if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, "../test_assets/pm_test01/cmon_pm_deps.tini"))
-    {
-        printf("focking err %s\n", cmon_pm_err_msg(pm));
-    }
+//     if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, "../test_assets/pm_test01/cmon_pm_deps.tini"))
+//     {
+//         printf("focking err %s\n", cmon_pm_err_msg(pm));
+//     }
 
-    printf("mod count %lu\n", cmon_pm_module_count(pm));
+//     printf("mod count %lu\n", cmon_pm_module_count(pm));
 
-    cmon_pm_save_deps_file(pm, CMON_INVALID_IDX, "pm_deps_saved.tini");
+//     cmon_pm_save_deps_file(pm, CMON_INVALID_IDX, "pm_deps_saved.tini");
 
-    for (cmon_idx i = 0; i < cmon_pm_module_count(pm); ++i)
-    {
-        printf("url %s\n", cmon_pm_module_url(pm, i));
-    }
+//     for (cmon_idx i = 0; i < cmon_pm_module_count(pm); ++i)
+//     {
+//         printf("url %s\n", cmon_pm_module_url(pm, i));
+//     }
 
-    cmon_pm_lock_file * lf = cmon_pm_resolve(pm);
-    if(!lf)
-    {
-        printf("focking err %s\n", cmon_pm_err_msg(pm));
-    }
+//     cmon_pm_lock_file * lf = cmon_pm_resolve(pm);
+//     if (!lf)
+//     {
+//         printf("focking err %s\n", cmon_pm_err_msg(pm));
+//     }
 
-    cmon_pm_lock_file_save(lf, "pm_deps_lock.tini");
+//     cmon_pm_lock_file_save(lf, "pm_deps_lock.tini");
 
-    cmon_pm_lock_file_destroy(lf);
-    cmon_pm_destroy(pm);
-    cmon_allocator_dealloc(&a);
-}
+//     cmon_pm_lock_file_destroy(lf);
+//     cmon_pm_destroy(pm);
+//     cmon_allocator_dealloc(&a);
+// }
 
 UTEST_MAIN();

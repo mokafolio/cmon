@@ -36,26 +36,26 @@ int main(int _argc, const char * _args[])
 
     // cmon_dyn_arr_init(&dep_dirs, &alloc, 4);
 
-    CMON_UNUSED(cmon_argparse_add_arg(ap, "-h", "--help", cmon_false, "show this help and exit"));
-    cmon_idx arg =
-        cmon_argparse_add_arg(ap, "-b", "--buildtype", cmon_true, "changes the buildtype");
-    cmon_argparse_add_possible_val(ap, arg, "release", cmon_false);
-    cmon_argparse_add_possible_val(ap, arg, "debug", cmon_true);
-    arg = cmon_argparse_add_arg(ap, "-d", "--dir", cmon_true, "path to the project directory");
-    cmon_argparse_add_possible_val(ap, arg, "cwd", cmon_true);
-    cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
-    arg = cmon_argparse_add_arg(ap, "-e", "--errcount", cmon_true, "max error count");
-    cmon_argparse_add_possible_val(ap, arg, "8", cmon_true);
-    cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
     CMON_UNUSED(cmon_argparse_add_arg(
-        ap, "-v", "--verbose", cmon_false, "print detailed compilation output"));
-    CMON_UNUSED(cmon_argparse_add_arg(ap, "build", "", cmon_false, "build all modules"));
-    CMON_UNUSED(cmon_argparse_add_arg(ap, "clean", "", cmon_false, "clean build directory"));
+        ap, CMON_INVALID_IDX, "-h", "--help", cmon_false, "show this help and exit"));
+    CMON_UNUSED(cmon_argparse_add_arg(
+        ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_false, "print detailed compilation output"));
+    cmon_idx build_cmd_idx = cmon_argparse_add_cmd(ap, "build", "build all modules");
+    
+    cmon_idx arg = cmon_argparse_add_arg(ap, build_cmd_idx, "-e", "--errcount", cmon_true, "max error count");
+    // cmon_argparse_add_possible_val(ap, arg, "8", cmon_true);
+    // cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
+
+    arg = cmon_argparse_add_arg(ap, build_cmd_idx, "-d", "--dirasdaskhkjhasdhkjhaskdj", cmon_true, "path to the project directory");
+    // cmon_argparse_add_possible_val(ap, arg, "cwd", cmon_true);
+    // cmon_argparse_add_possible_val(ap, arg, "?", cmon_false);
+
+    cmon_idx clean_cmd_idx = cmon_argparse_add_cmd(ap, "clean", "clean build directory");
+    cmon_argparse_cmd_add_arg(ap, clean_cmd_idx, arg);
 
     cmon_argparse_parse(ap, _args, _argc);
 
-    if (cmon_argparse_is_set(ap, "-h") ||
-        (!cmon_argparse_is_set(ap, "clean") && !cmon_argparse_is_set(ap, "build")))
+    if (cmon_argparse_is_arg_set(ap, "-h") || !cmon_is_valid_idx(cmon_argparse_cmd(ap)))
     {
         cmon_argparse_print_help(ap);
         goto end;
@@ -89,7 +89,7 @@ int main(int _argc, const char * _args[])
     cmon_join_paths(project_path, "build", build_path, sizeof(build_path));
 
     // clean and exit
-    if (cmon_argparse_is_set(ap, "clean"))
+    if (cmon_argparse_cmd(ap) == clean_cmd_idx)
     {
         if (cmon_fs_exists(build_path))
         {
@@ -125,7 +125,7 @@ int main(int _argc, const char * _args[])
         }
         goto end;
     }
-    else if (cmon_argparse_is_set(ap, "build"))
+    else if (cmon_argparse_cmd(ap) == build_cmd_idx)
     {
         if (!cmon_fs_exists(src_path))
             _panic(end, "missing src directory at %s", project_path);
@@ -174,9 +174,9 @@ int main(int _argc, const char * _args[])
         log = cmon_log_create(&alloc,
                               "cmon_build.log",
                               build_path,
-                              cmon_argparse_is_set(ap, "-v") ? cmon_log_level_info
-                                                             : cmon_log_level_error);
-        if (cmon_argparse_is_set(ap, "-v"))
+                              cmon_argparse_is_arg_set(ap, "-v") ? cmon_log_level_info
+                                                                 : cmon_log_level_error);
+        if (cmon_argparse_is_arg_set(ap, "-v"))
         {
             cmon_log_write_styled(log,
                                   cmon_log_level_info,
