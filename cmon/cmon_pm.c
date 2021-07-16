@@ -516,7 +516,6 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
     if (_parse_git_version(
             cmon_str_builder_c_str(_pm->exec_output_builder), &major, &minor, &patch))
     {
-        ret = cmon_true;
         _err(&_pm->err,
              end,
              "Failed to parse git version from string: %s",

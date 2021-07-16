@@ -1,6 +1,11 @@
 #ifndef CMON_CMON_PM_H
 #define CMON_CMON_PM_H
 
+//semantic version of cmon_pm
+#define CMON_PM_VERSION_MAJOR 0
+#define CMON_PM_VERSION_MINOR 0
+#define CMON_PM_VERSION_PATCH 1
+
 #include <cmon/cmon_allocator.h>
 
 typedef struct cmon_pm cmon_pm;
