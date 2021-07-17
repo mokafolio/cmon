@@ -3,6 +3,7 @@
 #include <cmon/cmon_log.h>
 #include <cmon/cmon_pm.h>
 #include <cmon/cmon_str_builder.h>
+#include <cmon/cmon_util.h>
 
 // panic macro that takes a goto label to jump to
 #define _panic(_goto, _fmt, ...)                                                                   \
@@ -26,6 +27,7 @@ int main(int _argc, const char * _args[])
     cmon_allocator a = cmon_mallocator_make();
     cmon_argparse * ap = cmon_argparse_create(&a, "cmonpm");
     cmon_pm * pm = NULL;
+    cmon_pm_lock_file * lf = NULL;
 
     CMON_UNUSED(cmon_argparse_add_arg(
         ap, CMON_INVALID_IDX, "-h", "--help", cmon_false, "show this help and exit"));
@@ -44,7 +46,12 @@ int main(int _argc, const char * _args[])
     cmon_argparse_add_possible_val(ap, install_dir_arg, "?", cmon_false);
 
     cmon_idx deps_file_arg = cmon_argparse_add_arg(
-        ap, install_cmd, "-d", "--deps_file", cmon_false, "path to dependency tini file");
+        ap,
+        install_cmd,
+        "-d",
+        "--deps_file_dir",
+        cmon_false,
+        "path to a folder containing cmon_pm_deps.tini or cmon_pm_deps_all.tini");
     cmon_argparse_add_possible_val(ap, deps_file_arg, "cmon_pm_deps.tini", cmon_true);
     cmon_argparse_add_possible_val(ap, deps_file_arg, "?", cmon_false);
 
@@ -61,6 +68,7 @@ int main(int _argc, const char * _args[])
 
     pm = cmon_pm_create(&a, cmon_argparse_value(ap, "-i"));
 
+    char cwd[CMON_PATH_MAX];
     char dep_dir_path[CMON_PATH_MAX];
     const char * install_dir = cmon_argparse_value(ap, "-i");
     if (_is_absolute_path(install_dir))
@@ -69,11 +77,11 @@ int main(int _argc, const char * _args[])
     }
     else
     {
-        if (!cmon_fs_getcwd(dep_dir_path, sizeof(dep_dir_path)))
+        if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
         {
             _panic(end, "could not get current working directory.");
         }
-        cmon_join_paths(dep_dir_path, install_dir, dep_dir_path, sizeof(dep_dir_path));
+        cmon_join_paths(cwd, install_dir, dep_dir_path, sizeof(dep_dir_path));
     }
 
     if (cmon_argparse_cmd(ap) == clean_cmd)
@@ -85,9 +93,62 @@ int main(int _argc, const char * _args[])
     }
     else if (cmon_argparse_cmd(ap) == install_cmd)
     {
+        char err_msg[CMON_ERR_MSG_MAX];
+        char abs_dir_path[CMON_PATH_MAX];
+        char abs_dep_file_path[CMON_PATH_MAX];
+        char abs_lock_file_path[CMON_PATH_MAX];
+        const char * deps_file_dir = cmon_argparse_value(ap, "-d");
+        if (_is_absolute_path(deps_file_dir))
+        {
+            strcpy(abs_dir_path, deps_file_dir);
+        }
+        else
+        {
+            cmon_join_paths(cwd, deps_file_dir, abs_dir_path, sizeof(abs_dir_path));
+        }
+
+        cmon_join_paths(
+            abs_dir_path, "cmon_pm_deps_all.tini", abs_lock_file_path, sizeof(abs_lock_file_path));
+        if (cmon_fs_exists(abs_lock_file_path))
+        {
+            lf = cmon_pm_lock_file_load(&a, abs_lock_file_path, err_msg, sizeof(err_msg));
+            if (!lf)
+            {
+                _panic(end, "%s", err_msg);
+            }
+        }
+        else
+        {
+            cmon_join_paths(
+                abs_dir_path, "cmon_pm_deps.tini", abs_dep_file_path, sizeof(abs_dep_file_path));
+            if (cmon_fs_exists(abs_dir_path))
+            {
+                if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, abs_dep_file_path))
+                {
+                    _panic(end, "%s", cmon_pm_err_msg(pm));
+                }
+                lf = cmon_pm_resolve(pm);
+                if(!lf)
+                {
+                    _panic(end, "%s", cmon_pm_err_msg(pm));
+                }
+
+                if(cmon_pm_lock_file_save(lf, abs_lock_file_path))
+                {
+                    _panic(end, "%s", cmon_pm_lock_file_err_msg(lf));
+                }
+            }
+            else
+            {
+                _panic(end,
+                       "could not find cmon_pm_deps.tini or cmon_pm_deps_all.tini in '%s'",
+                       deps_file_dir);
+            }
+        }
     }
 
 end:
+    cmon_pm_lock_file_destroy(lf);
     cmon_pm_destroy(pm);
     cmon_argparse_destroy(ap);
     cmon_allocator_dealloc(&a);
