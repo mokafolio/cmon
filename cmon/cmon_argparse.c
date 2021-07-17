@@ -8,6 +8,7 @@ typedef struct
     char key_long[CMON_ARG_KEY_MAX];
     char help[CMON_ARG_VAL_MAX];
     cmon_bool expects_value;
+    cmon_bool required;
     cmon_bool accepts_any;
     cmon_dyn_arr(char *) possible_vals;
     char val[CMON_ARG_VAL_MAX];
@@ -51,6 +52,11 @@ static inline _cmd * _get_cmd(cmon_argparse * _a, cmon_idx _cmd)
 {
     assert(_cmd < cmon_dyn_arr_count(&_a->cmds));
     return &_a->cmds[_cmd];
+}
+
+static const char * _arg_ident(_arg * _a)
+{
+    return strlen(_a->key_long) ? _a->key_long : _a->key_short;
 }
 
 cmon_argparse * cmon_argparse_create(cmon_allocator * _alloc, const char * _cmd_name)
@@ -160,6 +166,21 @@ void cmon_argparse_parse(cmon_argparse * _a, const char ** _args, size_t _count)
             cmon_panic("unknown argument '%s'\n", _args[i]);
         }
     }
+
+    if (!cmon_is_valid_idx(_a->cmd))
+    {
+        _a->cmd = _a->root_cmd;
+    }
+
+    _cmd * c = _get_cmd(_a, _a->cmd);
+    for (size_t i = 0; i < cmon_dyn_arr_count(&c->args); ++i)
+    {
+        _arg * arg = &_a->args[c->args[i]];
+        if (arg->required && !arg->was_set)
+        {
+            cmon_panic("missing required argument '%s'\n", _arg_ident(arg));
+        }
+    }
 }
 
 cmon_idx cmon_argparse_add_cmd(cmon_argparse * _a, const char * _name, const char * _help)
@@ -181,8 +202,9 @@ cmon_idx cmon_argparse_add_arg(cmon_argparse * _a,
                                cmon_idx _cmd_idx,
                                const char * _key_short,
                                const char * _key_long,
+                               const char * _help,
                                cmon_bool _expects_value,
-                               const char * _help)
+                               cmon_bool _required)
 {
     _arg a;
     strcpy(a.key_short, _key_short);
@@ -192,6 +214,7 @@ cmon_idx cmon_argparse_add_arg(cmon_argparse * _a,
     strcpy(a.val, "");
     a.default_idx = -1;
     a.expects_value = _expects_value;
+    a.required = _required;
     a.was_set = cmon_false;
     a.accepts_any = cmon_false;
     cmon_dyn_arr_append(&_a->args, a);
@@ -278,7 +301,6 @@ static inline int _arg_cmp(const void * _a, const void * _b)
 
 void cmon_argparse_print_help(cmon_argparse * _a)
 {
-    size_t i, j, count;
     static char s_whitespace[] = "                     ";
     printf("usage: %s [?command][options]\n", _a->name);
     //@TODO: Is this a safe/good place to sort the args? maybe make a tmp copy of the args first?
@@ -318,7 +340,7 @@ void cmon_argparse_print_help(cmon_argparse * _a)
                 }
             }
 
-            count = cmon_dyn_arr_count(&a->possible_vals);
+            size_t count = cmon_dyn_arr_count(&a->possible_vals);
             if (count)
             {
                 printf("%spossible values: ", s_whitespace);

@@ -30,9 +30,9 @@ int main(int _argc, const char * _args[])
     cmon_pm_lock_file * lf = NULL;
 
     CMON_UNUSED(cmon_argparse_add_arg(
-        ap, CMON_INVALID_IDX, "-h", "--help", cmon_false, "show this help and exit"));
+        ap, CMON_INVALID_IDX, "-h", "--help", "show this help and exit", cmon_false, cmon_false));
     CMON_UNUSED(cmon_argparse_add_arg(
-        ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_false, "print detailed output"));
+        ap, CMON_INVALID_IDX, "-v", "--verbose", "print detailed output", cmon_false, cmon_false));
 
     cmon_idx install_cmd =
         cmon_argparse_add_cmd(ap, "install", "install all dependencies to deps_pm");
@@ -40,8 +40,10 @@ int main(int _argc, const char * _args[])
                                                      install_cmd,
                                                      "-i",
                                                      "--install_dir",
+                                                     "the installation directory dependencies",
                                                      cmon_false,
-                                                     "the installation directory dependencies");
+                                                     cmon_false);
+
     cmon_argparse_add_possible_val(ap, install_dir_arg, "deps_pm", cmon_true);
     cmon_argparse_add_possible_val(ap, install_dir_arg, "?", cmon_false);
 
@@ -50,13 +52,32 @@ int main(int _argc, const char * _args[])
         install_cmd,
         "-d",
         "--deps_file_dir",
+        "path to a folder containing cmon_pm_deps.tini or cmon_pm_deps_all.tini",
         cmon_false,
-        "path to a folder containing cmon_pm_deps.tini or cmon_pm_deps_all.tini");
+        cmon_false);
     cmon_argparse_add_possible_val(ap, deps_file_arg, "cmon_pm_deps.tini", cmon_true);
     cmon_argparse_add_possible_val(ap, deps_file_arg, "?", cmon_false);
 
     cmon_idx clean_cmd = cmon_argparse_add_cmd(ap, "clean", "cleans the installation directory");
     cmon_argparse_cmd_add_arg(ap, clean_cmd, install_dir_arg);
+
+    cmon_idx add_cmd = cmon_argparse_add_cmd(ap, "add", "add a dependency");
+    CMON_UNUSED(cmon_argparse_add_arg(ap,
+                                      add_cmd,
+                                      "",
+                                      "--url",
+                                      "url to the git respository of the dependency",
+                                      cmon_true,
+                                      cmon_true));
+    cmon_idx version_arg = cmon_argparse_add_arg(ap,
+                                                 add_cmd,
+                                                 "",
+                                                 "--version",
+                                                 "the version of the dependency to pull",
+                                                 cmon_true,
+                                                 cmon_true);
+    cmon_argparse_add_possible_val(ap, version_arg, "latest", cmon_false);
+    cmon_argparse_add_possible_val(ap, version_arg, "?", cmon_false);
 
     cmon_argparse_parse(ap, _args, _argc);
 
@@ -116,7 +137,7 @@ int main(int _argc, const char * _args[])
             {
                 _panic(end, "%s", err_msg);
             }
-            if(cmon_pm_lock_file_pull(lf, cmon_argparse_value(ap, "-i")))
+            if (cmon_pm_lock_file_pull(lf, cmon_argparse_value(ap, "-i")))
             {
                 _panic(end, "%s", cmon_pm_lock_file_err_msg(lf));
             }
@@ -132,12 +153,12 @@ int main(int _argc, const char * _args[])
                     _panic(end, "%s", cmon_pm_err_msg(pm));
                 }
                 lf = cmon_pm_resolve(pm);
-                if(!lf)
+                if (!lf)
                 {
                     _panic(end, "%s", cmon_pm_err_msg(pm));
                 }
 
-                if(cmon_pm_lock_file_save(lf, abs_lock_file_path))
+                if (cmon_pm_lock_file_save(lf, abs_lock_file_path))
                 {
                     _panic(end, "%s", cmon_pm_lock_file_err_msg(lf));
                 }

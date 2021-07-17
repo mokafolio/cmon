@@ -20,8 +20,9 @@ CMON_API cmon_idx cmon_argparse_add_arg(cmon_argparse * _a,
                                         cmon_idx _cmd,
                                         const char * _key_short,
                                         const char * _key_long,
+                                        const char * _help,
                                         cmon_bool _expects_value,
-                                        const char * _help);
+                                        cmon_bool _required);
 
 CMON_API void cmon_argparse_cmd_add_arg(cmon_argparse * _a, cmon_idx _cmd, cmon_idx _arg);
 

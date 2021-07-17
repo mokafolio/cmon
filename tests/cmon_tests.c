@@ -829,12 +829,12 @@ UTEST(cmon, argparse)
     cmon_argparse * ap = cmon_argparse_create(&a, "foo");
 
     cmon_idx uno =
-        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-u", "--uno", cmon_true, "this is uno");
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-u", "--uno", "this is uno", cmon_true, cmon_false);
     cmon_idx dos =
-        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-d", "--dos", cmon_true, "this is dos");
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-d", "--dos", "this is dos",cmon_true, cmon_false);
     cmon_idx tres =
-        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-t", "", cmon_true, "this is tres");
-    cmon_idx quat = cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-q", "", cmon_false, "");
+        cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-t", "", "this is tres", cmon_true, cmon_false);
+    cmon_idx quat = cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-q", "", "", cmon_false, cmon_false);
 
     cmon_argparse_print_help(ap);
 
@@ -865,15 +865,15 @@ UTEST(cmon, argparse_cmd)
 
     cmon_idx cmd_idx = cmon_argparse_add_cmd(ap, "install", "this is some useful help");
 
-    cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-v", "--verbose", cmon_true, "this is uno");
+    cmon_argparse_add_arg(ap, CMON_INVALID_IDX, "-v", "--verbose", "this is uno", cmon_true, cmon_false);
 
     cmon_idx dir_arg =
-        cmon_argparse_add_arg(ap, cmd_idx, "-d", "--dir", cmon_true, "install directory");
+        cmon_argparse_add_arg(ap, cmd_idx, "-d", "--dir", "install directory", cmon_true, cmon_false);
 
     cmon_argparse_add_possible_val(ap, dir_arg, "cwd", cmon_true);
     cmon_argparse_add_possible_val(ap, dir_arg, "?", cmon_false);
 
-    cmon_argparse_add_arg(ap, cmd_idx, "-f", "", cmon_false, "boink");
+    cmon_argparse_add_arg(ap, cmd_idx, "-f", "", "boink", cmon_false, cmon_false);
 
     cmon_argparse_print_help(ap);
 
