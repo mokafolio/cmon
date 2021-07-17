@@ -116,6 +116,10 @@ int main(int _argc, const char * _args[])
             {
                 _panic(end, "%s", err_msg);
             }
+            if(cmon_pm_lock_file_pull(lf, cmon_argparse_value(ap, "-i")))
+            {
+                _panic(end, "%s", cmon_pm_lock_file_err_msg(lf));
+            }
         }
         else
         {
