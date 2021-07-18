@@ -536,9 +536,20 @@ cmon_pm_lock_file * cmon_pm_resolve(cmon_pm * _pm)
              cmon_str_builder_c_str(_pm->exec_output_builder));
     }
 
+    //if the deps dir does not exist yet, create it.
+    char current_dir[CMON_PATH_MAX];
+    // if (!cmon_fs_getcwd(current_dir, sizeof(current_dir)))
+    // {
+    //     _err2(_eh, end, "failed to get current working directory");
+    // }
+    // if (cmon_fs_chdir(_path) == -1)
+    // {
+    //     _err2(_eh, end, "failed to change working directory");
+    // }
+
+
     // clone all top level dependencies and recursively add all the other dependencies coming in
     // along the way
-    char current_dir[CMON_PATH_MAX];
     if (_change_cwd(_pm->deps_dir, current_dir, sizeof(current_dir), &_pm->err))
     {
         goto end;

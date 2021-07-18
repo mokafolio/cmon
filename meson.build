@@ -21,6 +21,7 @@ lib_src = [
     'cmon/cmon_log.c',
     'cmon/cmon_modules.c',
     'cmon/cmon_parser.c',
+    'cmon/cmon_path.c',
     'cmon/cmon_pm.c',
     'cmon/cmon_resolver.c',
     'cmon/cmon_src.c',
