@@ -235,7 +235,10 @@ int cmon_fs_write_txt_file(const char * _path, const char * _txt)
     return 0;
 
 err:
-    fclose(fp);
+    if(fp)
+    {
+        fclose(fp);
+    }
     return -1;
 }
 

@@ -312,6 +312,7 @@ static inline void _tini_write_dep(cmon_str_builder * _b, const char * _url, con
 
 cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _path)
 {
+    cmon_bool err = cmon_false;
     cmon_str_builder_clear(_pm->str_builder);
     _tini_write_begin(_pm->str_builder);
     _mod = cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx;
@@ -323,7 +324,12 @@ cmon_bool cmon_pm_save_deps_file(cmon_pm * _pm, cmon_idx _mod, const char * _pat
     }
     _tini_write_end(_pm->str_builder);
 
-    return cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_pm->str_builder));
+    if (cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_pm->str_builder)) != 0)
+    {
+        _err2(&_pm->err, end, "failed to write tini file to %s", _path);
+    }
+end:
+    return err;
 }
 
 static inline const char * _advance_to_next_digit(const char * _pos)
@@ -690,6 +696,7 @@ end:
 
 cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * _lf, const char * _path)
 {
+    cmon_bool err = cmon_false;
     cmon_str_builder_clear(_lf->str_builder);
     _tini_write_begin(_lf->str_builder);
     for (size_t i = 0; i < cmon_dyn_arr_count(&_lf->deps); ++i)
@@ -698,7 +705,12 @@ cmon_bool cmon_pm_lock_file_save(cmon_pm_lock_file * _lf, const char * _path)
     }
     _tini_write_end(_lf->str_builder);
 
-    return cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_lf->str_builder));
+    if (cmon_fs_write_txt_file(_path, cmon_str_builder_c_str(_lf->str_builder)) != 0)
+    {
+        _err2(&_lf->err, end, "failed to write tini file to %s", _path);
+    }
+end:
+    return err;
 }
 
 const char * cmon_pm_lock_file_err_msg(cmon_pm_lock_file * _lf)

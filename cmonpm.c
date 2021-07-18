@@ -55,13 +55,14 @@ int main(int _argc, const char * _args[])
         "path to a folder containing cmon_pm_deps.tini or cmon_pm_deps_all.tini",
         cmon_false,
         cmon_false);
-    cmon_argparse_add_possible_val(ap, deps_file_arg, "cmon_pm_deps.tini", cmon_true);
+    cmon_argparse_add_possible_val(ap, deps_file_arg, "cwd", cmon_true);
     cmon_argparse_add_possible_val(ap, deps_file_arg, "?", cmon_false);
 
     cmon_idx clean_cmd = cmon_argparse_add_cmd(ap, "clean", "cleans the installation directory");
     cmon_argparse_cmd_add_arg(ap, clean_cmd, install_dir_arg);
 
     cmon_idx add_cmd = cmon_argparse_add_cmd(ap, "add", "add a dependency");
+    cmon_argparse_cmd_add_arg(ap, add_cmd, deps_file_arg);
     CMON_UNUSED(cmon_argparse_add_arg(ap,
                                       add_cmd,
                                       "",
@@ -89,8 +90,20 @@ int main(int _argc, const char * _args[])
 
     pm = cmon_pm_create(&a, cmon_argparse_value(ap, "-i"));
 
+    // fill in a couple of paths needed by commands
     char cwd[CMON_PATH_MAX];
     char dep_dir_path[CMON_PATH_MAX];
+    char abs_dep_dir_path[CMON_PATH_MAX];
+    char abs_dep_file_path[CMON_PATH_MAX];
+    char abs_lock_file_path[CMON_PATH_MAX];
+
+    // get working directory
+    if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
+    {
+        _panic(end, "could not get current working directory.");
+    }
+
+    // fill in absolute install directory path
     const char * install_dir = cmon_argparse_value(ap, "-i");
     if (_is_absolute_path(install_dir))
     {
@@ -98,12 +111,30 @@ int main(int _argc, const char * _args[])
     }
     else
     {
-        if (!cmon_fs_getcwd(cwd, sizeof(cwd)))
-        {
-            _panic(end, "could not get current working directory.");
-        }
         cmon_join_paths(cwd, install_dir, dep_dir_path, sizeof(dep_dir_path));
     }
+
+    // fill in absolute deps file dir path
+    const char * deps_file_dir = cmon_argparse_value(ap, "-d");
+    if (strcmp(deps_file_dir, "cwd") != 0)
+    {
+        if (_is_absolute_path(deps_file_dir))
+        {
+            strcpy(abs_dep_dir_path, deps_file_dir);
+        }
+        else
+        {
+            cmon_join_paths(cwd, deps_file_dir, abs_dep_dir_path, sizeof(abs_dep_dir_path));
+        }
+    }
+
+    // lock file path
+    cmon_join_paths(
+        abs_dep_dir_path, "cmon_pm_deps_all.tini", abs_lock_file_path, sizeof(abs_lock_file_path));
+
+    // deps file path
+    cmon_join_paths(
+        abs_dep_dir_path, "cmon_pm_deps.tini", abs_dep_file_path, sizeof(abs_dep_file_path));
 
     if (cmon_argparse_cmd(ap) == clean_cmd)
     {
@@ -115,21 +146,7 @@ int main(int _argc, const char * _args[])
     else if (cmon_argparse_cmd(ap) == install_cmd)
     {
         char err_msg[CMON_ERR_MSG_MAX];
-        char abs_dir_path[CMON_PATH_MAX];
-        char abs_dep_file_path[CMON_PATH_MAX];
-        char abs_lock_file_path[CMON_PATH_MAX];
-        const char * deps_file_dir = cmon_argparse_value(ap, "-d");
-        if (_is_absolute_path(deps_file_dir))
-        {
-            strcpy(abs_dir_path, deps_file_dir);
-        }
-        else
-        {
-            cmon_join_paths(cwd, deps_file_dir, abs_dir_path, sizeof(abs_dir_path));
-        }
 
-        cmon_join_paths(
-            abs_dir_path, "cmon_pm_deps_all.tini", abs_lock_file_path, sizeof(abs_lock_file_path));
         if (cmon_fs_exists(abs_lock_file_path))
         {
             lf = cmon_pm_lock_file_load(&a, abs_lock_file_path, err_msg, sizeof(err_msg));
@@ -144,9 +161,7 @@ int main(int _argc, const char * _args[])
         }
         else
         {
-            cmon_join_paths(
-                abs_dir_path, "cmon_pm_deps.tini", abs_dep_file_path, sizeof(abs_dep_file_path));
-            if (cmon_fs_exists(abs_dir_path))
+            if (cmon_fs_exists(abs_dep_dir_path))
             {
                 if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, abs_dep_file_path))
                 {
@@ -171,10 +186,33 @@ int main(int _argc, const char * _args[])
             }
         }
     }
+    else if (cmon_argparse_cmd(ap) == add_cmd)
+    {
+        // if there is a cmon_pm_deps.tini, load it, add the new dependency.
+        if (cmon_fs_exists(abs_dep_file_path))
+        {
+            if (cmon_pm_load_deps_file(pm, CMON_INVALID_IDX, abs_dep_file_path))
+            {
+                _panic(end, "%s", cmon_pm_err_msg(pm));
+            }
+        }
+
+        // add the new dependency (if it does not exist yet)
+        cmon_pm_find_or_add_module_c_str(
+            pm, cmon_argparse_value(ap, "--url"), cmon_argparse_value(ap, "--version"));
+
+        // save it
+        if (cmon_pm_save_deps_file(pm, CMON_INVALID_IDX, abs_dep_file_path))
+        {
+            _panic(end, "%s", cmon_pm_err_msg(pm));
+        }
+    }
 
 end:
     cmon_pm_lock_file_destroy(lf);
     cmon_pm_destroy(pm);
     cmon_argparse_destroy(ap);
     cmon_allocator_dealloc(&a);
+
+    return EXIT_SUCCESS;
 }

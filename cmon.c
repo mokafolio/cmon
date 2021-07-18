@@ -217,12 +217,13 @@ int main(int _argc, const char * _args[])
 
 end:
     cmon_builder_st_destroy(builder);
-
     cmon_str_builder_destroy(tmp_strb);
     cmon_log_destroy(log);
     cmon_modules_destroy(mods);
     cmon_src_destroy(src);
     cmon_argparse_destroy(ap);
     cmon_allocator_dealloc(&alloc);
+
+    //@TODO: Return exit failure on panic
     return EXIT_SUCCESS;
 }
