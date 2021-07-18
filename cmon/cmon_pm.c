@@ -195,9 +195,17 @@ cmon_idx cmon_pm_module_dep(cmon_pm * _pm, cmon_idx _mod_idx, size_t _dep_idx)
     return _get_mod(_pm, _mod_idx)->deps[_dep_idx];
 }
 
-cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod, cmon_idx _dep)
+cmon_bool cmon_pm_add_dep(cmon_pm * _pm, cmon_idx _mod_idx, cmon_idx _dep_idx)
 {
-    cmon_dyn_arr_append(&_get_mod(_pm, cmon_is_valid_idx(_mod) ? _mod : _pm->root_idx)->deps, _dep);
+    _mod * m = _get_mod(_pm, cmon_is_valid_idx(_mod_idx) ? _mod_idx : _pm->root_idx);
+    for(size_t i=0; i<cmon_dyn_arr_count(&m->deps); ++i)
+    {
+        if(m->deps[i] == _dep_idx)
+        {
+            return cmon_true;
+        }
+    }
+    cmon_dyn_arr_append(&m->deps, _dep_idx);
     return cmon_false;
 }
 

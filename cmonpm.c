@@ -92,7 +92,7 @@ int main(int _argc, const char * _args[])
 
     // fill in a couple of paths needed by commands
     char cwd[CMON_PATH_MAX];
-    char dep_dir_path[CMON_PATH_MAX];
+    char install_dir_path[CMON_PATH_MAX];
     char abs_dep_dir_path[CMON_PATH_MAX];
     char abs_dep_file_path[CMON_PATH_MAX];
     char abs_lock_file_path[CMON_PATH_MAX];
@@ -107,11 +107,11 @@ int main(int _argc, const char * _args[])
     const char * install_dir = cmon_argparse_value(ap, "-i");
     if (_is_absolute_path(install_dir))
     {
-        strcpy(dep_dir_path, install_dir);
+        strcpy(install_dir_path, install_dir);
     }
     else
     {
-        cmon_join_paths(cwd, install_dir, dep_dir_path, sizeof(dep_dir_path));
+        cmon_join_paths(cwd, install_dir, install_dir_path, sizeof(install_dir_path));
     }
 
     // fill in absolute deps file dir path
@@ -127,6 +127,10 @@ int main(int _argc, const char * _args[])
             cmon_join_paths(cwd, deps_file_dir, abs_dep_dir_path, sizeof(abs_dep_dir_path));
         }
     }
+    else
+    {
+        strcpy(abs_dep_dir_path, cwd);
+    }
 
     // lock file path
     cmon_join_paths(
@@ -138,9 +142,9 @@ int main(int _argc, const char * _args[])
 
     if (cmon_argparse_cmd(ap) == clean_cmd)
     {
-        if (cmon_fs_remove_all(dep_dir_path))
+        if (cmon_fs_remove_all(install_dir_path))
         {
-            _panic(end, "failed to remove dep dir at %s", dep_dir_path);
+            _panic(end, "failed to remove dep dir at %s", install_dir_path);
         }
     }
     else if (cmon_argparse_cmd(ap) == install_cmd)
@@ -197,9 +201,15 @@ int main(int _argc, const char * _args[])
             }
         }
 
-        // add the new dependency (if it does not exist yet)
-        cmon_pm_find_or_add_module_c_str(
+        // add the new module (if it does not exist yet)
+        cmon_idx mod = cmon_pm_find_or_add_module_c_str(
             pm, cmon_argparse_value(ap, "--url"), cmon_argparse_value(ap, "--version"));
+
+        //added as a dependency
+        if(cmon_pm_add_dep(pm, CMON_INVALID_IDX, mod))
+        {
+            //@TODO: log dependency already existed
+        }
 
         // save it
         if (cmon_pm_save_deps_file(pm, CMON_INVALID_IDX, abs_dep_file_path))
